@@ -755,21 +755,33 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
           {/* ── Realtime Stats ── */}
           {(ext || extLoading) && (
             <div className="hud-net-rt">
-              {/* Ping */}
+              {/* Ping + Packet Loss */}
               {ext ? (
                 ext.latencyMs != null && ext.latencyMs > 0 ? (() => {
                   const ms = ext.latencyMs;
                   const c = ms <= 80 ? '#00FF88' : ms <= 180 ? '#FFD600' : '#FF2D55';
                   const q = ms <= 30 ? 'Excellent' : ms <= 80 ? 'Good' : ms <= 180 ? 'Fair' : 'Poor';
+                  const pl = ext.packetLoss ?? -1;
+                  const plColor = pl <= 0 ? '#00FF88' : pl < 3 ? '#FFD600' : '#FF2D55';
                   return (
-                    <div className="hud-net-rt-stat">
-                      <div className="hud-net-rt-head">
-                        <span className="hud-net-rt-dot" style={{ background: c, boxShadow: `0 0 5px ${c}` }} />
-                        <span className="hud-net-rt-key">Ping</span>
-                        <span className="hud-net-rt-badge" style={{ color: c, borderColor: `${c}30`, background: `${c}0A` }}>{q}</span>
+                    <>
+                      <div className="hud-net-rt-stat">
+                        <div className="hud-net-rt-head">
+                          <span className="hud-net-rt-dot" style={{ background: c, boxShadow: `0 0 5px ${c}` }} />
+                          <span className="hud-net-rt-key">Ping</span>
+                        </div>
+                        <span className="hud-net-rt-big" style={{ color: c }}>{ms}<small>ms</small></span>
                       </div>
-                      <span className="hud-net-rt-big" style={{ color: c }}>{ms}<small>ms</small></span>
-                    </div>
+                      {pl >= 0 && (
+                        <div className="hud-net-rt-stat">
+                          <div className="hud-net-rt-head">
+                            <span className="hud-net-rt-dot" style={{ background: plColor, boxShadow: `0 0 5px ${plColor}` }} />
+                            <span className="hud-net-rt-key">Packet Loss</span>
+                          </div>
+                          <span className="hud-net-rt-big" style={{ color: plColor }}>{pl}<small>%</small></span>
+                        </div>
+                      )}
+                    </>
                   );
                 })() : null
               ) : (

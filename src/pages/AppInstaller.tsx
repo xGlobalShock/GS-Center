@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download,
   CheckCircle,
@@ -8,10 +8,21 @@ import {
   Loader2,
   X,
   RefreshCw,
+  Globe,
+  MessageCircle,
+  Gamepad2,
+  Wrench,
+  Radio,
+  Code2,
+  FolderCog,
+  Music,
+  Check,
+  LayoutGrid,
+  Sparkles,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { useToast } from '../contexts/ToastContext';
-import { APP_CATALOG, CatalogApp } from '../data/appCatalog';
+import { APP_CATALOG, APP_CATEGORIES, CatalogApp } from '../data/appCatalog';
 import '../styles/AppInstaller.css';
 
 interface InstallProgress {
@@ -25,6 +36,18 @@ interface AppInstallerProps {
   isActive?: boolean;
 }
 
+/* Category → icon */
+const CAT_ICONS: Record<string, React.ReactNode> = {
+  'Browsers': <Globe size={14} />,
+  'Communications': <MessageCircle size={14} />,
+  'Gaming': <Gamepad2 size={14} />,
+  'Gaming Tools': <Wrench size={14} />,
+  'Streaming & Audio': <Radio size={14} />,
+  'Development': <Code2 size={14} />,
+  'Utilities': <FolderCog size={14} />,
+  'Media': <Music size={14} />,
+};
+
 const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [installed, setInstalled] = useState<Set<string>>(new Set());
@@ -32,10 +55,27 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
   const [progress, setProgress] = useState<InstallProgress | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [checkingInstalled, setCheckingInstalled] = useState(false);
+  const [activeCat, setActiveCat] = useState('All');
   const hasChecked = useRef(false);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [cols, setCols] = useState(1);
   const { addToast } = useToast();
 
-  // Listen for install progress events
+  /* Track how many columns the grid actually renders */
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    const measure = () => {
+      const style = getComputedStyle(el);
+      const c = style.gridTemplateColumns.split(' ').filter(Boolean).length;
+      setCols(c || 1);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   useEffect(() => {
     if (!window.electron?.ipcRenderer) return;
     const unsub = window.electron.ipcRenderer.on('appinstall:install-progress', (data: InstallProgress) => {
@@ -44,7 +84,6 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
     return () => { if (unsub) unsub(); };
   }, []);
 
-  // Check which apps are already installed
   const checkInstalled = useCallback(async () => {
     if (!window.electron?.ipcRenderer) return;
     setCheckingInstalled(true);
@@ -52,58 +91,27 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
       const allApps = APP_CATALOG.map(a => ({ id: a.id, name: a.name }));
       const result = await window.electron.ipcRenderer.invoke('appinstall:check-installed', allApps);
       if (result.success) {
-        const installedSet = new Set<string>();
-        for (const [id, isInstalled] of Object.entries(result.installed)) {
-          if (isInstalled) installedSet.add(id);
-        }
-        setInstalled(installedSet);
+        const set = new Set<string>();
+        for (const [id, ok] of Object.entries(result.installed)) { if (ok) set.add(id); }
+        setInstalled(set);
       }
-    } catch (err) {
-      console.error('Failed to check installed apps:', err);
-    } finally {
-      setCheckingInstalled(false);
-    }
+    } catch (err) { console.error('Failed to check installed:', err); }
+    finally { setCheckingInstalled(false); }
   }, []);
 
-  // Auto-check on first visit
   useEffect(() => {
-    if (isActive && !hasChecked.current) {
-      hasChecked.current = true;
-      checkInstalled();
-    }
+    if (isActive && !hasChecked.current) { hasChecked.current = true; checkInstalled(); }
   }, [isActive, checkInstalled]);
 
-  // Manual refresh
   const refreshInstalled = useCallback(() => {
-    hasChecked.current = false;
-    setInstalled(new Set());
-    checkInstalled();
+    hasChecked.current = false; setInstalled(new Set()); checkInstalled();
   }, [checkInstalled]);
 
   const toggleSelect = (id: string) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
 
   const clearSelection = () => setSelected(new Set());
-
-  const selectAll = () => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      const availableApps = APP_CATALOG.filter(a => !installed.has(a.id));
-      const allSelected = availableApps.every(a => next.has(a.id));
-      if (allSelected) {
-        availableApps.forEach(a => next.delete(a.id));
-      } else {
-        availableApps.forEach(a => next.add(a.id));
-      }
-      return next;
-    });
-  };
 
   const handleInstallSingle = async (app: CatalogApp) => {
     if (!window.electron?.ipcRenderer) return;
@@ -114,182 +122,225 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
       if (result.success) {
         addToast(`${app.name} installed successfully!`, 'success');
         setInstalled(prev => new Set(prev).add(app.id));
-        setSelected(prev => { const next = new Set(prev); next.delete(app.id); return next; });
-      } else {
+        setSelected(prev => { const n = new Set(prev); n.delete(app.id); return n; });
+      } else if (result.message !== 'Installation cancelled by user') {
         addToast(result.message || `Failed to install ${app.name}`, 'error');
       }
-    } catch (err) {
-      addToast(`Error installing ${app.name}`, 'error');
-    } finally {
-      setTimeout(() => setProgress(null), 2500);
-      setInstallingId(null);
-    }
+    } catch { addToast(`Error installing ${app.name}`, 'error'); }
+    finally { setTimeout(() => setProgress(null), 1500); setInstallingId(null); }
+  };
+
+  const handleCancelInstall = async () => {
+    if (!window.electron?.ipcRenderer) return;
+    try {
+      await window.electron.ipcRenderer.invoke('appinstall:cancel-install');
+      addToast('Installation cancelled', 'info');
+    } catch { /* ignore */ }
   };
 
   const handleInstallSelected = async () => {
     if (!window.electron?.ipcRenderer || selected.size === 0) return;
-    const toInstall = Array.from(selected);
-    const appNames = APP_CATALOG.reduce((acc, a) => { acc[a.id] = a.name; return acc; }, {} as Record<string, string>);
-
-    addToast(`Installing ${toInstall.length} app${toInstall.length > 1 ? 's' : ''}…`, 'info');
-
-    for (const id of toInstall) {
+    const ids = Array.from(selected);
+    const names = APP_CATALOG.reduce((a, c) => { a[c.id] = c.name; return a; }, {} as Record<string, string>);
+    addToast(`Installing ${ids.length} app${ids.length > 1 ? 's' : ''}…`, 'info');
+    let wasCancelled = false;
+    for (const id of ids) {
       setInstallingId(id);
       setProgress(null);
       try {
-        const result = await window.electron.ipcRenderer.invoke('appinstall:install-app', id);
-        if (result.success) {
+        const r = await window.electron.ipcRenderer.invoke('appinstall:install-app', id);
+        if (r.success) {
           setInstalled(prev => new Set(prev).add(id));
-          setSelected(prev => { const next = new Set(prev); next.delete(id); return next; });
-        } else {
-          addToast(`Failed: ${appNames[id] || id}`, 'error');
-        }
-      } catch {
-        addToast(`Error installing ${appNames[id] || id}`, 'error');
-      }
+          setSelected(prev => { const n = new Set(prev); n.delete(id); return n; });
+        } else if (r.message === 'Installation cancelled by user') {
+          wasCancelled = true;
+          break;
+        } else { addToast(`Failed: ${names[id] || id}`, 'error'); }
+      } catch { addToast(`Error: ${names[id] || id}`, 'error'); }
     }
     setInstallingId(null);
     setTimeout(() => setProgress(null), 2500);
-    addToast('Batch installation complete!', 'success');
+    if (!wasCancelled) addToast('Batch install complete!', 'success');
   };
 
-  // Filter catalog by search
-  const filteredApps = searchQuery.trim()
-    ? APP_CATALOG.filter(a =>
-        a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        a.id.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : APP_CATALOG;
+  /* Filter: category tab → search → sort A-Z */
+  const visibleApps = useMemo(() => {
+    let apps = activeCat === 'All' ? [...APP_CATALOG] : APP_CATALOG.filter(a => a.category === activeCat);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      apps = apps.filter(a => a.name.toLowerCase().includes(q) || a.category.toLowerCase().includes(q));
+    }
+    apps.sort((a, b) => {
+      const aNum = /^[\d.]/.test(a.name);
+      const bNum = /^[\d.]/.test(b.name);
+      if (aNum !== bNum) return aNum ? 1 : -1;
+      return a.name.localeCompare(b.name);
+    });
+    return apps;
+  }, [activeCat, searchQuery]);
 
-  const availableApps = APP_CATALOG.filter(a => !installed.has(a.id));
-  const allSelected = availableApps.length > 0 && availableApps.every(a => selected.has(a.id));
+  const rows = Math.ceil(visibleApps.length / cols);
 
-  const showInstalled = (id: string) => installed.has(id);
+  /* Badge counts for tabs */
+  const catCounts = useMemo(() => {
+    const c: Record<string, number> = { All: APP_CATALOG.length };
+    APP_CATEGORIES.forEach(cat => { c[cat] = APP_CATALOG.filter(a => a.category === cat).length; });
+    return c;
+  }, []);
 
   return (
-    <motion.div
-      className="ai"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
+    <motion.div className="ai" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
       <PageHeader
         icon={<Package size={16} />}
         title="App Installer"
         stat={
-          checkingInstalled ? (
-            <span className="ai-checking"><Loader2 size={12} className="ai-spin" /> Checking installed…</span>
-          ) : installed.size > 0 ? (
-            <span className="ai-installed-count">{installed.size} installed</span>
-          ) : null
+          <div className="ai-header-row">
+            <div className="ai-search-wrap ai-search-wrap--header">
+              <Search size={13} className="ai-search-icon" />
+              <input
+                className="ai-search"
+                placeholder="Search apps…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button className="ai-search-x" onClick={() => setSearchQuery('')}><X size={13} /></button>
+              )}
+            </div>
+            {checkingInstalled
+              ? <span className="ai-stat"><Loader2 size={12} className="ai-spin" /> Scanning…</span>
+              : installed.size > 0
+                ? <span className="ai-stat"><CheckCircle size={12} /> {installed.size}/{APP_CATALOG.length} installed</span>
+                : null
+            }
+          </div>
         }
         actions={
-          <div className="ai-header-actions">
-            <button
-              className="ai-btn ai-btn--clear"
-              onClick={refreshInstalled}
-              disabled={checkingInstalled}
-              title="Re-scan installed apps"
-            >
+          <div className="ai-actions">
+            <button className="ai-icon-btn" onClick={refreshInstalled} disabled={checkingInstalled} title="Re-scan">
               <RefreshCw size={14} className={checkingInstalled ? 'ai-spin' : ''} />
-              {checkingInstalled ? 'Scanning…' : 'Refresh'}
             </button>
-            {selected.size > 0 && (
-              <>
-                <button className="ai-btn ai-btn--clear" onClick={clearSelection}>
-                  <X size={14} />
-                  Clear ({selected.size})
-                </button>
-                <button
-                  className="ai-btn ai-btn--install-selected"
-                  onClick={handleInstallSelected}
-                  disabled={installingId !== null}
-                >
-                  <Download size={14} />
-                  {installingId ? 'Installing…' : `Install Selected (${selected.size})`}
-                </button>
-              </>
-            )}
           </div>
         }
       />
 
-      {/* Search bar */}
-      <div className="ai-search-wrap">
-        <Search size={16} className="ai-search-icon" />
-        <input
-          type="text"
-          className="ai-search"
-          placeholder="Search apps…"
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-        />
-        {searchQuery && (
-          <button className="ai-search-clear" onClick={() => setSearchQuery('')}>
-            <X size={14} />
+      {/* ── Category tabs ── */}
+      <div className="ai-tabs">
+        {(['All', ...APP_CATEGORIES] as string[]).map(cat => (
+          <button
+            key={cat}
+            className={`ai-tab ${activeCat === cat ? 'ai-tab--active' : ''}`}
+            onClick={() => setActiveCat(cat)}
+          >
+            {cat !== 'All' && <span className="ai-tab-icon">{CAT_ICONS[cat]}</span>}
+            {cat === 'All' && <LayoutGrid size={13} />}
+            <span>{cat}</span>
+            <span className="ai-tab-count">{catCounts[cat]}</span>
           </button>
-        )}
+        ))}
       </div>
 
-      {/* Select All / App count bar */}
-      <div className="ai-toolbar">
-        <span className="ai-toolbar-count">{filteredApps.length} apps</span>
-        <button className="ai-btn ai-btn--select-cat" onClick={selectAll}>
-          {allSelected ? 'Deselect All' : 'Select All'}
-        </button>
-      </div>
-
-      {/* App grid */}
-      <div className="ai-catalog">
-        <div className="ai-app-grid">
-          {filteredApps.map((app, i) => {
-            const isInstalled = showInstalled(app.id);
-            const isSelected = selected.has(app.id);
-            const isInstalling = installingId === app.id;
-            const appProgress = progress && progress.packageId === app.id ? progress : null;
+      {/* ── App grid ── */}
+      <motion.div
+        className="ai-grid"
+        ref={gridRef}
+        key={activeCat + searchQuery}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
+      >
+          {visibleApps.map((app, i) => {
+            const done = installed.has(app.id);
+            const sel = selected.has(app.id);
+            const busy = installingId === app.id;
+            const prog = progress?.packageId === app.id ? progress : null;
+            /* Column-first order: map linear index to column-major position */
+            const order = cols > 1 ? (i % cols) * rows + Math.floor(i / cols) : i;
 
             return (
-              <motion.div
+              <div
                 key={app.id}
-                className={`ai-app-chip ${isSelected ? 'ai-app-chip--selected' : ''} ${isInstalled ? 'ai-app-chip--installed' : ''} ${isInstalling ? 'ai-app-chip--installing' : ''}`}
-                onClick={() => !isInstalled && !isInstalling && toggleSelect(app.id)}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.015 }}
+                className={`ai-card${sel ? ' ai-card--sel' : ''}${done ? ' ai-card--done' : ''}${busy ? ' ai-card--busy' : ''}`}
+                onClick={() => !done && !busy && toggleSelect(app.id)}
+                style={{ order }}
               >
-                <div className="ai-app-check">
-                  {isInstalled ? (
-                    <CheckCircle size={14} className="ai-app-check-icon ai-app-check-icon--installed" />
-                  ) : isInstalling ? (
-                    <Loader2 size={14} className="ai-spin ai-app-check-icon" />
-                  ) : (
-                    <div className={`ai-app-checkbox ${isSelected ? 'ai-app-checkbox--checked' : ''}`} />
-                  )}
+                {/* Status icon */}
+                <div className="ai-card-icon">
+                  {done ? <CheckCircle size={15} />
+                    : busy ? <Loader2 size={15} className="ai-spin" />
+                    : sel ? <div className="ai-card-check"><Check size={10} /></div>
+                    : <div className="ai-card-dot" />}
                 </div>
-                <span className="ai-app-name">{app.name}</span>
-                {!isInstalled && !isInstalling && (
+
+                <div className="ai-card-info">
+                  <span className="ai-card-name">{app.name}</span>
+                  {activeCat === 'All' && <span className="ai-card-cat">{app.category}</span>}
+                  {busy && prog && (
+                    <span className={`ai-card-phase ai-card-phase--${prog.phase}`}>
+                      {prog.phase === 'downloading' && 'Downloading…'}
+                      {prog.phase === 'installing' && 'Installing…'}
+                      {prog.phase === 'verifying' && 'Verifying…'}
+                      {prog.phase === 'done' && 'Done!'}
+                      {prog.phase === 'error' && 'Failed'}
+                    </span>
+                  )}
+                  {done && <span className="ai-card-installed">Installed</span>}
+                </div>
+
+                {!done && !busy && (
                   <button
-                    className="ai-app-install-btn"
-                    onClick={(e) => { e.stopPropagation(); handleInstallSingle(app); }}
+                    className="ai-card-dl"
+                    onClick={e => { e.stopPropagation(); handleInstallSingle(app); }}
                     title={`Install ${app.name}`}
                   >
                     <Download size={12} />
                   </button>
                 )}
-                {isInstalling && appProgress && (
-                  <span className={`ai-app-status ai-app-status--${appProgress.phase}`}>
-                    {appProgress.phase === 'downloading' && 'Downloading…'}
-                    {appProgress.phase === 'installing' && 'Installing…'}
-                    {appProgress.phase === 'verifying' && 'Verifying…'}
-                    {appProgress.phase === 'done' && 'Done!'}
-                    {appProgress.phase === 'error' && 'Failed'}
-                  </span>
+                {busy && (
+                  <button
+                    className="ai-card-cancel"
+                    onClick={e => { e.stopPropagation(); handleCancelInstall(); }}
+                    title="Cancel installation"
+                  >
+                    <X size={12} />
+                  </button>
                 )}
-              </motion.div>
+              </div>
             );
           })}
-        </div>
-      </div>
+
+        {visibleApps.length === 0 && (
+          <div className="ai-empty">
+            <Search size={28} strokeWidth={1} />
+            <p>No apps found</p>
+          </div>
+        )}
+      </motion.div>
+
+      {/* ── Floating install dock ── */}
+      <AnimatePresence>
+        {selected.size > 0 && (
+          <motion.div
+            className="ai-dock"
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          >
+            <div className="ai-dock-left">
+              <Sparkles size={15} />
+              <span><strong>{selected.size}</strong> app{selected.size > 1 ? 's' : ''} selected</span>
+            </div>
+            <div className="ai-dock-right">
+              <button className="ai-dock-clear" onClick={clearSelection}><X size={13} /> Clear</button>
+              <button className="ai-dock-go" onClick={handleInstallSelected} disabled={installingId !== null}>
+                <Download size={14} />
+                {installingId ? 'Installing…' : 'Install All'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

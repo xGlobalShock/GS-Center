@@ -49,6 +49,7 @@ export interface RealtimeHWPayload {
   networkUp: number;          // bytes/sec
   networkDown: number;        // bytes/sec
   latencyMs: number;
+  packetLoss: number;
   ssid?: string;
   wifiSignal: number;
 
@@ -84,6 +85,7 @@ export interface RealtimeExtendedStats {
   ssid?: string;
   wifiSignal: number;
   latencyMs?: number;
+  packetLoss?: number;
   ramUsedGB: number;
   ramTotalGB: number;
   diskReadSpeed: number;
@@ -100,7 +102,7 @@ const EMPTY_EXT: RealtimeExtendedStats = {
   cpuClock: 0, perCoreCpu: [], gpuUsage: -1, gpuTemp: -1,
   gpuVramUsed: -1, gpuVramTotal: -1, networkUp: 0, networkDown: 0,
   wifiSignal: -1, ramUsedGB: 0, ramTotalGB: 0, diskReadSpeed: 0,
-  diskWriteSpeed: 0, processCount: 0, systemUptime: '', latencyMs: 0,
+  diskWriteSpeed: 0, processCount: 0, systemUptime: '', latencyMs: 0, packetLoss: -1,
 };
 
 interface UseRealtimeHardwareOptions {
@@ -160,6 +162,7 @@ export function useRealtimeHardware(options: UseRealtimeHardwareOptions = {}) {
         ssid: p.ssid,
         wifiSignal: p.wifiSignal,
         latencyMs: p.latencyMs,
+        packetLoss: p.packetLoss,
         ramUsedGB: p.ramUsedGB,
         ramTotalGB: p.ramTotalGB,
         diskReadSpeed: p.diskReadSpeed,

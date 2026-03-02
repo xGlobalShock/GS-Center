@@ -75,6 +75,7 @@ export interface ExtendedStats {
   activeAdapterName?: string;
   activeLinkSpeed?: string;
   latencyMs?: number;
+  packetLoss?: number;
   ramUsedGB: number;
   ramTotalGB: number;
   diskReadSpeed: number;

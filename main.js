@@ -932,6 +932,7 @@ let _realtimeLatencyTimer = null;
 let _realtimeWifiTimer = null;
 let _realtimeNvGpuTimer = null;
 let _rtLastLatency = 0;
+let _rtLastPacketLoss = -1;
 let _rtLastSsid = '';
 let _rtLastWifiSignal = -1;
 let _rtPrimed = false;
@@ -950,15 +951,28 @@ function _formatUptimeSeconds(seconds) {
   return `${d}d ${h}h ${m}m`;
 }
 
-// Latency ping — separate timer (every 5s) to avoid blocking the main push
+// Latency + Packet Loss ping — separate timer (every 10s)
+// Uses Windows ping -n 5 to get both latency and loss in one call
 function _startLatencyPoll() {
   const doPing = async () => {
     try {
-      _rtLastLatency = Math.round(await si.inetLatency('8.8.8.8'));
-    } catch { _rtLastLatency = 0; }
+      const { stdout } = await execAsync('ping -n 5 -w 2000 8.8.8.8', { shell: true, timeout: 20000 });
+      // Parse average latency: "Average = Xms"
+      const avgMatch = stdout.match(/Average\s*=\s*(\d+)\s*ms/i)
+                    || stdout.match(/Media\s*=\s*(\d+)\s*ms/i);
+      _rtLastLatency = avgMatch ? parseInt(avgMatch[1], 10) : 0;
+      // Parse packet loss: "Lost = X (Y% loss)"
+      const lossMatch = stdout.match(/Lost\s*=\s*\d+\s*\((\d+)%/i)
+                      || stdout.match(/Perdidos\s*=\s*\d+\s*\((\d+)%/i)
+                      || stdout.match(/=\s*\d+.*=\s*\d+.*=\s*\d+\s*\((\d+)%/);
+      _rtLastPacketLoss = lossMatch ? parseInt(lossMatch[1], 10) : 0;
+    } catch {
+      _rtLastLatency = 0;
+      _rtLastPacketLoss = -1;
+    }
   };
   doPing();
-  _realtimeLatencyTimer = setInterval(doPing, 5000);
+  _realtimeLatencyTimer = setInterval(doPing, 10000);
 }
 
 // Wi-Fi info — separate timer (every 10s)
@@ -1143,6 +1157,7 @@ function _startRealtimePush() {
 
         // Ancillary (slower polls)
         latencyMs: _rtLastLatency,
+        packetLoss: _rtLastPacketLoss,
         ssid: _rtLastSsid,
         wifiSignal: _rtLastWifiSignal,
         processCount: _lhmProcessCount,
@@ -4443,6 +4458,24 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
 });
 
 // Install a single app via winget (with progress IPC)
+let activeInstallProc = null;
+
+ipcMain.handle('appinstall:cancel-install', async () => {
+  if (activeInstallProc && !activeInstallProc.killed) {
+    console.log('[appinstall:cancel-install] Killing active install process tree');
+    const pid = activeInstallProc.pid;
+    activeInstallProc = null;
+    try {
+      // Kill the entire process tree on Windows (cmd.exe + winget + installer)
+      spawn('taskkill', ['/F', '/T', '/PID', String(pid)], { windowsHide: true });
+    } catch (e) {
+      console.error('[appinstall:cancel-install] taskkill error:', e.message);
+    }
+    return { success: true };
+  }
+  return { success: false, message: 'No active installation' };
+});
+
 ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
   const cleanId = String(packageId).replace(/[^\x20-\x7E]/g, '').trim();
   console.log('[appinstall:install-app] Installing:', cleanId);
@@ -4451,6 +4484,7 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
     const win = BrowserWindow.getAllWindows()[0];
     let fullOutput = '';
     let phase = 'preparing';
+    let cancelled = false;
 
     const sendProgress = (data) => {
       if (win && !win.isDestroyed()) {
@@ -4464,7 +4498,14 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
       '/c', `chcp 65001 >nul && winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements`
     ], { windowsHide: true });
 
+    activeInstallProc = proc;
+
+    proc.on('close', () => {
+      if (activeInstallProc === proc) activeInstallProc = null;
+    });
+
     const timeout = setTimeout(() => {
+      cancelled = true;
       proc.kill();
       sendProgress({ phase: 'error', status: 'Installation timed out', percent: 0 });
       resolve({ success: false, message: `Installation timed out for ${cleanId}` });
@@ -4523,6 +4564,12 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
 
     proc.on('close', (code) => {
       clearTimeout(timeout);
+      if (activeInstallProc === proc) activeInstallProc = null;
+      if (cancelled || proc.killed) {
+        sendProgress({ phase: 'error', status: 'Installation cancelled', percent: 0 });
+        resolve({ success: false, message: 'Installation cancelled by user' });
+        return;
+      }
       const output = fullOutput.toLowerCase();
       const success = output.includes('successfully installed') || output.includes('already installed');
       if (success) {
