@@ -105,22 +105,31 @@ const Cleaner: React.FC = () => {
       const channel = cleanerMap[id];
       if (window.electron?.ipcRenderer && channel) {
         const result: CleanResult = await window.electron.ipcRenderer.invoke(channel);
-        let message = result.message;
         
         if (result.success) {
-          // Build detailed message with file and size info
+          let message: string;
           if (result.filesDeleted !== undefined && result.filesBefore !== undefined) {
-            // Check if spaceSaved is numeric (contains MB/GB) or just text
-            const isNumeric = /^\d+/.test(result.spaceSaved);
-            message = `${result.message}\n${result.filesDeleted}/${result.filesBefore} files deleted (${result.filesAfter} remaining)\n${isNumeric ? 'Space freed: ' : ''}${result.spaceSaved}`;
+            // File-based cleaners: show count + size
+            if (result.filesDeleted > 0) {
+              const sizeStr = result.spaceSaved && /^\d/.test(result.spaceSaved) ? ` — ${result.spaceSaved} freed` : '';
+              message = `Cleared ${result.filesDeleted} file${result.filesDeleted !== 1 ? 's' : ''}${sizeStr}`;
+            } else {
+              message = 'Already clean — nothing to remove';
+            }
+          } else if (result.spaceSaved && /^\d+.*entries/i.test(result.spaceSaved)) {
+            // DNS: "45 DNS entries removed"
+            message = `${result.message} — ${result.spaceSaved}`;
+          } else if (result.spaceSaved && /^\d+(\.\d+)?\s*(MB|GB|KB|B)\b/i.test(result.spaceSaved)) {
+            // RAM or similar with numeric size
+            message = `${result.message} — ${result.spaceSaved} freed`;
           } else {
-            // For simple cleaners without file counts
-            const isNumeric = /^\d+/.test(result.spaceSaved);
-            message = `${result.message}\n${isNumeric ? 'Space freed: ' : ''}${result.spaceSaved}`;
+            // Simple result (recycle bin, etc) — just the primary message
+            message = result.message;
           }
+          addToast(message, 'success');
+        } else {
+          addToast(result.message || 'Cleanup failed', 'error');
         }
-        
-        addToast(message, result.success ? 'success' : 'error');
       } else {
         addToast('IPC not available', 'error');
       }

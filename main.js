@@ -388,7 +388,6 @@ function _loadLhmCache() {
       if (c.gpuUsage >= 0 && c.gpuUsage <= 100) _lhmGpuUsage = c.gpuUsage;
       if (c.gpuVramUsed >= 0)   _lhmGpuVramUsed = c.gpuVramUsed;
       if (c.gpuVramTotal > 0)   _lhmGpuVramTotal = c.gpuVramTotal;
-      console.log('[LHM] Restored cached sensor values');
     }
   } catch {}
 }
@@ -426,7 +425,6 @@ function startLHMService() {
     // Also try the app directory as a fallback
     const fallbackPath = path.join(app.getAppPath(), 'lib', 'LibreHardwareMonitorLib.dll');
     if (!fs.existsSync(fallbackPath)) {
-      console.warn('[LHM] DLL not found at', dllPath, 'or', fallbackPath);
       return;
     }
     // Use fallback path
@@ -645,44 +643,30 @@ function startLHMService() {
     const msg = data.toString().trim();
     if (!msg) return;
     if (msg.startsWith('LHMINFO:')) {
-      console.log('[LHM]', msg);
       return;
     }
     if (msg.startsWith('LHMOK:READY')) {
-      console.log('[LHM] Service ready');
       return;
     }
     if (msg.startsWith('LHMOK:VISITOR_READY')) {
-      console.log('[LHM] UpdateVisitor compiled — full MSR traversal enabled');
       return;
     }
     if (msg.startsWith('LHMSENSORS:')) {
-      // Sensor dump from first iteration — log for diagnostics
-      const sensors = msg.substring(11).split('|');
-      console.log('[LHM] Sensor dump (' + sensors.length + ' entries):');
-      sensors.forEach(s => console.log('  ' + s));
       return;
     }
     if (msg.startsWith('LHMWARN:')) {
-      console.warn('[LHM]', msg);
       return;
     }
     if (msg.startsWith('LHMERR:')) {
-      console.warn('[LHM]', msg);
-    } else {
-      console.warn('[LHM] stderr:', msg.substring(0, 300));
+      return;
     }
   });
 
   _lhmProcess.on('exit', (code) => {
-    if (code !== 0 && code !== null) {
-      console.warn(`[LHM] Service exited with code ${code}`);
-    }
     _lhmProcess = null;
   });
 
   _lhmProcess.on('error', (err) => {
-    console.warn('[LHM] Service error:', err.message);
     _lhmProcess = null;
   });
 }
@@ -1116,7 +1100,6 @@ function _startRealtimePush() {
       // Log temp source only when falling back to estimation (indicates LHM/SI issue)
       if (!_rtLastTempSource || _rtLastTempSource !== tempSource) {
         if (tempSource === 'estimation') {
-          console.warn(`[RT] Temperature using estimation (lhmTemp: ${_lhmTemp}, lhmAvailable: ${_lhmAvailable}, lhmService: ${_lhmServiceRunning})`);
         }
         _rtLastTempSource = tempSource;
       }
@@ -1181,7 +1164,6 @@ function _startRealtimePush() {
 
       mainWindow.webContents.send('realtime-hw-update', payload);
     } catch (err) {
-      console.warn('[RT] Push error:', err.message?.substring(0, 100));
     }
   }, 1000);
 
@@ -1237,7 +1219,6 @@ function _saveHwCache(data) {
   try {
     fs.writeFileSync(_getHwCachePath(), JSON.stringify({ _v: HW_CACHE_VERSION, _ts: Date.now(), data }), 'utf8');
   } catch (e) {
-    console.warn('[HW] Cache write failed:', e.message);
   }
 }
 
@@ -1261,7 +1242,6 @@ function _initHardwareInfo() {
     }
     return info;
   }).catch(err => {
-    console.error('[HW] Fetch error:', err.message);
     return _hwInfoResult; // return stale cache if available
   });
 }
@@ -1844,6 +1824,92 @@ Write-Output ($s12 + '@@' + $s13 + '@@' + $s14 + '@@' + $s15 + '@@' + $s16)
     info.lastWindowsUpdate = parts[0] || 'Unknown';
     info.windowsActivation = parts[1] || 'Unknown';
   } catch {}
+
+  // ── Fallbacks: fill missing system details using Node.js APIs and wmic ──
+
+  // Uptime: always available via os.uptime()
+  if (!info.systemUptime) {
+    try {
+      const uptimeSec = os.uptime();
+      const days = Math.floor(uptimeSec / 86400);
+      const hours = Math.floor((uptimeSec % 86400) / 3600);
+      const minutes = Math.floor((uptimeSec % 3600) / 60);
+      info.systemUptime = `${days}d ${hours}h ${minutes}m`;
+    } catch {}
+  }
+
+  // Motherboard: fallback via wmic if CIM failed
+  if (!info.motherboardProduct && !info.motherboardManufacturer) {
+    try {
+      const { stdout } = await execAsync('wmic baseboard get Manufacturer,Product /format:csv', { timeout: 8000, windowsHide: true });
+      const lines = stdout.trim().split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('Node,') && !l.startsWith('Node'));
+      if (lines.length > 0) {
+        const parts = lines[lines.length - 1].split(',');
+        if (parts.length >= 3) {
+          info.motherboardManufacturer = parts[1]?.trim() || '';
+          info.motherboardProduct = parts[2]?.trim() || '';
+        }
+      }
+    } catch (e) { }
+  }
+
+  // BIOS: fallback via wmic if CIM failed
+  if (!info.biosVersion) {
+    try {
+      const { stdout } = await execAsync('wmic bios get SMBIOSBIOSVersion,ReleaseDate /format:csv', { timeout: 8000, windowsHide: true });
+      const lines = stdout.trim().split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('Node,') && !l.startsWith('Node'));
+      if (lines.length > 0) {
+        const parts = lines[lines.length - 1].split(',');
+        if (parts.length >= 3) {
+          // CSV order: Node, ReleaseDate, SMBIOSBIOSVersion
+          const relDate = (parts[1] || '').trim();
+          info.biosVersion = (parts[2] || '').trim();
+          if (relDate && !info.biosDate) {
+            // Convert WMI date format (20231015000000.000000+000) to readable
+            const m = relDate.match(/^(\d{4})(\d{2})(\d{2})/);
+            info.biosDate = m ? `${m[1]}-${m[2]}-${m[3]}` : relDate;
+          }
+        }
+      }
+    } catch (e) { }
+  }
+
+  // Windows Activation: fallback via slmgr if CIM failed
+  if (!info.windowsActivation || info.windowsActivation === 'Unknown' || info.windowsActivation === '') {
+    try {
+      const { stdout } = await execAsync('cscript //nologo C:\\Windows\\System32\\slmgr.vbs /dli', { timeout: 12000, windowsHide: true });
+      const out = stdout.toLowerCase();
+      if (out.includes('licensed') || out.includes('license status: licensed')) {
+        info.windowsActivation = 'Licensed';
+      } else if (out.includes('notification') || out.includes('grace')) {
+        info.windowsActivation = 'Not Activated';
+      } else if (out.includes('initial grace') || out.includes('oob grace')) {
+        info.windowsActivation = 'Trial';
+      } else {
+        info.windowsActivation = 'Unknown';
+      }
+    } catch (e) { }
+  }
+
+  // Windows version: fallback via registry if CIM failed
+  if (!info.windowsVersion || info.windowsVersion === 'Unknown') {
+    try {
+      const { stdout } = await execAsync('reg query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" /v ProductName', { timeout: 5000, windowsHide: true });
+      const m = stdout.match(/ProductName\s+REG_SZ\s+(.+)/i);
+      if (m && m[1]) info.windowsVersion = m[1].trim();
+    } catch {}
+  }
+
+  if (!info.windowsBuild || info.windowsBuild === 'Unknown') {
+    try {
+      const { stdout } = await execAsync('reg query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" /v CurrentBuildNumber', { timeout: 5000, windowsHide: true });
+      const m = stdout.match(/CurrentBuildNumber\s+REG_SZ\s+(.+)/i);
+      if (m && m[1]) {
+        const dispVer = await execAsync('reg query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" /v DisplayVersion', { timeout: 3000, windowsHide: true }).then(r => { const mv = r.stdout.match(/DisplayVersion\s+REG_SZ\s+(.+)/i); return mv ? mv[1].trim() : ''; }).catch(() => '');
+        info.windowsBuild = `${dispVer ? dispVer + ' ' : ''}(Build ${m[1].trim()})`;
+      }
+    } catch {}
+  }
 
   return info;
 }
@@ -2947,8 +3013,6 @@ ipcMain.handle('cleaner:clear-memory-dumps', async () => {
     let filesAfter = 0;
 
     // Diagnostic logging
-    console.log(`[Clear Memory Dumps] Checking path: ${dumpDir}`);
-    console.log(`[Clear Memory Dumps] Exists: ${fs.existsSync(dumpDir)}`);
 
       if (!fs.existsSync(dumpDir)) {
         return { success: false, message: 'Minidump folder not found.' };
@@ -3036,15 +3100,12 @@ ipcMain.handle('cleaner:clear-update-cache', async () => {
       const countCmd = `powershell -NoProfile -ExecutionPolicy Bypass -Command "(Get-ChildItem -Path '${updateDir}' -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object).Count"`;
       const countRes = await execAsync(countCmd, { shell: true, timeout: 30000 });
       filesBefore = parseInt(countRes.stdout) || 0;
-      console.log(`[Cache Stats] Total size: ${totalSize} bytes, Files: ${filesBefore}`);
     } catch (e) {
       // Stats collection is best-effort; continue with deletion anyway
-      console.error('[Cache Stats] Failed to collect stats:', e.message);
     }
 
     // Check if folder has content
     if (filesBefore === 0) {
-      console.log('[Cache Check] Folder appears empty already');
       return {
         success: true,
         message: `Cache folder is already empty`,
@@ -3087,7 +3148,6 @@ ipcMain.handle('cleaner:clear-update-cache', async () => {
         break; // Success, exit retry loop
       } catch (removeError) {
         lastError = removeError;
-        console.error(`[Attempt ${attempt}] Cache deletion failed:`, removeError.message, removeError.stderr);
         if (attempt < 3) {
           // Wait before retry
           await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
@@ -3115,7 +3175,6 @@ ipcMain.handle('cleaner:clear-update-cache', async () => {
     const sizeInMB = (totalSize / (1024 * 1024)).toFixed(2);
     
     if (deletionSuccess) {
-      console.log('[Cache Deletion] Success - removed ' + filesBefore + ' files');
       return {
         success: true,
         message: `Cleared Windows Update cache`,
@@ -3128,16 +3187,12 @@ ipcMain.handle('cleaner:clear-update-cache', async () => {
     } else {
       // Check what went wrong
       const errorOutput = lastError ? (lastError.stderr || lastError.stdout || lastError.message || '').toLowerCase() : '';
-      console.error('[Cache Deletion] Failed with error:', errorOutput);
       
       if (errorOutput.includes('access is denied') || errorOutput.includes('access denied')) {
-        console.error('[Cache Deletion] Detected: Permission denied');
         return { success: false, message: 'Run the app as administrator' };
       } else if (errorOutput.includes('is in use') || errorOutput.includes('cannot be removed') || errorOutput.includes('being used')) {
-        console.error('[Cache Deletion] Detected: File in use');
         return { success: false, message: 'Some cache files are still in use. Try restarting your computer.' };
       } else {
-        console.error('[Cache Deletion] Unknown error:', lastError);
         return {
           success: false,
           message: 'Could not clear cache. Try restarting your computer.',
@@ -3159,9 +3214,7 @@ ipcMain.handle('cleaner:clear-dns-cache', async () => {
       const displayResult = await execAsync('powershell -NoProfile -ExecutionPolicy Bypass -Command "ipconfig /displaydns"', { shell: true, timeout: 10000 });
       const entries = displayResult.stdout.match(/Record Name/gi);
       entriesBefore = entries ? entries.length : 0;
-      console.log(`[DNS Cache] Entries before: ${entriesBefore}`);
     } catch (e) {
-      console.error('[DNS Cache] Error counting entries before:', e.message);
       // Ignore errors getting count
     }
     
@@ -3172,13 +3225,10 @@ ipcMain.handle('cleaner:clear-dns-cache', async () => {
     
     // Method 1: Try PowerShell Clear-DnsClientCache (Windows 8+)
     try {
-      console.log('[DNS Cache] Attempting Method 1: Clear-DnsClientCache');
       await execAsync('powershell -NoProfile -ExecutionPolicy Bypass -Command "Clear-DnsClientCache -Confirm:$false"', { shell: true, timeout: 15000 });
       dnsCleared = true;
       method = 'PowerShell Clear-DnsClientCache';
-      console.log('[DNS Cache] Method 1 succeeded');
     } catch (error) {
-      console.error('[DNS Cache] Method 1 failed:', error.message);
       lastError = error;
       // Method 1 failed, try next method
     }
@@ -3186,26 +3236,20 @@ ipcMain.handle('cleaner:clear-dns-cache', async () => {
     // Method 2: If Method 1 fails, try ipconfig /flushdns directly
     if (!dnsCleared) {
       try {
-        console.log('[DNS Cache] Attempting Method 2: ipconfig /flushdns');
         // Run ipconfig /flushdns in command prompt, not PowerShell for better compatibility
         const result = await execAsync('cmd /c ipconfig /flushdns', { shell: true, timeout: 15000 });
         if (result.stdout.includes('cleared') || result.stdout.includes('Cleared') || !result.stderr) {
           dnsCleared = true;
           method = 'ipconfig /flushdns (cmd)';
-          console.log('[DNS Cache] Method 2 succeeded');
         }
       } catch (error) {
-        console.error('[DNS Cache] Method 2 (cmd) failed:', error.message);
         lastError = error;
         // Try alternative: ipconfig /flushdns through PowerShell
         try {
-          console.log('[DNS Cache] Attempting Method 2 Alternative: ipconfig /flushdns (PowerShell)');
           const psResult = await execAsync('powershell -NoProfile -ExecutionPolicy Bypass -Command "& cmd /c ipconfig /flushdns"', { shell: true, timeout: 15000 });
           dnsCleared = true;
           method = 'ipconfig /flushdns (PowerShell)';
-          console.log('[DNS Cache] Method 2 Alternative succeeded');
         } catch (error2) {
-          console.error('[DNS Cache] Method 2 Alternative failed:', error2.message);
           lastError = error2;
         }
       }
@@ -3214,23 +3258,19 @@ ipcMain.handle('cleaner:clear-dns-cache', async () => {
     // Method 3: Restart DNS Client service (most reliable on locked systems)
     if (!dnsCleared) {
       try {
-        console.log('[DNS Cache] Attempting Method 3: DNS Client Service restart');
         // Stop the service
         await execAsync('powershell -NoProfile -ExecutionPolicy Bypass -Command "Stop-Service -Name dnscache -Force -ErrorAction Stop; Start-Sleep -Milliseconds 1000"', { shell: true, timeout: 15000 });
         // Start the service
         await execAsync('powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Service -Name dnscache -ErrorAction Stop"', { shell: true, timeout: 15000 });
         dnsCleared = true;
         method = 'DNS Client Service restart';
-        console.log('[DNS Cache] Method 3 succeeded');
       } catch (error) {
-        console.error('[DNS Cache] Method 3 failed:', error.message);
         lastError = error;
         // Method 3 failed
       }
     }
     
     if (!dnsCleared) {
-      console.error('[DNS Cache] All methods failed:', lastError);
       return {
         success: false,
         message: 'Failed to clear DNS cache. Please ensure the app is running as Administrator.',
@@ -3238,7 +3278,6 @@ ipcMain.handle('cleaner:clear-dns-cache', async () => {
       };
     }
     
-    console.log(`[DNS Cache] Successfully cleared using method: ${method}`);
     
     // Wait a moment for DNS cache to fully clear
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -3249,9 +3288,7 @@ ipcMain.handle('cleaner:clear-dns-cache', async () => {
       const displayAfter = await execAsync('powershell -NoProfile -ExecutionPolicy Bypass -Command "ipconfig /displaydns"', { shell: true, timeout: 10000 });
       const entriesMatch = displayAfter.stdout.match(/Record Name/gi);
       entriesAfter = entriesMatch ? entriesMatch.length : 0;
-      console.log(`[DNS Cache] Entries after: ${entriesAfter}`);
     } catch (e) {
-      console.error('[DNS Cache] Error counting entries after:', e.message);
       // Ignore verification error
     }
 
@@ -3418,7 +3455,6 @@ Write-Output "$result|FreedMB=$freedMB"
     }
     
   } catch (error) {
-    console.error('RAM Cache Clear Error:', error);
     if (isPermissionError(error)) {
       return { success: false, message: 'Run the app as administrator' };
     }
@@ -3478,7 +3514,6 @@ Write-Host 'EMPTIED'
     };
     
   } catch (error) {
-    console.error('Recycle Bin Error:', error);
     if (isPermissionError(error)) {
       return { success: false, message: 'Run the app as administrator' };
     }
@@ -4069,6 +4104,8 @@ ipcMain.handle('software:check-updates', async () => {
           encoding: 'utf8',
           shell: 'cmd.exe',
           maxBuffer: 1024 * 1024 * 5,
+          env: process.env,
+          cwd: process.env.SYSTEMROOT || 'C:\\Windows',
         }
       );
       stdout = result.stdout || '';
@@ -4081,7 +4118,6 @@ ipcMain.handle('software:check-updates', async () => {
       }
     }
 
-    console.log('[software:check-updates] Raw output length:', stdout.length);
     
     // winget uses \r for progress spinner - clean by taking last non-empty \r segment per line
     const lines = stdout.split('\n').map(l => {
@@ -4092,14 +4128,12 @@ ipcMain.handle('software:check-updates', async () => {
     // Find the header line (contains "Name" and "Id" and "Version")
     const headerIdx = lines.findIndex(l => /Name\s+Id\s+Version/i.test(l));
     if (headerIdx === -1) {
-      console.log('[software:check-updates] No header found. Lines:', lines.slice(0, 10));
       return { success: true, packages: [], count: 0 };
     }
 
     // Find the separator line (dashes)
     const sepIdx = lines.findIndex((l, i) => i > headerIdx && /^-{10,}/.test(l.trim()));
     if (sepIdx === -1) {
-      console.log('[software:check-updates] No separator found after header');
       return { success: true, packages: [], count: 0 };
     }
 
@@ -4111,7 +4145,6 @@ ipcMain.handle('software:check-updates', async () => {
     const availableStart = header.search(/\bAvailable\b/);
     const sourceStart = header.search(/\bSource\b/);
 
-    console.log('[software:check-updates] Columns:', { idStart, versionStart, availableStart, sourceStart });
 
     const packages = [];
     for (let i = sepIdx + 1; i < lines.length; i++) {
@@ -4145,10 +4178,8 @@ ipcMain.handle('software:check-updates', async () => {
       }
     }
 
-    console.log('[software:check-updates] Found', packages.length, 'packages');
     return { success: true, packages, count: packages.length };
   } catch (error) {
-    console.error('[software:check-updates] Error:', error.message?.substring(0, 300));
     return { success: false, message: `Failed to check updates: ${error.message}`, packages: [], count: 0 };
   }
 });
@@ -4203,7 +4234,6 @@ ipcMain.handle('software:get-package-size', async (_event, packageId) => {
 // Update a single app
 ipcMain.handle('software:update-app', async (_event, packageId) => {
   const cleanId = String(packageId).replace(/[^\x20-\x7E]/g, '').trim();
-  console.log('[software:update-app] Updating:', JSON.stringify(cleanId));
 
   return new Promise((resolve) => {
     const win = BrowserWindow.getAllWindows()[0];
@@ -4344,7 +4374,7 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
   try {
     const { stdout } = await execAsync(
       'chcp 65001 >nul && winget list --accept-source-agreements 2>nul',
-      { timeout: 30000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe', maxBuffer: 1024 * 1024 * 5 }
+      { timeout: 30000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe', maxBuffer: 1024 * 1024 * 5, env: process.env, cwd: process.env.SYSTEMROOT || 'C:\\Windows' }
     );
 
     // ── Clean \r spinner characters, then rejoin wrapped lines ──
@@ -4387,7 +4417,6 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
       }
     }
 
-    console.log(`[appinstall:check-installed] Parsed ${installedEntries.length} installed packages from winget list`);
 
     // Build fast lookup sets
     const installedIdSet = new Set(installedEntries.map(e => e.id));
@@ -4450,26 +4479,84 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
       installed[app.id] = found;
     }
 
+    // ── Supplementary: Direct registry scan for apps winget missed ──
+    // Catches apps installed on non-C: drives or via non-standard installers
+    const undetected = apps.filter(a => !installed[a.id]);
+    if (undetected.length > 0) {
+      try {
+        const regResult = await execAsync(
+          'powershell -NoProfile -ExecutionPolicy Bypass -Command "' +
+          '$paths = @(\'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*\',\'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*\',\'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*\'); ' +
+          'Get-ItemProperty -Path $paths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName } | ForEach-Object { $_.DisplayName }"',
+          { timeout: 15000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe', maxBuffer: 1024 * 1024 * 5 }
+        );
+        const regNames = new Set(
+          regResult.stdout.split('\n').map(n => n.trim().toLowerCase()).filter(n => n.length > 1)
+        );
+        for (const app of undetected) {
+          const catalogName = (app.name || '').toLowerCase();
+          if (!catalogName) continue;
+          // Exact match or registry entry contains catalog name (e.g. "Discord" in "Discord Inc.")
+          if (regNames.has(catalogName)) { installed[app.id] = true; continue; }
+          for (const rn of regNames) {
+            if (rn.startsWith(catalogName) || (catalogName.length >= 4 && rn.includes(catalogName))) {
+              installed[app.id] = true; break;
+            }
+          }
+        }
+      } catch (e) {
+      }
+    }
+
     return { success: true, installed };
   } catch (error) {
-    console.error('[appinstall:check-installed] Error:', error.message?.substring(0, 200));
-    return { success: false, installed: {} };
+    // Fallback: try registry-only detection if winget is unavailable
+    try {
+      const catalogAppsArr = Array.isArray(catalogApps)
+        ? catalogApps.map(a => typeof a === 'string' ? { id: a, name: '' } : a)
+        : [];
+      const regResult = await execAsync(
+        'powershell -NoProfile -ExecutionPolicy Bypass -Command "' +
+        '$paths = @(\'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*\',\'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*\',\'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*\'); ' +
+        'Get-ItemProperty -Path $paths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName } | ForEach-Object { $_.DisplayName }"',
+        { timeout: 15000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe', maxBuffer: 1024 * 1024 * 5 }
+      );
+      const regNames = new Set(
+        regResult.stdout.split('\n').map(n => n.trim().toLowerCase()).filter(n => n.length > 1)
+      );
+      const installed = {};
+      for (const app of catalogAppsArr) {
+        const catalogName = (app.name || '').toLowerCase();
+        if (!catalogName) { installed[app.id] = false; continue; }
+        if (regNames.has(catalogName)) { installed[app.id] = true; continue; }
+        let found = false;
+        for (const rn of regNames) {
+          if (rn.startsWith(catalogName) || (catalogName.length >= 4 && rn.includes(catalogName))) {
+            found = true; break;
+          }
+        }
+        installed[app.id] = found;
+      }
+      return { success: true, installed };
+    } catch (regErr) {
+      return { success: false, installed: {} };
+    }
   }
 });
 
 // Install a single app via winget (with progress IPC)
 let activeInstallProc = null;
+let cancelledPids = new Set();
 
 ipcMain.handle('appinstall:cancel-install', async () => {
   if (activeInstallProc && !activeInstallProc.killed) {
-    console.log('[appinstall:cancel-install] Killing active install process tree');
     const pid = activeInstallProc.pid;
+    cancelledPids.add(pid);
     activeInstallProc = null;
     try {
       // Kill the entire process tree on Windows (cmd.exe + winget + installer)
       spawn('taskkill', ['/F', '/T', '/PID', String(pid)], { windowsHide: true });
     } catch (e) {
-      console.error('[appinstall:cancel-install] taskkill error:', e.message);
     }
     return { success: true };
   }
@@ -4478,7 +4565,6 @@ ipcMain.handle('appinstall:cancel-install', async () => {
 
 ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
   const cleanId = String(packageId).replace(/[^\x20-\x7E]/g, '').trim();
-  console.log('[appinstall:install-app] Installing:', cleanId);
 
   return new Promise((resolve) => {
     const win = BrowserWindow.getAllWindows()[0];
@@ -4496,13 +4582,9 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
 
     const proc = spawn('cmd.exe', [
       '/c', `chcp 65001 >nul && winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements`
-    ], { windowsHide: true });
+    ], { windowsHide: true, env: process.env, cwd: process.env.SYSTEMROOT || 'C:\\Windows' });
 
     activeInstallProc = proc;
-
-    proc.on('close', () => {
-      if (activeInstallProc === proc) activeInstallProc = null;
-    });
 
     const timeout = setTimeout(() => {
       cancelled = true;
@@ -4565,7 +4647,8 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
     proc.on('close', (code) => {
       clearTimeout(timeout);
       if (activeInstallProc === proc) activeInstallProc = null;
-      if (cancelled || proc.killed) {
+      const wasCancelled = cancelled || proc.killed || cancelledPids.delete(proc.pid);
+      if (wasCancelled) {
         sendProgress({ phase: 'error', status: 'Installation cancelled', percent: 0 });
         resolve({ success: false, message: 'Installation cancelled by user' });
         return;

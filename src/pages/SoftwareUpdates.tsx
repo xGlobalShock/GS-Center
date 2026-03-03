@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, Download, CheckCircle, AlertCircle, Package, Loader2 } from 'lucide-react';
+import { RefreshCw, Download, CheckCircle, Package, Loader2 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/SoftwareUpdates.css';
@@ -306,11 +306,6 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
         </motion.div>
       )}
 
-      {/* Info banner */}
-      <div className="su-info">
-        <AlertCircle size={14} />
-        <span>Updates are fetched via <strong>winget</strong> (Windows Package Manager). Some apps may require admin privileges to update.</span>
-      </div>
     </motion.div>
   );
 };
