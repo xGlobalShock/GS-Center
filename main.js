@@ -197,6 +197,10 @@ function createWindow() {
 }
 
 app.on('ready', () => {
+  // Enable winget InstallerHashOverride (requires admin; allows --ignore-security-hash for de-elevated updates)
+  if (isElevated) {
+    try { execSync('winget settings --enable InstallerHashOverride', { stdio: 'ignore', windowsHide: true, timeout: 10000 }); } catch {}
+  }
   // Start LHM first (longest startup time) — runs in parallel with window creation
   startLHMService();
   // Start standalone perf counter service (CPU usage + clock speed, no LHM dependency)
@@ -4387,6 +4391,8 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       return 'Installer failed — the app may need to be closed first';
     if (output.includes('installer log is available'))
       return 'Installer failed — try closing the app and updating again';
+    if (output.includes('hash does not match') && output.includes('cannot be overridden'))
+      return 'Hash mismatch — retrying as standard user';
     return null;
   };
 
@@ -4396,10 +4402,11 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
     // Walk backwards, skip noise lines
     for (let i = lines.length - 1; i >= 0; i--) {
       const l = lines[i];
-      // Skip log path lines, single-char spinner chars, blank-ish
+      // Skip log path lines, single-char spinner chars, markers, blank-ish
       if (/^installer log is available at/i.test(l)) continue;
       if (/^[-\\|/]$/.test(l)) continue;
       if (/^\\\\|^[A-Z]:\\/.test(l) && l.includes('.log')) continue;
+      if (/^__GS_DONE__$/i.test(l)) continue;
       if (l.length < 4) continue;
       return l.substring(0, 120);
     }
@@ -4421,14 +4428,14 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
     // Clean up any previous log so polling starts fresh
     try { fs.unlinkSync(tmpLog); } catch {}
 
-    // Bat: run winget, redirect all output to log
+    // Bat: run winget non-interactively, redirect all output to log, write DONE marker when finished
     fs.writeFileSync(tmpBat,
-      `@echo off\r\nchcp 65001 >nul\r\n${cmd} > "${tmpLog}" 2>&1\r\n`, 'utf8');
+      `@echo off\r\nchcp 65001 >nul\r\n${cmd} --disable-interactivity > "${tmpLog}" 2>&1\r\necho __GS_DONE__ >> "${tmpLog}"\r\n`, 'utf8');
 
-    // VBS wrapper: launches the bat file with a hidden window (window style 0)
+    // VBS wrapper: launches the bat file with a hidden window (window style 0), WaitOnReturn=True so wscript exits when bat exits
     const tmpVbs = path.join(os.tmpdir(), `gs_winget_de_${process.pid}.vbs`);
     fs.writeFileSync(tmpVbs,
-      `CreateObject("WScript.Shell").Run "cmd.exe /c """"${tmpBat.replace(/\\/g, '\\\\')}""""", 0, False\r\n`, 'utf8');
+      `CreateObject("WScript.Shell").Run "cmd.exe /c """"${tmpBat.replace(/\\/g, '\\\\')}""""", 0, True\r\n`, 'utf8');
 
     let launchOk = false;
 
@@ -4505,6 +4512,11 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
     let elapsed = 0;
     const pollMs = 2000;
     const maxWait = 180000;
+    let lastLogSize = 0;
+    let staleSince = 0; // how long log has been unchanged (ms)
+    const staleLimit = 30000; // consider done if log unchanged for 30s after install started
+    let installStarted = false;
+    let pollPhase = 'preparing'; // only advance forward: preparing → downloading → verifying → installing → done
 
     // Register so cancel handler can stop us
     activeDeElevated = { taskName, pollInterval: null, tmpBat, tmpVbs, tmpLog, resolve };
@@ -4520,9 +4532,28 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       try { log = fs.readFileSync(tmpLog, 'utf8'); } catch {}
       const lower = log.toLowerCase();
 
-      if (lower.includes('downloading')) sendProgress({ phase: 'downloading', status: 'Downloading…', percent: -1 });
-      if (lower.includes('verified installer hash')) sendProgress({ phase: 'verifying', status: 'Verified', percent: 100 });
-      if (lower.includes('starting package install')) sendProgress({ phase: 'installing', status: 'Installing…', percent: -1 });
+      // Track stale log (no new output)
+      if (log.length === lastLogSize) {
+        staleSince += pollMs;
+      } else {
+        lastLogSize = log.length;
+        staleSince = 0;
+      }
+
+      // Only advance phase forward, never backward
+      if (pollPhase === 'preparing' && lower.includes('downloading')) {
+        pollPhase = 'downloading';
+        sendProgress({ phase: 'downloading', status: 'Downloading…', percent: -1 });
+      }
+      if ((pollPhase === 'preparing' || pollPhase === 'downloading') && lower.includes('verified installer hash')) {
+        pollPhase = 'verifying';
+        sendProgress({ phase: 'verifying', status: 'Verified', percent: 100 });
+      }
+      if (pollPhase !== 'installing' && lower.includes('starting package install')) {
+        pollPhase = 'installing';
+        sendProgress({ phase: 'installing', status: 'Installing…', percent: -1 });
+        installStarted = true;
+      }
 
       const finished = lower.includes('successfully installed') ||
                        lower.includes('no available upgrade') ||
@@ -4531,10 +4562,17 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
                        lower.includes('failed to install') ||
                        lower.includes('cannot be upgraded') ||
                        lower.includes('cannot be run from an administrator') ||
+                       lower.includes('cannot be overridden when running as admin') ||
                        lower.includes('installer log is available') ||
+                       lower.includes('installation complete') ||
+                       lower.includes('upgrade successful') ||
+                       lower.includes('__gs_done__') ||
                        (lower.includes('exit code') && lower.includes('failed'));
 
-      if (finished || elapsed >= maxWait) {
+      // Also finish if log has been stale (no new output) for 30s after install started
+      const staleFinish = installStarted && staleSince >= staleLimit;
+
+      if (finished || staleFinish || elapsed >= maxWait) {
         clearInterval(poll);
         activeDeElevated = null;
         try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {}
@@ -4584,7 +4622,15 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
     if (result.success || result.cancelled) return result;
   }
 
-  // Step 3: Installer refuses admin context → de-elevate via schtasks
+  // Step 3a: Hash override blocked when running as admin → de-elevate with hash skip + silent
+  if (isElevated && result.output &&
+      result.output.includes('cannot be overridden when running as admin')) {
+    return await runDeElevated(
+      `winget upgrade --id ${cleanId} --accept-source-agreements --accept-package-agreements --force --ignore-security-hash --silent`
+    );
+  }
+
+  // Step 3b: Installer refuses admin context (e.g. Spotify) → de-elevate without silent
   if (isElevated && result.output &&
       result.output.includes('cannot be run from an administrator')) {
     return await runDeElevated(
