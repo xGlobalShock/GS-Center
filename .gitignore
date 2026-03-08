@@ -8,24 +8,8 @@ dist/
 out/
 release/
 
-# ── Source code (closed-source) ──
-src/
-public/
-main.js
-admin-check.js
-dev-launcher.js
-launcher.js
-scripts/
+# ── Binary libs ──
 lib/
-
-# ── Config / tooling ──
-tsconfig.json
-tsconfig.node.json
-tailwind.config.js
-postcss.config.js
-
-# ── Internal docs ──
-Docs/
 
 # ── IDE ──
 .vscode/
