@@ -13,7 +13,6 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag_name: ${{ steps.version.outputs.tag_name }}
-      created: ${{ steps.create_tag.outcome == 'success' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -70,7 +69,7 @@ jobs:
 
   build:
     needs: release
-    if: always() && needs.release.result == 'success' && needs.release.outputs.created == 'true'
+    if: always() && needs.release.result == 'success'
     runs-on: windows-latest
 
     steps:
