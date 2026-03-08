@@ -32,6 +32,7 @@ interface InstalledApp {
   installDate: string;
   installLocation: string;
   uninstallString: string;
+  displayIcon: string;
   registryKey: string;
   source: string;
 }
@@ -95,7 +96,7 @@ const AppIconNative: React.FC<{ app: InstalledApp; size?: number }> = ({ app, si
     if (!window.electron?.ipcRenderer) return;
     let cancelled = false;
     window.electron.ipcRenderer
-      .invoke('appuninstall:get-icon', app.installLocation, app.uninstallString)
+      .invoke('appuninstall:get-icon', app.installLocation, app.uninstallString, app.displayIcon)
       .then((r: any) => {
         if (!cancelled && r?.success && r.dataUrl) {
           _nativeIconCache.set(cacheKey, r.dataUrl);
@@ -116,7 +117,7 @@ const AppIconNative: React.FC<{ app: InstalledApp; size?: number }> = ({ app, si
     );
   }
   // Fallback: domain lookup → clearbit → Google S2 → coloured initial
-  const domain = getAppDomain(app.name);
+  const domain = getAppDomain(app.name, app.publisher);
   if (domain) {
     return <AppIconFavicon domain={domain} name={app.name} size={size} />;
   }
@@ -145,6 +146,7 @@ const AppIconFavicon: React.FC<{ domain: string; name: string; size: number }> =
     let cancelled = false;
     const urls = [
       `https://logo.clearbit.com/${domain}`,
+      `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${domain}&size=64`,
       `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
     ];
     (async () => {
@@ -182,16 +184,81 @@ const KNOWN_DOMAINS: Record<string, string> = {
   'visual studio': 'visualstudio.microsoft.com',
   '7-zip': '7-zip.org', winrar: 'win-rar.com', bitwarden: 'bitwarden.com',
   'notepad++': 'notepad-plus-plus.org', 'revo uninstaller': 'revouninstaller.com',
-  steelseries: 'steelseries.com', nvidia: 'nvidia.com', geforce: 'nvidia.com',
+  steelseries: 'steelseries.com',
   amd: 'amd.com', 'msi afterburner': 'msi.com', hwinfo: 'hwinfo.com',
   'cpu-z': 'cpuid.com', 'gpu-z': 'techpowerup.com',
   'ea ': 'ea.com', ubisoft: 'ubisoft.com', streamlabs: 'streamlabs.com',
   eartrumpet: 'eartrumpet.app',
+  // Adobe
+  'adobe premiere': 'adobe.com', 'adobe photoshop': 'adobe.com',
+  'adobe after effects': 'adobe.com', 'adobe illustrator': 'adobe.com',
+  'adobe creative': 'adobe.com', 'adobe acrobat': 'adobe.com', adobe: 'adobe.com',
+  // Remote / Streaming
+  anydesk: 'anydesk.com', parsec: 'parsec.app', teamviewer: 'teamviewer.com',
+  // Games & Launchers
+  'apex legends': 'ea.com', valorant: 'playvalorant.com',
+  'riot client': 'riotgames.com', 'riot vanguard': 'riotgames.com', 'riot games': 'riotgames.com',
+  'rockstar games': 'rockstargames.com', 'grand theft auto': 'rockstargames.com',
+  'gog galaxy': 'gog.com', 'amazon games': 'gaming.amazon.com',
+  'google play games': 'play.google.com',
+  // NVIDIA (all components)
+  nvidia: 'nvidia.com', nvcpl: 'nvidia.com', nvcontainer: 'nvidia.com',
+  geforce: 'nvidia.com', 'physx': 'nvidia.com', nvdlisr: 'nvidia.com',
+  shadowplay: 'nvidia.com', 'frameview': 'nvidia.com',
+  // Intel
+  'intel(r)': 'intel.com', intel: 'intel.com', 'intelr': 'intel.com',
+  // Realtek
+  realtek: 'realtek.com',
+  // Microsoft tools
+  powershell: 'microsoft.com', 'microsoft .net': 'microsoft.com',
+  'microsoft asp': 'microsoft.com', 'microsoft visual c': 'microsoft.com',
+  'microsoft windows des': 'microsoft.com',
+  // Internet / Download
+  'internet download manager': 'internetdownloadmanager.com',
+  // Misc
+  'davinci resolve': 'blackmagicdesign.com', audacity: 'audacityteam.org',
+  gimp: 'gimp.org', 'libre office': 'libreoffice.org', libreoffice: 'libreoffice.org',
+  'wire shark': 'wireshark.org', wireshark: 'wireshark.org',
+  postman: 'postman.com', figma: 'figma.com', notion: 'notion.so',
+  slack: 'slack.com', signal: 'signal.org', whatsapp: 'whatsapp.com',
+  'google play': 'play.google.com',
+  rsreloaded: 'rsreloaded.com', 'documentation manager': 'intel.com',
+  'intelr software': 'intel.com',
 };
-function getAppDomain(name: string): string | undefined {
+const PUBLISHER_DOMAINS: Record<string, string> = {
+  'nvidia corporation': 'nvidia.com',
+  'intel corporation': 'intel.com',
+  'microsoft corporation': 'microsoft.com',
+  'realtek semiconductor': 'realtek.com',
+  'realtek': 'realtek.com',
+  'riot games': 'riotgames.com',
+  'rockstar games': 'rockstargames.com',
+  'adobe': 'adobe.com',
+  'adobe systems': 'adobe.com',
+  'valve corporation': 'steampowered.com',
+  'parsec cloud': 'parsec.app',
+  'vs revo group': 'revouninstaller.com',
+  'the git development': 'git-scm.com',
+  'node.js foundation': 'nodejs.org',
+  'steelseries': 'steelseries.com',
+  'tonec inc': 'internetdownloadmanager.com',
+  'spotify ab': 'spotify.com',
+  'brave software': 'brave.com',
+  'discord inc': 'discord.com',
+  'google llc': 'google.com',
+  'anydesk software': 'anydesk.com',
+  'respawn': 'ea.com',
+};
+function getAppDomain(name: string, publisher?: string): string | undefined {
   const lower = name.toLowerCase();
   for (const [key, domain] of Object.entries(KNOWN_DOMAINS)) {
     if (lower.includes(key)) return domain;
+  }
+  if (publisher) {
+    const lowerPub = publisher.toLowerCase();
+    for (const [key, domain] of Object.entries(PUBLISHER_DOMAINS)) {
+      if (lowerPub.includes(key)) return domain;
+    }
   }
   return undefined;
 }

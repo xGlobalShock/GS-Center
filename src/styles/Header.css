@@ -7,7 +7,6 @@
   align-items: center;
   height: 50px;
   position: relative;
-  overflow: hidden;
   -webkit-app-region: drag;
   app-region: drag;
 }
@@ -149,6 +148,8 @@
   display: flex;
   align-items: stretch;
   height: 100%;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 .update-btn {
@@ -255,6 +256,13 @@
   margin: 6px 0 0;
 }
 
+.update-popup-error {
+  font-size: 11px;
+  color: #f87171;
+  margin: 0 0 8px;
+  word-break: break-word;
+}
+
 .update-popup-btn {
   width: 100%;
   display: flex;
@@ -283,6 +291,16 @@
 
 .update-popup-btn--install:hover {
   background: rgba(34, 197, 94, 0.35);
+}
+
+.update-popup-btn--cancel {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  margin-top: 8px;
+}
+
+.update-popup-btn--cancel:hover {
+  background: rgba(239, 68, 68, 0.25);
 }
 
 /* Progress bar inside popup */

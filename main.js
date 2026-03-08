@@ -151,7 +151,7 @@ function createSplashWindow() {
   });
   const splashPath = isDev
     ? path.join(__dirname, 'public/splash.html')
-    : path.join(process.resourcesPath, 'app', 'build', 'splash.html');
+    : path.join(__dirname, 'build', 'splash.html');
   splashWindow.loadFile(splashPath);
   splashWindow.on('closed', () => { splashWindow = null; });
 }
@@ -180,7 +180,7 @@ function createWindow() {
     webPreferences: {
       preload: isDev
         ? path.join(__dirname, 'public/preload.js')
-        : path.join(process.resourcesPath, 'app', 'build', 'preload.js'),
+        : path.join(__dirname, 'build', 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,
@@ -223,7 +223,7 @@ function createWindow() {
 
   const startUrl = isDev
     ? 'http://localhost:3000'
-    : `file://${path.join(process.resourcesPath, 'app', 'build', 'index.html')}`;
+    : `file://${path.join(__dirname, 'build', 'index.html')}`;
 
   mainWindow.loadURL(startUrl);
 
@@ -274,6 +274,9 @@ app.on('ready', async () => {
   _startLatencyPoll();          // kick off ping early so data is ready when window shows
   const prewarmPromise = _prewarmScanCaches();
 
+  // Start update check early so result is ready when the window shows
+  initAutoUpdater();
+
   // Wait for main window to finish loading
   await new Promise((resolve) => {
     mainWindow.webContents.on('did-finish-load', resolve);
@@ -314,9 +317,6 @@ app.on('ready', async () => {
   if (splashWindow && !splashWindow.isDestroyed()) {
     splashWindow.close();
   }
-
-  // ── Auto-Update: check for updates after app is fully loaded ──
-  initAutoUpdater();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -386,12 +386,10 @@ function initAutoUpdater() {
     sendUpdateStatus({ event: 'error', message: err?.message || 'Unknown update error' });
   });
 
-  // Check for updates after a short delay (let the app settle)
-  setTimeout(() => {
-    autoUpdater.checkForUpdates().catch(err => {
-      console.warn('[AutoUpdater] Check failed:', err?.message);
-    });
-  }, 10000);
+  // Check for updates immediately
+  autoUpdater.checkForUpdates().catch(err => {
+    console.warn('[AutoUpdater] Check failed:', err?.message);
+  });
 
   // Re-check every 4 hours
   setInterval(() => {
@@ -413,13 +411,30 @@ ipcMain.handle('updater:check', async () => {
 });
 
 // IPC: start downloading the update
+const { CancellationToken } = require('electron-updater');
+let _downloadCancellationToken = null;
 ipcMain.handle('updater:download', async () => {
   try {
-    await autoUpdater.downloadUpdate();
+    _downloadCancellationToken = new CancellationToken();
+    await autoUpdater.downloadUpdate(_downloadCancellationToken);
+    _downloadCancellationToken = null;
     return { success: true };
   } catch (err) {
+    _downloadCancellationToken = null;
+    if (err?.message === 'cancelled') return { success: false, cancelled: true };
     return { success: false, message: err?.message || 'Download failed' };
   }
+});
+
+// IPC: cancel ongoing download
+ipcMain.handle('updater:cancel', () => {
+  try {
+    if (_downloadCancellationToken) {
+      _downloadCancellationToken.cancel();
+      _downloadCancellationToken = null;
+    }
+  } catch {}
+  return { success: true };
 });
 
 // IPC: install update and restart
@@ -5563,11 +5578,30 @@ ipcMain.handle('appicon:fetch', async (_event, url) => {
 // ═══════════════════════════════════════════════════════════════════════
 
 /* ---- Extract real exe icon from installed app ---- */
-ipcMain.handle('appuninstall:get-icon', async (_event, installLocation, uninstallString) => {
+ipcMain.handle('appuninstall:get-icon', async (_event, installLocation, uninstallString, displayIcon) => {
   let exePath = null;
 
+  // 0. Try DisplayIcon registry value first — most reliable source
+  if (displayIcon) {
+    try {
+      // DisplayIcon can be "C:\path\app.exe" or "C:\path\app.exe,0" (with icon index)
+      const iconPath = displayIcon.replace(/,\s*-?\d+\s*$/, '').replace(/^"|"$/g, '').trim();
+      if (/\.(exe|ico|dll)$/i.test(iconPath) && fs.existsSync(iconPath)) {
+        if (/\.ico$/i.test(iconPath)) {
+          // Read .ico file directly and convert to data URL
+          const buf = fs.readFileSync(iconPath);
+          if (buf.length > 100) {
+            return { success: true, dataUrl: `data:image/x-icon;base64,${buf.toString('base64')}` };
+          }
+        } else {
+          exePath = iconPath;
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
   // 1. Try the installLocation directory — find the main .exe
-  if (installLocation) {
+  if (!exePath && installLocation) {
     try {
       if (/\.exe$/i.test(installLocation) && fs.existsSync(installLocation)) {
         exePath = installLocation;
@@ -5633,6 +5667,7 @@ ipcMain.handle('appuninstall:list-apps', async () => {
       '      installDate = if ($_.InstallDate) { $_.InstallDate } else { "" }',
       '      installLocation = if ($_.InstallLocation) { $_.InstallLocation } else { "" }',
       '      uninstallString = $un',
+      '      displayIcon = if ($_.DisplayIcon) { $_.DisplayIcon } else { "" }',
       '      registryKey = ($_.PSPath -replace "Microsoft.PowerShell.Core\\\\Registry::", "")',
       '      source = "registry"',
       '    }',

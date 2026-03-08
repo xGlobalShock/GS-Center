@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Minus, Square, X, Copy, ArrowDownCircle, Download, RefreshCw, CheckCircle } from 'lucide-react';
+import { Minus, Square, X, Copy, ArrowDownCircle, Download, RefreshCw, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import '../styles/Header.css';
 
 declare global {
@@ -21,6 +21,7 @@ declare global {
       updater?: {
         checkForUpdates: () => Promise<any>;
         downloadUpdate: () => Promise<any>;
+        cancelUpdate: () => Promise<any>;
         installUpdate: () => Promise<void>;
         getVersion: () => Promise<string>;
         onStatus: (callback: (data: any) => void) => (() => void);
@@ -36,6 +37,7 @@ const Header: React.FC = React.memo(() => {
   const [updateState, setUpdateState] = useState<UpdateState>('idle');
   const [updateVersion, setUpdateVersion] = useState('');
   const [downloadPercent, setDownloadPercent] = useState(0);
+  const [updateError, setUpdateError] = useState('');
   const [showUpdatePopup, setShowUpdatePopup] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +63,7 @@ const Header: React.FC = React.memo(() => {
         case 'available':
           setUpdateState('available');
           setUpdateVersion(data.version || '');
+          setUpdateError('');
           break;
         case 'not-available':
           setUpdateState('idle');
@@ -74,7 +77,9 @@ const Header: React.FC = React.memo(() => {
           setUpdateVersion(data.version || '');
           break;
         case 'error':
-          setUpdateState('error');
+          // If we already know an update is available, stay in 'available' so user can retry
+          setUpdateError(data.message || 'Download failed');
+          setUpdateState(prev => prev === 'downloading' || prev === 'available' ? 'available' : 'error');
           break;
       }
     });
@@ -99,6 +104,12 @@ const Header: React.FC = React.memo(() => {
     await window.electron?.updater?.downloadUpdate();
   }, []);
 
+  const handleCancel = useCallback(async () => {
+    await window.electron?.updater?.cancelUpdate();
+    setUpdateState('available');
+    setDownloadPercent(0);
+  }, []);
+
   const handleInstall = useCallback(() => {
     window.electron?.updater?.installUpdate();
   }, []);
@@ -107,7 +118,7 @@ const Header: React.FC = React.memo(() => {
   const handleMaximize = () => window.electron?.windowControls?.maximize();
   const handleClose = () => window.electron?.windowControls?.close();
 
-  const showIndicator = updateState === 'available' || updateState === 'downloading' || updateState === 'downloaded';
+  const showIndicator = updateState === 'available' || updateState === 'downloading' || updateState === 'downloaded' || updateState === 'error';
 
   return (
     <header className="header">
@@ -127,8 +138,9 @@ const Header: React.FC = React.memo(() => {
               title="New version available"
             >
               {updateState === 'available' && <ArrowDownCircle size={16} />}
-              {updateState === 'downloading' && <Download size={16} className="update-spin" />}
+              {updateState === 'downloading' && <Download size={16} />}
               {updateState === 'downloaded' && <CheckCircle size={16} />}
+              {updateState === 'error' && <AlertTriangle size={16} />}
               <span className="update-dot" />
             </button>
 
@@ -141,8 +153,9 @@ const Header: React.FC = React.memo(() => {
                       <span>New Version Available</span>
                     </div>
                     <p className="update-popup-version">v{updateVersion}</p>
+                    {updateError && <p className="update-popup-error">{updateError}</p>}
                     <button className="update-popup-btn" onClick={handleDownload}>
-                      <Download size={14} /> Download Update
+                      <Download size={14} /> {updateError ? 'Retry Download' : 'Download Update'}
                     </button>
                   </>
                 )}
@@ -155,7 +168,10 @@ const Header: React.FC = React.memo(() => {
                     <div className="update-progress-bar">
                       <div className="update-progress-fill" style={{ width: `${downloadPercent}%` }} />
                     </div>
-                    <p className="update-popup-percent">{downloadPercent}%</p>
+                    <p className="update-popup-percent">{Math.round(downloadPercent)}%</p>
+                    <button className="update-popup-btn update-popup-btn--cancel" onClick={handleCancel}>
+                      <XCircle size={14} /> Cancel
+                    </button>
                   </>
                 )}
                 {updateState === 'downloaded' && (

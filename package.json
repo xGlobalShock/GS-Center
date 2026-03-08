@@ -1,6 +1,6 @@
 {
   "name": "gs-control-center",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "description": "GS Control Center - Advanced System Optimization Tool",
   "author": "GS Control Center Team",
   "main": "main.js",
@@ -48,19 +48,18 @@
   "build": {
     "appId": "com.gscontrolcenter.app",
     "productName": "GS Control Center",
-    "asar": false,
+    "asar": true,
     "files": [
       "build/**/*",
       "main.js",
-      "preload.js",
       "lib/**/*",
       "node_modules/**/*"
     ],
+    "asarUnpack": [
+      "node_modules/**/*.node",
+      "node_modules/**/*.dll"
+    ],
     "extraFiles": [
-      {
-        "from": "public/preload.js",
-        "to": "preload.js"
-      },
       {
         "from": "public/app.manifest",
         "to": "app.manifest"
@@ -103,7 +102,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "GS Control Center"
+      "shortcutName": "GS Control Center",
+      "artifactName": "GS-Control-Center-Setup-${version}.${ext}"
     }
   },
   "browserslist": {
