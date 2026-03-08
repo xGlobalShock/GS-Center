@@ -8,8 +8,18 @@ dist/
 out/
 release/
 
-# ── Binary libs ──
+# ── Internal scripts & binaries ──
+admin-check.js
+dev-launcher.js
+launcher.js
+scripts/
 lib/
+
+# ── Private / sensitive ──
+.github/
+.env
+.env.local
+.env.*.local
 
 # ── IDE ──
 .vscode/
@@ -20,11 +30,6 @@ lib/
 # ── OS ──
 .DS_Store
 Thumbs.db
-
-# ── Environment ──
-.env
-.env.local
-.env.*.local
 
 # ── Misc ──
 ToDoList.md
