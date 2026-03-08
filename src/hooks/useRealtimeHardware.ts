@@ -16,6 +16,13 @@ declare global {
         isMaximized: () => Promise<boolean>;
         onMaximizedChange: (callback: (isMaximized: boolean) => void) => (() => void);
       };
+      updater?: {
+        checkForUpdates: () => Promise<any>;
+        downloadUpdate: () => Promise<any>;
+        installUpdate: () => Promise<void>;
+        getVersion: () => Promise<string>;
+        onStatus: (callback: (data: any) => void) => (() => void);
+      };
     };
   }
 }
