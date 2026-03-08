@@ -491,8 +491,6 @@ Then follow [QUICK_START.md](QUICK_START.md) for detailed setup instructions.
 
 ## 🏆 Credits
 
-- **GSTweaks** - Original optimization concepts
-- **League of Legends** - Design inspiration
 - **React Ecosystem** - Frontend framework
 - **Electron** - Desktop framework
 - **Node.js** - System integration
