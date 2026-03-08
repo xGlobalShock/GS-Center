@@ -236,6 +236,13 @@ app.on('ready', async () => {
   // Show splash screen immediately
   createSplashWindow();
 
+  // Send app version to splash
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.on('did-finish-load', () => {
+      splashWindow.webContents.send('splash:version', app.getVersion());
+    });
+  }
+
   sendSplashStatus('Starting services...');
   sendSplashProgress(5);
 

@@ -178,9 +178,16 @@
 
   /* ── Version tag ── */
   .version {
-    position: fixed; bottom: 14px; right: 18px; z-index: 10;
-    font-size: 9px; letter-spacing: 1px; color: rgba(120,140,160,0.35);
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 10;
+    font-size: 10.5px; font-weight: 600; letter-spacing: 2px;
     text-transform: uppercase;
+    color: rgba(0,255,136,0.7);
+    background: rgba(0,255,136,0.06);
+    border: 1px solid rgba(0,255,136,0.12);
+    padding: 4px 14px;
+    border-radius: 20px;
+    backdrop-filter: blur(6px);
+    text-shadow: 0 0 8px rgba(0,255,136,0.25);
   }
 
   /* ── Fade-out on finish ── */
@@ -227,7 +234,7 @@
     </div>
   </div>
 
-  <div class="version">v1.0.0</div>
+  <div class="version" id="versionTag">Loading...</div>
 
   <script>
     // Generate floating particles
@@ -245,6 +252,11 @@
 
     // IPC listener for progress updates from main process
     const { ipcRenderer } = require('electron');
+
+    // Receive app version from main process
+    ipcRenderer.on('splash:version', (_e, v) => {
+      document.getElementById('versionTag').textContent = 'v' + (v || '1.0.0');
+    });
 
     ipcRenderer.on('splash:status', (_e, msg) => {
       document.getElementById('status').textContent = msg;

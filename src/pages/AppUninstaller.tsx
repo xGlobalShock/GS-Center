@@ -263,31 +263,6 @@ function getAppDomain(name: string, publisher?: string): string | undefined {
   return undefined;
 }
 
-/* App favicon — Google S2 service, falls back to coloured initial */
-const AppIcon: React.FC<{ domain?: string; name: string; size?: number }> = ({ domain, name, size = 16 }) => {
-  const [err, setErr] = React.useState(false);
-  if (domain && !err) {
-    return (
-      <img
-        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
-        width={size} height={size} alt="" draggable={false}
-        onError={() => setErr(true)}
-        style={{ borderRadius: 3, objectFit: 'contain', flexShrink: 0 }}
-      />
-    );
-  }
-  const hue = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      width: size, height: size, borderRadius: 4, flexShrink: 0,
-      background: `hsla(${hue},55%,45%,0.25)`,
-      color: `hsla(${hue},75%,70%,0.9)`,
-      fontSize: Math.round(size * 0.65), fontWeight: 700, lineHeight: 1,
-    }}>{name.charAt(0).toUpperCase()}</span>
-  );
-};
-
 /* ─── Component ──────────────────────────────────────────────────── */
 const AppUninstaller: React.FC<AppUninstallerProps> = ({ isActive = false, activeTab = 'uninstall', onTabChange }) => {
   const [apps, setApps] = useState<InstalledApp[]>([]);
@@ -355,6 +330,7 @@ const AppUninstaller: React.FC<AppUninstallerProps> = ({ isActive = false, activ
 
   const confirmUninstall = async (mode: ScanMode = scanMode) => {
     if (!targetApp || !window.electron?.ipcRenderer) return;
+    setScanMode(mode);
     setPhase('uninstalling');
     setProgressMsg(`Uninstalling ${targetApp.name}, please wait...`);
 
@@ -404,28 +380,6 @@ const AppUninstaller: React.FC<AppUninstallerProps> = ({ isActive = false, activ
     } catch {
       addToast('Error during uninstall', 'error');
       setPhase('confirm');
-    }
-  };
-
-  const skipToScan = async () => {
-    if (!targetApp || !window.electron?.ipcRenderer) return;
-    setPhase('scanning');
-    setProgressMsg('Scanning for leftover files and registry entries...');
-    try {
-      const scanResult = await window.electron.ipcRenderer.invoke(
-        'appuninstall:scan-leftovers', targetApp, scanMode, false  // false = name-matching (app still installed)
-      );
-      if (scanResult.success && scanResult.leftovers.length > 0) {
-        setLeftovers(scanResult.leftovers);
-        setLeftoverTotalSize(scanResult.totalSize);
-        setPhase('leftovers');
-      } else {
-        addToast('No leftovers found', 'info');
-        backToList();
-      }
-    } catch {
-      addToast('Leftover scan failed', 'error');
-      backToList();
     }
   };
 
