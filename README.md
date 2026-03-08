@@ -13,7 +13,7 @@ An all-in-one Windows desktop utility for PC optimization, real-time hardware mo
 
 ## 📥 Download
 
-Get the latest installer from the most recent release:
+Get the latest installer from the most recent BETA release:
 
 [GS‑Control‑Center‑Setup‑1.1.0.exe](https://github.com/xGlobalShock/GS-Control-Center/releases/download/v1.1.0/GS-Control-Center-Setup-1.1.0.exe)
 
