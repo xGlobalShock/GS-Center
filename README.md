@@ -1,4 +1,4 @@
-# GS Control Center ⚡
+# GS Control Center [ BETA ]
 
 An all-in-one Windows desktop utility for PC optimization, real-time hardware monitoring, game tuning, system cleanup, software management, and streaming setup — built with Electron, React, and TypeScript.
 
