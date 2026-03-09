@@ -35,7 +35,7 @@ tsconfig.json
 tsconfig.node.json
 
 # ── Private / sensitive ──
-.github/copilot-instructions.md
+.github/
 .env
 .env.local
 .env.*.local
