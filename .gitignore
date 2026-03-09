@@ -59,3 +59,5 @@ yarn-error.log*
 
 # ── Documentation ──
 Docs/
+# V-Config player configs
+V-Config/
