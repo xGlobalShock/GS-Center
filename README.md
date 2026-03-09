@@ -11,7 +11,7 @@ An all-in-one Windows desktop utility for PC optimization, real-time hardware mo
 
 ---
 
-## 📥 Download
+## Download
 
 Get the latest installer from the most recent BETA release:
 
@@ -19,14 +19,14 @@ Get the latest installer from the most recent BETA release:
 
 (this link will change for each release, so you can also point to `latest`)
 
-[🟢 Download latest release](https://github.com/xGlobalShock/GS-Control-Center/releases/latest)
+[Download latest release](https://github.com/xGlobalShock/GS-Control-Center/releases/latest)
 
 ---
 
 ### Install
 Download the latest **GS-Control-Center-Setup-x.x.x.exe** from [GitHub Releases](https://github.com/xGlobalShock/GS-Control-Center/releases) and run it. The installer requires administrator privileges.
 
-## ✨ Features at a Glance
+## Features at a Glance
 
 | Feature | Description |
 |---------|-------------|
@@ -44,7 +44,7 @@ Download the latest **GS-Control-Center-Setup-x.x.x.exe** from [GitHub Releases]
 
 ---
 
-## 🎓 Learning Resources
+## Learning Resources
 
 ### For Developers
 - [Electron Documentation](https://www.electronjs.org/docs)
@@ -59,7 +59,7 @@ Download the latest **GS-Control-Center-Setup-x.x.x.exe** from [GitHub Releases]
 
 ---
 
-## 🔮 Future Enhancements
+## Future Enhancements
 
 ### Planned Features
 - [ ] GPU driver management
@@ -71,31 +71,14 @@ Download the latest **GS-Control-Center-Setup-x.x.x.exe** from [GitHub Releases]
 
 ---
 
-## ✅ Verification Checklist
-
-- [x] All pages compile without errors
-- [x] Navigation works between all pages
-- [x] Gaming tweaks toggle correctly
-- [x] Game profiles display all 8 games
-- [x] System cleanup shows all operations
-- [x] Dashboard displays real-time stats
-- [x] Settings page functional
-- [x] Responsive design works
-- [x] Animations play smoothly
-- [x] Production build successful
-- [x] Electron app launches
-- [x] Documentation complete
-
----
-
-## 📄 License
+## License
 
 GS Control Center is provided as-is for gaming optimization purposes.
 Built with React, Electron, and TypeScript.
 
 ---
 
-## 🏆 Credits
+## Credits
 
 - **React Ecosystem** - Frontend framework
 - **Electron** - Desktop framework
