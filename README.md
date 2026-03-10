@@ -1,6 +1,8 @@
 # GS Control Center [ BETA ]
 
-An all-in-one Windows desktop utility for PC optimization, real-time hardware monitoring, game tuning, system cleanup, software management, and streaming setup — built with Electron, React, and TypeScript.
+**Set up your gaming/streaming PC in minutes, not hours.** GS Control Center is purpose-built for streamers, gamers, and everyone to quickly configure fresh Windows installs, maximize performance, and resolve PC issues—all from one app.
+
+Whether you're spinning up a new gaming rig, chasing higher FPS, stabiliizing your stream, or just keeping your PC healthy, GS Control Center handles it all. Real-time monitoring. Smart optimizations. One-click setup. No bloat.
 
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
 ![Version](https://img.shields.io/badge/Version-1.2.0-blue)
@@ -24,21 +26,65 @@ Get the latest installer from the most recent BETA release:
 ### Install
 Download the latest **GS-Control-Center-Setup-x.x.x.exe** from [GitHub Releases](https://github.com/xGlobalShock/GS-Control-Center/releases) and run it. The installer requires administrator privileges.
 
-## Features at a Glance
+## What's Inside? 🎮
 
-| Feature | Description |
-|---------|-------------|
-| **Dashboard** | Real-time CPU, RAM, GPU, disk, network & temperature monitoring |
-| **PC Tweaks** | 7 registry-level Windows & gaming optimizations |
-| **Network Diagnostics** | Latency tests against 12 DNS & gaming server endpoints |
-| **Game Library** | Per-game graphics settings, launch options, video presets & resolution calculator for 8 titles |
-| **Streaming Presets** | One-click OBS Studio scene/profile setup for gaming & multi-streaming |
-| **Software Updates** | Winget-powered scan, individual or batch update for all installed packages |
-| **App Installer** | 47+ curated apps installable via winget, organized by category |
-| **App Uninstaller** | Full uninstall with leftover scanner (registry, files, services, tasks) |
-| **System Cleanup** | 23 cleanup operations across Windows cache, game shaders & NVIDIA cache |
-| **Settings** | Theme, startup, auto-update, notification & auto-clean preferences |
-| **Auto-Updater** | GitHub Releases integration with download progress, cancel & restart-to-install |
+### **Dashboard** — Your PC's Vital Signs
+Real-time monitoring of CPU, RAM, GPU, disk, network, and temps. Every stat you need to know what your PC is doing right now. Perfect for keeping tabs during streams or intensive gaming sessions.
+
+### **Performance Tweaks** — Go Faster 🚀
+7 registry-level Windows optimizations designed to squeeze every last frame. One-click tweaks for gaming mode, disk I/O, and system responsiveness. Automatic restore points so you can always roll back. *For gamers who want those extra FPS.*
+
+### **System Cleanup** — Reclaim Your Space 🧹
+23 cleanup operations that nuke cache, temporary files, game shader caches (Apex, Fortnite, CS2, CoD, Valorant, LoL, Overwatch, Rocket League, Rainbow Six), NVIDIA cache, DNS clutter, crash dumps, and orphaned logs. Watch your disk space come back to life.
+
+### **Game Library** — Your Games, Optimized 🎯
+Support for 8 popular titles (Apex Legends, Valorant, Fortnite, CS2, LoL, Rocket League, Overwatch, CoD). Per-game graphics presets, launch options, custom resolution calculator, and instant hardware comparison. See if your PC can run your next game and how it'll perform.
+
+### **Network Diagnostics** — Ping Like a Pro 🌐
+Advanced network testing across 12 DNS resolvers and 6 global gaming cloud regions (US East/West, EU, Asia, Oceania). Monitor latency, packet loss, and connection stability. *Essential for streamers and competitive gamers.*
+
+### **OBS Presets** — Ready to Stream 🎬
+One-click gaming preset for OBS Studio that deploys optimal settings and launches OBS instantly. Get on stream faster without tweaking scenes and profiles manually.
+
+### **Software Updates** — Stay Fresh 🆕
+Winget-powered scan for all installed apps and drivers. Update everything at once or pick and choose. No bloat, no fuss—just keep your software current.
+
+### **App Installer** — Your Toolkit 💾
+47+ curated, essential applications sorted by category (development, streaming, utilities, productivity, games). Install your entire setup in one place instead of hunting across the internet.
+
+### **App Uninstaller** — Clean Uninstalls 🗑️
+Full uninstall with leftover scanner that finds and removes registry entries, orphaned files, services, and scheduled tasks. No traces left behind—your PC stays clean.
+
+### **Settings** — Make It Yours ⚙️
+Customize theme (dark/light), startup behavior, auto-update schedules, notification preferences, and auto-cleanup timing. GS Control Center works the way *you* want it to.
+
+---
+
+## Who It's For
+
+**🎮 Gamers**
+- Squeeze every FPS with game-specific tweaks and instant optimization
+- Monitor performance in real-time (CPU, GPU, temps) while gaming
+- Manage your entire library in one place with per-game settings
+- Diagnose lag and network issues with advanced diagnostics
+
+**🎬 Streamers**
+- One-click OBS preset deployment—go live instantly
+- Monitor PC health live without alt-tabbing
+- Stable network performance with latency testing across global regions
+- Automated cleanup to prevent stream stutters from disk bloat
+
+**🖥️ PC Enthusiasts & Fresh Windows Installs**
+- Transform a bare Windows install into a fully optimized, ready-to-use machine in minutes
+- 47+ curated essential apps pre-organized and installable with one click
+- Automated system maintenance keeps your PC running lean and fast
+- Deep cleanup removes the junk Windows and apps leave behind
+
+**👥 Everyone**
+- Intuitive dashboard shows you exactly what your PC is doing
+- One-click tweaks—no registry editing required
+- Auto-update management so nothing falls behind
+- Dark/light theme, customizable notifications, and startup options
 
 ---
 
