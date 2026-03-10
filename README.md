@@ -5,7 +5,7 @@
 Whether you're setting up a new gaming rig, looking to boost performance, optimizing your stream, or keeping your PC healthy, GS Control Center handles it all. Real-time monitoring. Smart optimizations. One-click setup. No bloat.
 
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
-![Version](https://img.shields.io/badge/Version-1.2.0-blue)
+![Version](https://img.shields.io/badge/Version-1.3.3-blue)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue)
 ![Electron](https://img.shields.io/badge/Electron-27-blueviolet)
 ![React](https://img.shields.io/badge/React-18-61dafb)
