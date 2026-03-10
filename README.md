@@ -1,8 +1,8 @@
 # GS Control Center [ BETA ]
 
-**Set up your gaming/streaming PC in minutes, not hours.** GS Control Center is purpose-built for streamers, gamers, and everyone to quickly configure fresh Windows installs, maximize performance, and resolve PC issues—all from one app.
+**Set up your gaming/streaming PC in minutes, not hours.** GS Control Center is purpose-built for streamers, gamers, and everyone to quickly configure fresh Windows installs, maximize performance, and resolve PC issues. All in one app.
 
-Whether you're spinning up a new gaming rig, chasing higher FPS, stabiliizing your stream, or just keeping your PC healthy, GS Control Center handles it all. Real-time monitoring. Smart optimizations. One-click setup. No bloat.
+Whether you're setting up a new gaming rig, looking to boost performance, optimizing your stream, or keeping your PC healthy, GS Control Center handles it all. Real-time monitoring. Smart optimizations. One-click setup. No bloat.
 
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
 ![Version](https://img.shields.io/badge/Version-1.2.0-blue)
@@ -26,65 +26,60 @@ Get the latest installer from the most recent BETA release:
 ### Install
 Download the latest **GS-Control-Center-Setup-x.x.x.exe** from [GitHub Releases](https://github.com/xGlobalShock/GS-Control-Center/releases) and run it. The installer requires administrator privileges.
 
-## What's Inside? 🎮
+## What's Inside
 
-### **Dashboard** — Your PC's Vital Signs
-Real-time monitoring of CPU, RAM, GPU, disk, network, and temps. Every stat you need to know what your PC is doing right now. Perfect for keeping tabs during streams or intensive gaming sessions.
+### Home
+Real-time monitoring of CPU, RAM, GPU, disk, network, and temperatures. View all the essential stats about your system at a glance.
 
-### **Performance Tweaks** — Go Faster 🚀
-7 registry-level Windows optimizations designed to squeeze every last frame. One-click tweaks for gaming mode, disk I/O, and system responsiveness. Automatic restore points so you can always roll back. *For gamers who want those extra FPS.*
+### Tweaks
+Performance optimizations with one-click setup. Apply tweaks instantly and roll back anytime they don't work for you.
 
-### **System Cleanup** — Reclaim Your Space 🧹
-23 cleanup operations that nuke cache, temporary files, game shader caches (Apex, Fortnite, CS2, CoD, Valorant, LoL, Overwatch, Rocket League, Rainbow Six), NVIDIA cache, DNS clutter, crash dumps, and orphaned logs. Watch your disk space come back to life.
+### Cleanup
+Remove cached files, temporary files, game shader caches, and orphaned logs from your system. Free up space and keep your PC running clean.
 
-### **Game Library** — Your Games, Optimized 🎯
-Support for 8 popular titles (Apex Legends, Valorant, Fortnite, CS2, LoL, Rocket League, Overwatch, CoD). Per-game graphics presets, launch options, custom resolution calculator, and instant hardware comparison. See if your PC can run your next game and how it'll perform.
+### Games
+Support for popular titles including Apex Legends, Valorant, Fortnite, CS2, League of Legends, Rocket League, Overwatch, and Call of Duty. View per-game settings, launch options, custom resolution support, and hardware compatibility.
 
-### **Network Diagnostics** — Ping Like a Pro 🌐
-Advanced network testing across 12 DNS resolvers and 6 global gaming cloud regions (US East/West, EU, Asia, Oceania). Monitor latency, packet loss, and connection stability. *Essential for streamers and competitive gamers.*
+### Network
+Network diagnostics and connectivity testing. Monitor latency, packet loss, and connection quality across multiple endpoints.
 
-### **OBS Presets** — Ready to Stream 🎬
-One-click gaming preset for OBS Studio that deploys optimal settings and launches OBS instantly. Get on stream faster without tweaking scenes and profiles manually.
+### Stream
+Gaming preset for OBS Studio. Deploy settings instantly and launch OBS with your profile ready to go.
 
-### **Software Updates** — Stay Fresh 🆕
-Winget-powered scan for all installed apps and drivers. Update everything at once or pick and choose. No bloat, no fuss—just keep your software current.
+### Updates
+Scan and manage all installed applications and drivers. Update everything at once or select individual items.
 
-### **App Installer** — Your Toolkit 💾
-47+ curated, essential applications sorted by category (development, streaming, utilities, productivity, games). Install your entire setup in one place instead of hunting across the internet.
+### Apps
+Browse and install 47+ essential applications organized by category. Build your complete setup in one place.
 
-### **App Uninstaller** — Clean Uninstalls 🗑️
-Full uninstall with leftover scanner that finds and removes registry entries, orphaned files, services, and scheduled tasks. No traces left behind—your PC stays clean.
-
-### **Settings** — Make It Yours ⚙️
-Customize theme (dark/light), startup behavior, auto-update schedules, notification preferences, and auto-cleanup timing. GS Control Center works the way *you* want it to.
+### Settings
+Customize your experience with theme options, startup behavior, notification preferences, and auto-cleanup timing.
 
 ---
 
 ## Who It's For
 
-**🎮 Gamers**
-- Squeeze every FPS with game-specific tweaks and instant optimization
-- Monitor performance in real-time (CPU, GPU, temps) while gaming
+Gamers
+- Optimize performance and monitor system stats in real-time
 - Manage your entire library in one place with per-game settings
-- Diagnose lag and network issues with advanced diagnostics
+- Diagnose connectivity and network issues
 
-**🎬 Streamers**
-- One-click OBS preset deployment—go live instantly
-- Monitor PC health live without alt-tabbing
-- Stable network performance with latency testing across global regions
-- Automated cleanup to prevent stream stutters from disk bloat
+Streamers
+- Deploy OBS presets instantly and get on stream faster
+- Monitor PC health without switching windows
+- Maintain stable network performance and connection quality
+- Keep your system clean to prevent stutters
 
-**🖥️ PC Enthusiasts & Fresh Windows Installs**
-- Transform a bare Windows install into a fully optimized, ready-to-use machine in minutes
-- 47+ curated essential apps pre-organized and installable with one click
-- Automated system maintenance keeps your PC running lean and fast
-- Deep cleanup removes the junk Windows and apps leave behind
+PC Enthusiasts and Fresh Windows Installs
+- Set up a complete Windows system in minutes with essential apps
+- Automated maintenance keeps your PC running smoothly
+- Deep cleanup removes leftover system junk
 
-**👥 Everyone**
-- Intuitive dashboard shows you exactly what your PC is doing
-- One-click tweaks—no registry editing required
-- Auto-update management so nothing falls behind
-- Dark/light theme, customizable notifications, and startup options
+Everyone
+- Simple dashboard shows exactly what your PC is doing
+- One-click tweaks that are easy to use
+- Keep software and drivers current with automatic updates
+- Customize your experience with theme and notification options
 
 ---
 
