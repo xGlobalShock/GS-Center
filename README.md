@@ -5,7 +5,7 @@
 Whether you're setting up a new gaming rig, looking to boost performance, optimizing your stream, or keeping your PC healthy, GS Control Center handles it all. Real-time monitoring. Smart optimizations. One-click setup. No bloat.
 
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
-![Version](https://img.shields.io/badge/Version-1.2.0-blue)
+![Version](https://img.shields.io/badge/Version-1.3.3-blue)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue)
 ![Electron](https://img.shields.io/badge/Electron-27-blueviolet)
 ![React](https://img.shields.io/badge/React-18-61dafb)
@@ -26,32 +26,32 @@ Download the latest **GS-Control-Center-Setup-x.x.x.exe** from [GitHub Releases]
 
 ## What's Inside
 
-### Dashboard
+### Home
 Real-time monitoring of CPU, RAM, GPU, disk, network, and temperatures. View all the essential stats about your system at a glance.
 
-### Performance
+### Tweaks
 Performance optimizations with one-click setup. Apply tweaks instantly and roll back anytime they don't work for you.
 
-### Cleaner
+### Cleanup
 Remove cached files, temporary files, game shader caches, and orphaned logs from your system. Free up space and keep your PC running clean.
 
-### GameLibrary
+### Games
 Support for popular titles including Apex Legends, Valorant, Fortnite, CS2, League of Legends, Rocket League, Overwatch, and Call of Duty. View per-game settings, launch options, custom resolution support, and hardware compatibility.
 
 ### Network
-Network diagnostics and connectivity testing. Monitor latency, packet loss, and connection quality across multiple endpoints.
+- Network diagnostics and connectivity testing. Monitor latency, packet loss, and connection quality across multiple endpoints.
 
-### OBSPresets
+### Stream
 Gaming preset for OBS Studio. Deploy settings instantly and launch OBS with your profile ready to go.
 
-### SoftwareUpdates
+### Updates
 Scan and manage all installed applications and drivers. Update everything at once or select individual items.
 
-### AppsPage
+### Apps
 Browse and install 47+ essential applications organized by category. Build your complete setup in one place.
 
 ### Settings
-Customize your experience with theme options, startup behavior, notification preferences, and auto-cleanup timing.
+- Customize your experience with theme options, startup behavior, notification preferences, and auto-cleanup timing.
 
 ---
 
