@@ -31,3 +31,6 @@ yarn-error.log*
 # ── Backups ──
 Backup/
 *.bak
+
+# ── Project-specific ──
+ToDoList.md
