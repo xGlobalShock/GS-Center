@@ -67,6 +67,7 @@ const Header: React.FC = React.memo(() => {
   const [showDevUpdates, setShowDevUpdates] = useState(false);
   const [hasUnseenDevUpdates, setHasUnseenDevUpdates] = useState(false);
   const [devUpdates, setDevUpdates] = useState<DevUpdate[]>(devUpdatesDefault);
+  const [hasGitHubUpdates, setHasGitHubUpdates] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
   const whatsNewRef = useRef<HTMLDivElement>(null);
   const devUpdatesRef = useRef<HTMLDivElement>(null);
@@ -163,6 +164,7 @@ const Header: React.FC = React.memo(() => {
           const { data, timestamp } = JSON.parse(cached);
           if (Date.now() - timestamp < DEV_UPDATES_CACHE_TTL) {
             setDevUpdates(data);
+            setHasGitHubUpdates(data.some((u: DevUpdate) => u.id.startsWith('du-gh-')));
             return;
           }
         }
@@ -206,12 +208,14 @@ const Header: React.FC = React.memo(() => {
           });
 
         setDevUpdates(updates.length > 0 ? updates : devUpdatesDefault);
+        setHasGitHubUpdates(updates.length > 0);
         localStorage.setItem(DEV_UPDATES_CACHE_KEY, JSON.stringify({
           data: updates.length > 0 ? updates : devUpdatesDefault,
           timestamp: Date.now(),
         }));
       } catch (error) {
         setDevUpdates(devUpdatesDefault);
+        setHasGitHubUpdates(false);
       }
     };
 
@@ -362,53 +366,55 @@ const Header: React.FC = React.memo(() => {
         </div>
 
         {/* Dev Updates button */}
-        <div className="devupdates-wrapper" ref={devUpdatesRef}>
-          <button
-            className={`devupdates-btn ${showDevUpdates ? 'devupdates-btn--active' : ''}`}
-            onClick={handleOpenDevUpdates}
-            aria-label="Dev Updates"
-            title="Developer updates"
-          >
-            <Radio size={16} />
-            {hasUnseenDevUpdates && <span className="devupdates-dot" />}
-          </button>
+        {hasGitHubUpdates && (
+          <div className="devupdates-wrapper" ref={devUpdatesRef}>
+            <button
+              className={`devupdates-btn ${showDevUpdates ? 'devupdates-btn--active' : ''}`}
+              onClick={handleOpenDevUpdates}
+              aria-label="Dev Updates"
+              title="Developer updates"
+            >
+              <Radio size={16} />
+              {hasUnseenDevUpdates && <span className="devupdates-dot" />}
+            </button>
 
-          {showDevUpdates && (
-            <div className="devupdates-panel">
-              <div className="devupdates-panel-header">
-                <h3 className="devupdates-panel-title">Announcements</h3>
-                <button className="devupdates-panel-close" onClick={() => setShowDevUpdates(false)}>
-                  <X size={14} />
-                </button>
-              </div>
-              <div className="devupdates-panel-body">
-                {devUpdates.length > 0 ? (
-                  devUpdates.map((update) => (
-                    <div key={update.id} className="devupdates-item">
-                      <div className={`devupdates-indicator devupdates-indicator--${update.type}`} />
-                      <div className="devupdates-content">
-                        <div className="devupdates-item-header">
-                          <span className={`devupdates-type-badge devupdates-type-badge--${update.type}`}>
-                            {update.type}
-                          </span>
-                          <span className="devupdates-item-date">{update.date}</span>
+            {showDevUpdates && (
+              <div className="devupdates-panel">
+                <div className="devupdates-panel-header">
+                  <h3 className="devupdates-panel-title">Announcements</h3>
+                  <button className="devupdates-panel-close" onClick={() => setShowDevUpdates(false)}>
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="devupdates-panel-body">
+                  {devUpdates.length > 0 ? (
+                    devUpdates.map((update) => (
+                      <div key={update.id} className="devupdates-item">
+                        <div className={`devupdates-indicator devupdates-indicator--${update.type}`} />
+                        <div className="devupdates-content">
+                          <div className="devupdates-item-header">
+                            <span className={`devupdates-type-badge devupdates-type-badge--${update.type}`}>
+                              {update.type}
+                            </span>
+                            <span className="devupdates-item-date">{update.date}</span>
+                          </div>
+                          <h4 className="devupdates-item-title">{update.title}</h4>
+                          {update.description && (
+                            <p className="devupdates-item-description">
+                              {update.description.split('\n')[0]}
+                            </p>
+                          )}
                         </div>
-                        <h4 className="devupdates-item-title">{update.title}</h4>
-                        {update.description && (
-                          <p className="devupdates-item-description">
-                            {update.description.split('\n')[0]}
-                          </p>
-                        )}
                       </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="devupdates-empty">No updates available</div>
-                )}
+                    ))
+                  ) : (
+                    <div className="devupdates-empty">No updates available</div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Update indicator — visible only when update is available / downloading / ready */}
         {showIndicator && (

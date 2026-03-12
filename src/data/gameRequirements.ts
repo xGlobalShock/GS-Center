@@ -1,13 +1,12 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // Game Hardware Requirements + CPU/GPU Benchmark Tier Lists
-// Used by the "Can You Run It" feature in Game Library.
 // ──────────────────────────────────────────────────────────────────────────────
 
 export interface HardwareSpec {
   cpu: string;
-  cpuBenchmark: number;   // Synthetic benchmark score (PassMark-style)
+  cpuBenchmark: number; 
   gpu: string;
-  gpuBenchmark: number;   // Synthetic benchmark score
+  gpuBenchmark: number;
   ramGB: number;
   storageGB: number;
   vramGB?: number;
@@ -16,9 +15,7 @@ export interface HardwareSpec {
 export interface GameRequirements {
   minimum: HardwareSpec;
   recommended: HardwareSpec;
-  /** Expected FPS at 1080p for minimum-spec hardware */
   fpsMinimum: number;
-  /** Expected FPS at 1080p for recommended-spec hardware */
   fpsRecommended: number;
 }
 
@@ -189,12 +186,6 @@ export const GAME_REQUIREMENTS: Record<string, GameRequirements> = {
     },
   },
 };
-
-// ── CPU Benchmark Tier List ─────────────────────────────────────────────────
-// Key: normalized substring to match against cpuName from WMI.
-// Value: benchmark score (PassMark-style scale, higher = better).
-// Order: roughly newest → oldest. We match the FIRST hit, so put specific
-// models before generic family names.
 
 export const CPU_BENCHMARKS: [string, number][] = [
   // ── Intel 14th / 15th Gen (Arrow Lake & Raptor Lake Refresh) ──

@@ -89,7 +89,7 @@ const OBSPresets: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 + fi * 0.05 }}
             >
-              <Check size={12} className="aur-feat__icon" />
+              <Check size={18} className="aur-feat__icon" />
               <span>{feat}</span>
             </motion.div>
           ))}
@@ -109,10 +109,7 @@ const OBSPresets: React.FC = () => {
           ) : launching ? (
             <><span className="aur-spinner" /> Launching OBS...</>
           ) : (
-            <>
-              <Zap size={18} />
-              <span>Deploy Preset</span>
-            </>
+            <>Setup OBS</>
           )}
         </motion.button>
       </motion.div>

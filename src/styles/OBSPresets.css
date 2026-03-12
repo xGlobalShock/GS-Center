@@ -36,7 +36,7 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
-  max-width: 580px;
+  max-width: 850px;
   width: 100%;
   padding: 1.5rem 1.5rem 0;
   flex: 1;
@@ -141,43 +141,93 @@
 }
 
 /* ═══════════════════
-   Feature Pills
+   Feature List Container
 ═══════════════════ */
 .aur-features {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 24px;
-  max-width: 520px;
-}
-
-.aur-feat {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.66rem;
-  color: rgba(200,210,225,0.55);
-  padding: 6px 14px;
-  border-radius: 20px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.05);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0px;
+  margin-bottom: 32px;
+  max-width: 620px;
+  width: 100%;
+  padding: 10px 12px;
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 242, 255, 0.04) 0%,
+    rgba(0, 242, 255, 0.01) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--a-accent) 12%, transparent);
+  border-radius: 18px;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  transition: all 0.25s;
+  box-shadow: 
+    inset 0 1px 0 color-mix(in srgb, var(--a-accent) 8%, transparent),
+    0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
-.aur-feat:hover {
-  background: color-mix(in srgb, var(--a-accent) 6%, transparent);
-  border-color: color-mix(in srgb, var(--a-accent) 15%, transparent);
-  color: rgba(230,235,245,0.8);
+.aur-features::before {
+  display: none;
+}
+
+.aur-features::after {
+  display: none;
+}
+
+/* Individual feature item */
+.aur-feat {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: rgba(200, 210, 225, 0.8);
+  padding: 5px 8px;
+  border-radius: 10px;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  line-height: 1.45;
+  position: relative;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  
+  /* Subtle hover state preparation */
+  overflow: visible;
+}
+
+/* Enhanced background effect on hover */
+.aur-feat::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--a-accent) 10%, transparent),
+    color-mix(in srgb, var(--a-accent) 4%, transparent)
+  );
+  border-radius: 10px;
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .aur-feat__icon {
   color: var(--a-accent);
-  opacity: 0.5;
+  opacity: 0.65;
   flex-shrink: 0;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  filter: drop-shadow(0 0 0px color-mix(in srgb, var(--a-accent) 0%, transparent));
 }
+
+.aur-feat span {
+  position: relative;
+  z-index: 1;
+}
+
+/* .aur-feat:hover {
+} */
 
 /* ═══════════════════
    Deploy Button

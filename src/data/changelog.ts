@@ -12,12 +12,11 @@ const changelog: ChangelogEntry[] = [
   {
     version: '1.3.8',
     date: '2026-03-12',
-    highlights: 'Dev Updates & Auto-Update System',
+    highlights: 'OBS Presets UI Refinement & Network Monitoring Fixes',
     changes: [
-      { type: 'new', text: 'Real-time notification system for dev updates and app versions.' },
-      { type: 'fixed', text: 'Dev Updates display and rendering optimizations.' },
-      { type: 'improved', text: 'Auto-refresh mechanism for live content updates.' },
-      { type: 'improved', text: 'Enhanced UI styling and content security policy.' },
+      { type: 'improved', text: 'Redesigned OBS Preset feature tags with refined spacing and visual hierarchy.' },
+      { type: 'improved', text: 'System monitoring components typography and sizing refinements.' },
+      { type: 'improved', text: 'Network stats calculation efficiency improved for consistent speed updates.' },
     ],
   },
 ];

@@ -31,6 +31,12 @@ let _lhmAvailable = false;
 let _estimatedTemp = 40;
 let _lhmCacheTimer = null;
 
+// ── Network stats tracking (si-based fallback for realtime speed) ──
+let _lastNetStats = null;
+let _lastNetStatsTime = 0;
+let _siNetRx = 0;
+let _siNetTx = 0;
+
 // ── Perf counter state ──
 let _perfCounterProcess = null;
 let _perfCpuUtility = -1;
@@ -746,6 +752,33 @@ async function _startRealtimePush() {
         _rtLastTempSource = tempSource;
       }
 
+      // ── Update network stats from systeminformation (if LHM not available) ──
+      let netRx = _lhmNetRx;
+      let netTx = _lhmNetTx;
+      if ((netRx <= 0 || netTx <= 0) && si.networkStats) {
+        try {
+          const stats = await si.networkStats();
+          if (stats && Array.isArray(stats) && stats.length > 0) {
+            const now = Date.now();
+            const stat = stats[0]; // Use first interface
+            if (_lastNetStats && now !== _lastNetStatsTime) {
+              const timeDeltaMs = now - _lastNetStatsTime;
+              const timeDeltaSec = timeDeltaMs / 1000;
+              if (timeDeltaSec > 0.1) { // Only if meaningful time has passed
+                const rxDelta = Math.max(0, (stat.rx_bytes || 0) - (_lastNetStats.rx_bytes || 0));
+                const txDelta = Math.max(0, (stat.tx_bytes || 0) - (_lastNetStats.tx_bytes || 0));
+                netRx = Math.round(rxDelta / timeDeltaSec);
+                netTx = Math.round(txDelta / timeDeltaSec);
+              }
+            }
+            _lastNetStats = stat;
+            _lastNetStatsTime = now;
+            _siNetRx = netRx;
+            _siNetTx = netTx;
+          }
+        } catch (err) {}
+      }
+
       const payload = {
         cpu: resolvedCpu,
         perCoreCpu: perCoreCpu.length > 0 ? perCoreCpu : [],
@@ -765,8 +798,8 @@ async function _startRealtimePush() {
         disk: _cachedDiskPct,
         diskReadSpeed: _lhmDiskRead,
         diskWriteSpeed: _lhmDiskWrite,
-        networkUp: _lhmNetTx,
-        networkDown: _lhmNetRx,
+        networkUp: netTx,
+        networkDown: netRx,
         latencyMs: _rtLastLatency,
         packetLoss: _rtLastPacketLoss,
         ssid: _rtLastSsid,

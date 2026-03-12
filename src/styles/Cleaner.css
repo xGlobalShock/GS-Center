@@ -1,6 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   CLEANUP TOOLKIT PAGE — Glassmorphic Bento HUD
-   Deep Space (#050505) · Electric Cyan (#00F2FF) · Neon Emerald
+   CLEANUP TOOLKIT PAGE
 ═══════════════════════════════════════════════════════════════ */
 
 /* apply a sharp, futuristic typeface across the page */
@@ -8,7 +7,6 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  font-family: 'Orbitron', sans-serif;
   transform: translateZ(0);
   contain: layout style;
 }
@@ -78,7 +76,7 @@
   min-width: 20px;
   height: 18px;
   padding: 0 6px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(110, 110, 110, 0.05);
   border-radius: 5px;
   font-size: 10px;
   font-weight: 700;
@@ -97,7 +95,7 @@
 .cleaner-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 14px;
+  gap: 15px;
   width: 100%;
 }
 
@@ -152,7 +150,7 @@
   color: #c0c0c0;
   margin: 0 0 0 12px;
   flex-shrink: 0;
-  font-family: 'Poppins', sans-serif; /* more readable for prose */
+  font-family: 'Poppins', sans-serif;
   font-weight: 400;
   font-style: italic;
   letter-spacing: 0.2px;

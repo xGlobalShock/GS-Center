@@ -8,11 +8,11 @@ export interface DevUpdate {
 
 const devUpdates: DevUpdate[] = [
   {
-    id: 'du-007',
-    date: '2026-03-11',
-    type: 'bug',
-    title: 'Network stats not updating',
-    description: 'Im aware of an issue where network stats (upload/download speeds) may not update in real-time for some users. I\'m investigating the root cause and will release a fix as soon as possible. In the meantime, restarting the app should temporarily resolve the issue.',
+    id: 'du-008',
+    date: '2026-03-12',
+    type: 'info',
+    title: 'OBS Presets UI & Network Speed Improvements',
+    description: 'Redesigned OBS Preset feature tags with refined styling and tighter spacing. Fixed Live Speed display to accurately show real-time network throughput instead of intermittent readings. UI enhancements across system monitoring components.',
   },
 ];
 
