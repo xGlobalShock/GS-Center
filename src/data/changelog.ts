@@ -10,7 +10,7 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
-    version: '1.3.8',
+    version: '1.3.9',
     date: '2026-03-12',
     highlights: 'OBS Presets UI Refinement & Network Monitoring Fixes',
     changes: [

@@ -13,7 +13,7 @@ const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
 const DEV_UPDATES_CACHE_KEY = 'devupdates-cache';
 const DEV_UPDATES_CACHE_TTL = 3600000; // 1 hour in milliseconds
 const SESSION_START_KEY = 'devupdates-session-start';
-const DEV_UPDATES_TAG = 'v2026.3.12'; // Set to specific tag, or leave empty for latest
+const DEV_UPDATES_TAG = 'vDevUpdate'; // Set to specific tag, or leave empty for latest
 
 interface GitHubRelease {
   id: number;
