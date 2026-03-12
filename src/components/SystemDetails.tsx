@@ -607,6 +607,8 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
           {ext && ext.ramTotalGB > 0 ? (() => {
             const pct = (ext.ramUsedGB / ext.ramTotalGB) * 100;
             const c = pct > 90 ? '#FF2D55' : pct > 70 ? '#FFD600' : '#00F2FF';
+            const availPct = (ext.ramAvailableGB / ext.ramTotalGB) * 100;
+            const cachedPct = (ext.ramCachedGB / ext.ramTotalGB) * 100;
             return (
               <div className="hud-net-rt">
                 <div className="hud-net-rt-stat">
@@ -617,6 +619,9 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
                   <span className="hud-net-rt-big" style={{ color: c }}>
                     {ext.ramUsedGB.toFixed(1)}<small> / {ext.ramTotalGB.toFixed(1)} GB</small>
                   </span>
+                  <div className="hud-usage-rt-track">
+                    <div className="hud-usage-rt-fill" style={{ width: `${Math.min(pct, 100)}%`, background: `linear-gradient(90deg, ${c}00, ${c})`, boxShadow: `0 0 6px ${c}50` }} />
+                  </div>
                 </div>
                 <div className="hud-net-rt-stat">
                   <div className="hud-net-rt-head">
@@ -626,6 +631,9 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
                   <span className="hud-net-rt-big" style={{ color: '#00FF88' }}>
                     {ext.ramAvailableGB.toFixed(1)}<small> GB</small>
                   </span>
+                  <div className="hud-usage-rt-track">
+                    <div className="hud-usage-rt-fill" style={{ width: `${Math.min(availPct, 100)}%`, background: 'linear-gradient(90deg, #00FF8800, #00FF88)', boxShadow: '0 0 6px #00FF8850' }} />
+                  </div>
                 </div>
                 {ext.ramCachedGB > 0 && (
                   <div className="hud-net-rt-stat">
@@ -636,6 +644,9 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
                     <span className="hud-net-rt-big" style={{ color: '#A78BFA' }}>
                       {ext.ramCachedGB.toFixed(1)}<small> GB</small>
                     </span>
+                    <div className="hud-usage-rt-track">
+                      <div className="hud-usage-rt-fill" style={{ width: `${Math.min(cachedPct, 100)}%`, background: 'linear-gradient(90deg, #A78BFA00, #A78BFA)', boxShadow: '0 0 6px #A78BFA50' }} />
+                    </div>
                   </div>
                 )}
               </div>

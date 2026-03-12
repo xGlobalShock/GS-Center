@@ -117,20 +117,13 @@ const Header: React.FC = React.memo(() => {
     return unsub;
   }, []);
 
-  // Check for updates every 10 seconds
+  // Check for updates on mount (don't continuously poll to avoid flickering)
   useEffect(() => {
     const updater = window.electron?.updater;
     if (!updater) return;
 
-    // Check on mount
+    // Check once on mount
     updater.checkForUpdates().catch(() => {});
-
-    // Check every 10 seconds
-    const checkInterval = setInterval(() => {
-      updater.checkForUpdates().catch(() => {});
-    }, 10000);
-
-    return () => clearInterval(checkInterval);
   }, []);
 
   // Close popup on outside click
