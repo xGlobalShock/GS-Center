@@ -9,7 +9,9 @@ out/
 release/
 
 # ── Environment ──
+.env
 .env.local
+.env.*
 .env.*.local
 
 # ── IDE ──
@@ -34,3 +36,15 @@ Backup/
 
 # ── Project-specific ──
 ToDoList.md
+
+# ── TypeScript ──
+*.tsbuildinfo
+
+# ── Electron signing / certificates ──
+*.p12
+*.pem
+*.key
+
+# ── Cache / temporary build files ──
+.cache/
+.cache-loader/
