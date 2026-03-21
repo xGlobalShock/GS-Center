@@ -1,8 +1,3 @@
-/**
- * App Uninstaller Module
- * Revo-style uninstall + leftover scanner.
- */
-
 const { ipcMain, BrowserWindow, app } = require('electron');
 const { spawn, execSync } = require('child_process');
 const fs = require('fs');
