@@ -185,14 +185,6 @@ const Settings: React.FC = () => {
                 </span>
               </div>
             </div>
-            <div className="gpu-status-detail">
-              <span className="gpu-detail-key">Renderer</span>
-              <span className="gpu-detail-value">{gpuStatus?.renderer || '—'}</span>
-            </div>
-            <div className="gpu-status-detail">
-              <span className="gpu-detail-key">Status</span>
-              <span className="gpu-detail-value">{gpuStatus?.detail || 'Checking…'}</span>
-            </div>
           </div>
         </div>
 
