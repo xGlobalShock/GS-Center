@@ -112,16 +112,92 @@
   .splash-title {
     font-size: 16px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
     background: linear-gradient(135deg, #00ff88 0%, #00c8ff 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
     text-shadow: none;
   }
 
-  /* ── Status ── */
+  /* ── HUD Status Block (Mind-Blowing Tech Design) ── */
+  .hud-status {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    width: 280px; position: relative; margin-top: -6px;
+  }
+
+  /* Top micro details */
+  .hud-top-bar {
+    width: 100%; display: flex; justify-content: space-between; align-items: flex-end;
+    padding: 0 4px;
+  }
+  .hud-hex {
+    font-size: 8px; font-family: monospace; color: rgba(0,200,255,0.7);
+    letter-spacing: 1px;
+    text-shadow: 0 0 5px rgba(0,200,255,0.4);
+  }
+  .hud-dots { display: flex; gap: 3px; margin-bottom: 2px; }
+  .hud-dots span {
+    width: 4px; height: 4px; background: rgba(0,255,136,0.2);
+    animation: dotPulse 1.5s infinite; border-radius: 1px;
+  }
+  .hud-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .hud-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotPulse {
+    0%, 100% { background: rgba(0,255,136,0.2); box-shadow: none; }
+    50% { background: #00ff88; box-shadow: 0 0 6px #00ff88; }
+  }
+
+  /* Main Angled Container */
+  .splash-status-wrap {
+    width: 100%; height: 32px; position: relative; display: flex; align-items: center;
+    background: rgba(0, 255, 136, 0.04);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+    box-shadow: inset 0 0 20px rgba(0, 255, 136, 0.05);
+  }
+  .splash-status-wrap::before {
+    content: ''; position: absolute; inset: 0;
+    background-image: linear-gradient(90deg, rgba(0,255,136,0.08) 1px, transparent 1px);
+    background-size: 4px 100%; pointer-events: none; z-index: 0;
+  }
+  .splash-status-wrap::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: -20px; width: 40px;
+    background: linear-gradient(90deg, transparent, rgba(0,255,136,0.6), transparent);
+    animation: digitalScan 2s infinite linear; z-index: 1;
+    mix-blend-mode: overlay;
+  }
+  @keyframes digitalScan { 0% { left: -40px; } 100% { left: 100%; } }
+
+  /* Blinking Square Marker */
+  .status-marker {
+    width: 6px; height: 6px; background: #00ff88;
+    margin-left: 14px; margin-right: 12px;
+    box-shadow: 0 0 8px #00ff88;
+    animation: markerBlink 0.8s infinite steps(2); z-index: 2;
+  }
+  @keyframes markerBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.1; } }
+
+  /* Status Text */
   .splash-status {
-    font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase;
-    color: rgba(180,200,220,0.5);
-    min-height: 16px;
-    transition: opacity 0.3s;
+    flex: 1;
+    font-size: 10.5px; font-family: 'Consolas', 'Courier New', monospace;
+    letter-spacing: 2.2px; text-transform: uppercase;
+    color: #e0f8e8; text-shadow: 0 0 6px rgba(0,255,136,0.6);
+    z-index: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* Bottom micro details */
+  .hud-bottom-bar {
+    width: 100%; display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 0 4px;
+  }
+  .hud-line {
+    flex: 1; height: 1px; background: rgba(0,255,136,0.25);
+    margin-top: 4px; margin-right: 12px; position: relative;
+  }
+  .hud-line::after {
+    content: ''; position: absolute; right: 0; top: -1px; width: 14px; height: 3px;
+    background: #00ff88; box-shadow: 0 0 5px #00ff88;
+  }
+  .hud-sys {
+    font-size: 8px; font-family: monospace; color: rgba(0,255,136,0.4); letter-spacing: 1.5px;
   }
 
   /* ── Progress bar ── */
@@ -226,7 +302,22 @@
 
     <div class="splash-title">GS Center</div>
 
-    <div class="splash-status" id="status">Initializing...</div>
+    <div class="hud-status">
+      <div class="hud-top-bar">
+        <span class="hud-hex" id="hudHex">0x00A1</span>
+        <div class="hud-dots">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+      <div class="splash-status-wrap">
+        <div class="status-marker"></div>
+        <div class="splash-status" id="status">Initializing...</div>
+      </div>
+      <div class="hud-bottom-bar">
+        <div class="hud-line"></div>
+        <span class="hud-sys">SYS.CORE</span>
+      </div>
+    </div>
 
     <div class="progress-track">
       <div class="progress-fill" id="progressFill"></div>
@@ -249,6 +340,13 @@
       p.style.width = p.style.height = (1.5 + Math.random() * 2) + 'px';
       particlesEl.appendChild(p);
     }
+
+    // Tech HUD Hex glitch effect
+    const hexEl = document.getElementById('hudHex');
+    setInterval(() => {
+      const hex = Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+      hexEl.textContent = '0x' + hex;
+    }, 70);
 
     // IPC listener for progress updates from main process
     const { ipcRenderer } = require('electron');
