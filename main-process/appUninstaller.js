@@ -131,7 +131,9 @@ function registerIPC() {
 
       dedupedApps.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-      console.log(TAG, `Found ${dedupedApps.length} installed programs`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(TAG, `Found ${dedupedApps.length} installed programs`);
+      }
       return { success: true, apps: dedupedApps };
     } catch (err) {
       console.error(TAG, 'Failed to list apps:', err.message);
@@ -843,7 +845,9 @@ $results -join '<<<SEP>>>'
     });
 
     const totalSize = verifiedLeftovers.reduce((sum, l) => sum + (l.size || 0), 0);
-    console.log(TAG, `Found ${verifiedLeftovers.length} leftovers (${Math.round(totalSize / 1024)} KB)`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(TAG, `Found ${verifiedLeftovers.length} leftovers (${Math.round(totalSize / 1024)} KB)`);
+    }
     return { success: true, leftovers: verifiedLeftovers, totalSize };
   });
 
