@@ -252,7 +252,7 @@ const Performance: React.FC = () => {
     'Disable Fullscreen Optimization',
     'Disable USB Suspend',
     'Disable Game DVR',
-    'Games Priority'
+    'Set Games Priority',
   ].includes(item.category));
   const appliedCount = Object.values(enabledTweaks).filter(Boolean).length;
   const totalCount = activeTweaks.length;

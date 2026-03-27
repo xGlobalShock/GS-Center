@@ -222,7 +222,7 @@ export const cleanerUtilities: CleanerUtility[] = [
     title: 'Empty Recycle Bin',
     icon: Trash, // Trash icon for recycle bin
     cacheType: 'Recycle Bin',
-    description: 'Permanently deletes recycled files to recover disk space; make sure you no longer need deleted items before running.',
+    description: 'Permanently deletes recycled files to recover disk space, make sure you no longer need deleted items before running.',
     buttonText: 'Empty Bin',
     color: '#0074D9',
     buttonColor: '#E74C3C',
