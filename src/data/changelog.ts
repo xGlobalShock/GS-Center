@@ -10,6 +10,17 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.4.8',
+    date: '2026-03-27',
+    highlights: 'New Splash Screen and Minor Bug Fixes',
+    changes: [ 
+      { type: 'new', text: 'Added a new splash screen with detailed startup steps and progress indicators.' },
+      { type: 'fixed', text: 'Resolved minor UI glitches in the new splash screen implementation.' },
+      { type: 'fixed', text: 'Addressed a rare issue where the splash screen could get stuck on certain hardware configurations.' },
+      { type: 'improved', text: 'Optimized splash screen performance to ensure smooth loading on all supported systems.' },
+    ],
+  },
+  {
     version: '1.4.7',
     date: '2026-03-27',
     highlights: 'Windows Debloat System Overhaul & Startup Optimizations',
