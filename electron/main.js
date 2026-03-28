@@ -3,21 +3,21 @@ const { execSync } = require('child_process');
 const path = require('path');
 
 // ── Modules ─────────────────────────────────────────────────────────────────
-const windowManager       = require('../main-process/windowManager');
-const autoUpdater         = require('../main-process/autoUpdater');
-const hardwareMonitor     = require('../main-process/hardwareMonitor');
-const hardwareInfo        = require('../main-process/hardwareInfo');
-const cleaners            = require('../main-process/cleaners');
-const tweaks              = require('../main-process/tweaks');
-const obsPresets          = require('../main-process/obsPresets');
-const softwareUpdates     = require('../main-process/softwareUpdates');
-const appInstaller        = require('../main-process/appInstaller');
-const appUninstaller      = require('../main-process/appUninstaller');
-const gameProfiles        = require('../main-process/gameProfiles');
-const network             = require('../main-process/network');
-const windowsDebloat      = require('../main-process/windowsDebloat');
-const spaceAnalyzer       = require('../main-process/spaceAnalyzer');
-const { execAsync }       = require('../main-process/utils');
+const windowManager = require('../main-process/windowManager');
+const autoUpdater = require('../main-process/autoUpdater');
+const hardwareMonitor = require('../main-process/hardwareMonitor');
+const hardwareInfo = require('../main-process/hardwareInfo');
+const cleaners = require('../main-process/cleaners');
+const tweaks = require('../main-process/tweaks');
+const obsPresets = require('../main-process/obsPresets');
+const softwareUpdates = require('../main-process/softwareUpdates');
+const appInstaller = require('../main-process/appInstaller');
+const appUninstaller = require('../main-process/appUninstaller');
+const gameProfiles = require('../main-process/gameProfiles');
+const network = require('../main-process/network');
+const windowsDebloat = require('../main-process/windowsDebloat');
+const spaceAnalyzer = require('../main-process/spaceAnalyzer');
+const { execAsync } = require('../main-process/utils');
 
 // ── Rendering Pipeline ──────────────────────────────────────────────────────
 app.commandLine.appendSwitch('use-gl', 'swiftshader');
@@ -30,6 +30,7 @@ app.commandLine.appendSwitch('gpu-disk-cache-dir', path.join(app.getPath('userDa
 let _gpuStatus = { status: 'active', renderer: 'SwiftShader', detail: 'Initializing…' };
 
 ipcMain.handle('gpu:get-status', () => _gpuStatus);
+ipcMain.handle('app:get-path', () => app.getAppPath());
 
 app.on('gpu-info-update', (info) => {
   _gpuStatus.detail = info?.gpuDevice?.[0]?.driverVersion || 'SwiftShader';
@@ -160,7 +161,7 @@ async function _prewarmScanCaches() {
       installedIdSet: new Set(installedEntries.map(e => e.id)),
       installedNameSet: new Set(installedEntries.map(e => e.name)),
     });
-  } catch {}
+  } catch { }
 
   // 4. Match local applications
   windowManager.sendSplashStatus('Verifying application states...');
@@ -171,7 +172,7 @@ async function _prewarmScanCaches() {
     if (win && !win.isDestroyed()) {
       win.webContents.send('appinstall:preloaded', result);
     }
-  } catch {}
+  } catch { }
 
   // 5. Pre-load Windows Debloat components
   windowManager.sendSplashStatus('Loading Windows features...');
@@ -184,7 +185,7 @@ async function _prewarmScanCaches() {
         win.webContents.send('wdebloat:preloaded', result.data);
       }
     }
-  } catch {}
+  } catch { }
 }
 
 // ── Main app.on('ready') ────────────────────────────────────────────────────
@@ -203,14 +204,14 @@ app.on('ready', async () => {
   try {
     const result = await softwareUpdates.checkSoftwareUpdatesImpl();
     softwareUpdates.setSoftwareUpdatesCache(result);
-  } catch {}
+  } catch { }
 
   windowManager.sendSplashStatus('Initializing core services...');
   windowManager.sendSplashProgress(10);
 
   // Enable winget InstallerHashOverride (requires admin)
   if (isElevated) {
-    try { execSync('winget settings --enable InstallerHashOverride', { stdio: 'ignore', windowsHide: true, timeout: 10000 }); } catch {}
+    try { execSync('winget settings --enable InstallerHashOverride', { stdio: 'ignore', windowsHide: true, timeout: 10000 }); } catch { }
   }
 
   windowManager.sendSplashStatus('Loading hardware sensors...');
@@ -232,7 +233,7 @@ app.on('ready', async () => {
   try {
     const hwPromise = hardwareInfo.getHwInfoPromise();
     if (hwPromise) await hwPromise;
-  } catch {}
+  } catch { }
 
   windowManager.sendSplashStatus('Preparing user interface...');
   windowManager.sendSplashProgress(55);
@@ -278,6 +279,44 @@ app.on('ready', async () => {
   if (splashFinal && !splashFinal.isDestroyed()) {
     splashFinal.close();
   }
+
+  // ── Privacy & Silent Ad-Blocking (Suppress Terminal Noise) ──────────────────
+  const { session } = require('electron');
+  const BLOCK_LIST = [
+    'nexx360.io', 'pubmatic.com', 'smilewanted.com', 'missena.io',
+    'scorecardresearch.com', 'doubleclick.net', 'google-analytics.com',
+    'amazon-adsystem.com', 'adnxs.com', 'casalemedia.com', 'openx.net',
+    'rubiconproject.com', 'criteo.com', 'outbrain.com', 'taboola.com',
+    'pubmatic.com', 'media.net', 'advertising.com', 'yieldmo.com'
+  ];
+
+  function handleWebRequest(details, callback) {
+    const url = details.url.toLowerCase();
+    const isTracker = BLOCK_LIST.some(domain => url.includes(domain));
+
+    if (isTracker && details.resourceType !== 'mainFrame') {
+      // Use cancel: true specifically for these trackers to avoid UNSAFE_REDIRECT logs
+      callback({ cancel: true });
+    } else {
+      callback({ cancel: false });
+    }
+  }
+
+  session.defaultSession.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, handleWebRequest);
+  
+  const speedtestSession = session.fromPartition('persist:speedtest');
+  const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+  
+  speedtestSession.setUserAgent(CHROME_UA);
+  
+  // Apply the ad-blocker to the speedtest session
+  speedtestSession.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, handleWebRequest);
+  
+  // Strip X-Requested-With to prevent Cloudflare/bot detection
+  speedtestSession.webRequest.onBeforeSendHeaders({ urls: ['*://*/*'] }, (details, callback) => {
+    delete details.requestHeaders['X-Requested-With'];
+    callback({ requestHeaders: details.requestHeaders });
+  });
 });
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────

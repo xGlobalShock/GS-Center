@@ -1,33 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 
-declare global {
-  interface Window {
-    electron?: {
-      ipcRenderer: {
-        invoke: (channel: string, ...args: any[]) => Promise<any>;
-        on: (channel: string, func: (...args: any[]) => void) => (() => void);
-        once: (channel: string, func: (...args: any[]) => void) => void;
-        removeAllListeners: (channel: string) => void;
-      };
-      windowControls?: {
-        minimize: () => void;
-        maximize: () => void;
-        close: () => void;
-        isMaximized: () => Promise<boolean>;
-        onMaximizedChange: (callback: (isMaximized: boolean) => void) => (() => void);
-      };
-      updater?: {
-        checkForUpdates: () => Promise<any>;
-        downloadUpdate: () => Promise<any>;
-        cancelUpdate: () => Promise<any>;
-        installUpdate: () => Promise<void>;
-        getVersion: () => Promise<string>;
-        onStatus: (callback: (data: any) => void) => (() => void);
-      };
-    };
-  }
-}
-
 /** Shape of the unified payload pushed from main process */
 export interface RealtimeHWPayload {
   // CPU

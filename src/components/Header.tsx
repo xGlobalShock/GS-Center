@@ -114,34 +114,6 @@ interface GitHubRelease {
   draft: boolean;
 }
 
-declare global {
-  interface Window {
-    electron?: {
-      ipcRenderer: {
-        invoke: (channel: string, ...args: any[]) => Promise<any>;
-        on: (channel: string, func: (...args: any[]) => void) => (() => void);
-        once: (channel: string, func: (...args: any[]) => void) => void;
-        removeAllListeners: (channel: string) => void;
-      };
-      windowControls?: {
-        minimize: () => void;
-        maximize: () => void;
-        close: () => void;
-        isMaximized: () => Promise<boolean>;
-        onMaximizedChange: (callback: (isMaximized: boolean) => void) => (() => void);
-      };
-      updater?: {
-        checkForUpdates: () => Promise<any>;
-        downloadUpdate: () => Promise<any>;
-        cancelUpdate: () => Promise<any>;
-        installUpdate: () => Promise<void>;
-        getVersion: () => Promise<string>;
-        onStatus: (callback: (data: any) => void) => (() => void);
-      };
-    };
-  }
-}
-
 type UpdateState = 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'error';
 
 const Header: React.FC = React.memo(() => {

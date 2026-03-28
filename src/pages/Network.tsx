@@ -1,66 +1,126 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Wifi, Activity, Globe, Signal, Zap, BarChart3, Radio } from 'lucide-react';
-import { ArrowCounterClockwise } from 'phosphor-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Wifi, Activity, Globe, Play, RefreshCcw, CloudLightning, Zap, Terminal } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import '../styles/Network.css';
 
-/* ── Types ── */
-interface PingTarget {
-  id: string;
-  label: string;
-  host: string;
-  category: 'dns' | 'gaming';
-}
+interface PingTarget { id: string; label: string; host: string; category: 'gaming' | 'social'; }
 interface PingResult { time: number | null; loading: boolean; }
+type TestProvider = 'fast' | 'ookla' | 'testmy';
+type TestState = 'idle' | 'running';
 
-/* ── Targets ── */
+// Restoration of ORIGINAL regional gaming servers (NA, EU, OCE, ME, ASIA)
 const PING_TARGETS: PingTarget[] = [
-  { id: 'google',     label: 'Google DNS',           host: '8.8.8.8',        category: 'dns' },
-  { id: 'cloudflare', label: 'Cloudflare DNS',       host: '1.1.1.1',        category: 'dns' },
-  { id: 'quad9',      label: 'Quad9 DNS',            host: '9.9.9.9',        category: 'dns' },
-  { id: 'opendns',    label: 'OpenDNS (Cisco)',      host: '208.67.222.222', category: 'dns' },
-  { id: 'adguard',    label: 'AdGuard DNS',          host: '94.140.14.14',   category: 'dns' },
-  { id: 'nextdns',    label: 'NextDNS',              host: '45.90.28.0',     category: 'dns' },
-  { id: 'gm-use',     label: 'US East (Virginia)',   host: 'dynamodb.us-east-1.amazonaws.com',        category: 'gaming' },
-  { id: 'gm-usw',     label: 'US West (Oregon)',     host: 'dynamodb.us-west-2.amazonaws.com',        category: 'gaming' },
-  { id: 'gm-eu',      label: 'EU Central (Frankfurt)', host: 'dynamodb.eu-central-1.amazonaws.com',   category: 'gaming' },
-  { id: 'gm-euw',     label: 'EU West (Ireland)',    host: 'dynamodb.eu-west-1.amazonaws.com',        category: 'gaming' },
-  { id: 'gm-asia',    label: 'Asia (Tokyo)',         host: 'dynamodb.ap-northeast-1.amazonaws.com',   category: 'gaming' },
-  { id: 'gm-oce',     label: 'Oceania (Sydney)',     host: 'dynamodb.ap-southeast-2.amazonaws.com',   category: 'gaming' },
+  { id: 'na-east', label: 'NA East (VA)', host: 'dynamodb.us-east-1.amazonaws.com', category: 'gaming' },
+  { id: 'na-west', label: 'NA West (OR)', host: 'dynamodb.us-west-2.amazonaws.com', category: 'gaming' },
+  { id: 'na-central', label: 'NA Central (TX)', host: 'dynamodb.us-east-2.amazonaws.com', category: 'gaming' },
+  { id: 'eu-west', label: 'EU West (IRE)', host: 'dynamodb.eu-west-1.amazonaws.com', category: 'gaming' },
+  { id: 'eu-central', label: 'EU Central (FRA)', host: 'dynamodb.eu-central-1.amazonaws.com', category: 'gaming' },
+  { id: 'eu-london', label: 'EU North (LDN)', host: 'dynamodb.eu-west-2.amazonaws.com', category: 'gaming' },
+  { id: 'oce', label: 'Oceania (SYD)', host: 'dynamodb.ap-southeast-2.amazonaws.com', category: 'gaming' },
+  { id: 'asia-tokyo', label: 'Asia (TYO)', host: 'dynamodb.ap-northeast-1.amazonaws.com', category: 'gaming' },
+  { id: 'asia-sgp', label: 'Asia (SGP)', host: 'dynamodb.ap-southeast-1.amazonaws.com', category: 'gaming' },
+  { id: 'me', label: 'Middle East (DXB)', host: 'dynamodb.me-south-1.amazonaws.com', category: 'gaming' }
 ];
 
-const SECTIONS: { key: PingTarget['category']; title: string; icon: React.ReactNode }[] = [
-  { key: 'dns',    title: 'DNS Resolvers',               icon: <Globe size={13} /> },
-  { key: 'gaming', title: 'Gaming Cloud Regions — AWS',   icon: <Radio size={13} /> },
-];
-
-/* ── Helpers ── */
-const pingColor = (t: number | null) => {
-  if (t == null) return 'neutral';
-  if (t < 90) return 'green';
-  if (t < 180) return 'amber';
+const pingColor = (t: number | null, loading?: boolean) => {
+  if (t === null || t === undefined) return loading ? 'neutral' : 'red';
+  if (t <= 90) return 'green';
+  if (t <= 190) return 'amber';
+  if (t <= 300) return 'orange';
   return 'red';
 };
-const qualityLabel = (avg: number | null) => {
-  if (avg == null) return { text: 'SCANNING', cls: 'neutral' };
-  if (avg < 50)  return { text: 'EXCELLENT', cls: 'green' };
-  if (avg < 90)  return { text: 'GOOD', cls: 'green' };
-  if (avg < 180) return { text: 'MODERATE', cls: 'amber' };
-  return { text: 'POOR', cls: 'red' };
-};
 
-/* ══════════════════════════════════════════════════════ */
+// ── SpeedEngine Component (Isolated for Stability) ─────────────────────────────────
+// Memoized to prevent parent re-renders (from pings) from touching the webview process.
+const SpeedEngine = React.memo(({ 
+  provider, 
+  testState, 
+  warmedUp, 
+  setWvLoading, 
+  injectCleanerStyles 
+}: { 
+  provider: TestProvider; 
+  testState: TestState; 
+  warmedUp: React.MutableRefObject<Record<TestProvider, boolean>>;
+  setWvLoading: (val: boolean) => void;
+  injectCleanerStyles: (wv: any) => void;
+}) => {
+  const wvRef = useRef<any>(null);
+
+  const getTargetUrl = () => {
+    if (testState === 'idle') return 'about:blank';
+    if (provider === 'ookla') return 'https://www.speedtest.net/';
+    if (provider === 'testmy') return 'https://testmy.net/';
+    return 'https://fast.com';
+  };
+
+  useEffect(() => {
+    const wv = wvRef.current;
+    if (!wv) return;
+
+    let failSafeTimer: NodeJS.Timeout;
+    const clearLoader = () => {
+      setWvLoading(false);
+      if (failSafeTimer) clearTimeout(failSafeTimer);
+    };
+
+    const onFinish = () => {
+      clearLoader();
+      warmedUp.current[provider] = true;
+      injectCleanerStyles(wv);
+    };
+
+    const onFail = (_err: any) => {
+      console.error('Telemetry Provider unreachable:', _err);
+      clearLoader();
+    };
+
+    wv.addEventListener('did-finish-load', onFinish);
+    wv.addEventListener('dom-ready', onFinish);
+    wv.addEventListener('did-fail-load', onFail);
+    wv.addEventListener('did-stop-loading', clearLoader);
+
+    return () => {
+      if (failSafeTimer) clearTimeout(failSafeTimer);
+      wv.removeEventListener('did-finish-load', onFinish);
+      wv.removeEventListener('dom-ready', onFinish);
+      wv.removeEventListener('did-fail-load', onFail);
+      wv.removeEventListener('did-stop-loading', clearLoader);
+    };
+  }, [provider, setWvLoading, injectCleanerStyles, warmedUp]);
+
+  return (
+    <webview
+      key={provider}
+      ref={wvRef}
+      id="speed-engine"
+      src={getTargetUrl()}
+      partition="persist:speedtest"
+      useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+      style={{ width: '100%', height: '100%' }}
+      allowpopups
+      webpreferences="contextIsolation=yes, enableRemoteModule=no, sandbox=no, nodeIntegration=no, webSecurity=no, allowRunningInsecureContent=yes, disableBlinkFeatures=AutomationControlled"
+    />
+  );
+});
+
 const Network: React.FC = () => {
   const [results, setResults] = useState<Record<string, PingResult>>(() => {
     const init: Record<string, PingResult> = {};
     PING_TARGETS.forEach(t => { init[t.id] = { time: null, loading: false }; });
     return init;
   });
+
+  const [provider, setProvider] = useState<TestProvider>('fast');
+  const [testState, setTestState] = useState<TestState>('idle');
+  const warmedUp = useRef<Record<TestProvider, boolean>>({ fast: false, ookla: false, testmy: false });
+  const [wvLoading, setWvLoading] = useState(false);
   const mountedRef = useRef(true);
 
   const pingOne = useCallback(async (target: PingTarget) => {
     if (!window.electron?.ipcRenderer) return;
+    if (!mountedRef.current) return;
     setResults(prev => ({ ...prev, [target.id]: { ...prev[target.id], loading: true } }));
     try {
       const res: any = await window.electron.ipcRenderer.invoke('network:ping', target.host);
@@ -74,199 +134,223 @@ const Network: React.FC = () => {
   }, []);
 
   const pingAll = useCallback(() => {
-    // Stagger full scan, avoids a flood of calls at once
     PING_TARGETS.forEach((t, idx) => {
-      setTimeout(() => pingOne(t), idx * 250);
+      setTimeout(() => { if (mountedRef.current) pingOne(t); }, idx * 100);
     });
   }, [pingOne]);
 
   useEffect(() => {
     mountedRef.current = true;
-    let nextIndex = 0;
-
     pingAll();
-
+    let nextIndex = 0;
     const intervalId = setInterval(() => {
+      if (testState === 'running') return; // Pause pings during speed tests
       const target = PING_TARGETS[nextIndex];
       nextIndex = (nextIndex + 1) % PING_TARGETS.length;
       pingOne(target);
-    }, 1000);
+    }, 1500);
 
-    return () => {
-      mountedRef.current = false;
-      clearInterval(intervalId);
-    };
-  }, [pingAll, pingOne]);
+    return () => { clearInterval(intervalId); mountedRef.current = false; };
+  }, [pingAll, pingOne, testState]);
 
-  /* ── Stats ── */
+  const injectCleanerStyles = useCallback((wv: any) => {
+    if (!wv) return;
+    const commonCSS = `
+        html, body { overflow: hidden !important; scrollbar-width: none !important; -ms-overflow-style: none !important; background: transparent !important; }
+        ::-webkit-scrollbar { display: none !important; }
+     `;
+    const fastCSS = `
+        ${commonCSS}
+        html, body { background: #FFF !important; }
+        header, footer, .netflix-logo, .nav-container { display: none !important; }
+        .speed-controls-container { transform: scale(1.1) !important; margin-top: 40px !important; }
+     `;
+    const ooklaCSS = `
+        ${commonCSS}
+        html, body { overflow: hidden !important; }
+        html { zoom: 0.9 !important; }
+        .ad-unit, .pure-ad, .sidebar, .ad-column, .gam-ad-unit, .masthead, .masthead-apps, .masthead-nav, a[href="/results"], a[href="/settings"], .btn-server-select, a[href="/register"], a.nav-link[href*="/login"], .below-start-button { display: none !important; }
+        .main-content, .pure-g { margin: 0 auto !important; float: none !important; }
+        .speedtest-container { 
+            transform: scale(1) !important; 
+            margin-top: -100px !important; 
+            margin-left: -150px !important; 
+            transform-origin: top center !important; 
+            will-change: transform !important;
+            backface-visibility: hidden !important;
+            transform-style: preserve-3d !important;
+        }
+        .gauge-container, .test-holder, .gauge-assembly, .gauge-vessel, .gauge-canvas { 
+            overflow: visible !important; 
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+     `;
+    const testmyCSS = `
+        ${commonCSS}
+        html { zoom: 1 !important; }
+        .navbar, .ad, .useragent, .note, .msg, .jumbotron, .hero-unit, .top-banner, .combined, .latency, .well.well-sm, .google-ads, .adsbygoogle { display: none !important; }
+        .container { width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+        #main-content > .well, .testpanel, .test-box {
+            transform: scale(1) !important;
+            transform-origin: top center !important;
+            margin-top: 60px !important;
+            background: rgba(255,255,255,0.05) !important;
+            border: 1px solid rgba(0,242,255,0.1) !important;
+            border-radius: 12px !important;
+            box-shadow: none !important;
+        }
+    `;
+
+    if (provider === 'fast') wv.insertCSS(fastCSS);
+    else if (provider === 'ookla') wv.insertCSS(ooklaCSS);
+    else if (provider === 'testmy') wv.insertCSS(testmyCSS);
+  }, [provider]);
+
+  const initiateScan = () => {
+    setTestState('running');
+    if (!warmedUp.current[provider]) setWvLoading(true);
+    else setWvLoading(false);
+  };
+
   const allTimes = PING_TARGETS.map(t => results[t.id]?.time).filter((t): t is number => t != null);
-  const avg = allTimes.length ? Math.round(allTimes.reduce((a, b) => a + b, 0) / allTimes.length) : null;
-  const best = allTimes.length ? Math.min(...allTimes) : null;
-  const worst = allTimes.length ? Math.max(...allTimes) : null;
-  const jitter = allTimes.length >= 2
-    ? Math.round(allTimes.reduce((sum, t, i, a) => i === 0 ? 0 : sum + Math.abs(t - a[i - 1]), 0) / (allTimes.length - 1))
-    : null;
+  const avgPing = allTimes.length ? Math.round(allTimes.reduce((a, b) => a + b, 0) / allTimes.length) : null;
   const online = allTimes.length;
   const total = PING_TARGETS.length;
-  const quality = qualityLabel(avg);
-
-  /* Gauge arc (0-180 deg mapping) — lower ping = fuller arc */
-  const gaugePercent = avg != null ? Math.max(0, Math.min(100, 100 - (avg / 200) * 100)) : 0;
-  const gaugeDeg = (gaugePercent / 100) * 180;
 
   return (
-    <motion.div className="nv" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-      {/* Background effects */}
-      <div className="nv-bg-grid" />
-
+    <motion.div className="nv-master" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+      <div className="nv-bg-ambient" />
+      <div className="nv-grid-overlay" />
 
       <PageHeader
-        icon={<Wifi size={16} />}
+        icon={<Wifi size={18} className="nv-cyan-accent" />}
         title="Network Diagnostics"
         actions={
-          <button className="nv-refresh" onClick={pingAll} title="Refresh all">
-            <ArrowCounterClockwise size={14} weight="bold" />
-            <span>Rescan</span>
-          </button>
+          <div className="nv-global-stats">
+            <div className="nv-gstat">
+              <Activity size={12} className="nv-cyan-accent" />
+              <span>AVG LATENCY:</span>
+              <span className="font-mono">{avgPing != null ? `${avgPing}ms` : '---'}</span>
+            </div>
+            <div className="nv-gstat">
+              <RefreshCcw size={12} className="nv-cyan-accent" />
+              <button onClick={pingAll} className="nv-gstat-btn">RESCAN TARGETS</button>
+            </div>
+          </div>
         }
       />
 
-      {/* ═══ TOP SECTION: Gauge + Metric Tiles ═══ */}
-      <div className="nv-command">
-        {/* Central Gauge */}
-        <motion.div
-          className="nv-gauge-wrap"
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.2, type: 'spring', stiffness: 120 }}
-        >
-          <div className="nv-gauge">
-            <svg viewBox="0 0 200 120" className="nv-gauge-svg">
-              <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="6" strokeLinecap="round" />
-              <motion.path
-                d="M 20 100 A 80 80 0 0 1 180 100"
-                fill="none" stroke="url(#gaugeGrad)" strokeWidth="6" strokeLinecap="round"
-                strokeDasharray="251.2"
-                initial={{ strokeDashoffset: 251.2 }}
-                animate={{ strokeDashoffset: 251.2 - (gaugeDeg / 180) * 251.2 }}
-                transition={{ duration: 1.2, ease: 'easeOut' }}
+      <div className="nv-dashboard">
+        <div className="nv-panel nv-sidebar">
+          <div className="nv-panel-header">
+            <Zap size={14} className="nv-cyan-accent" />
+            <span>DIAGNOSTIC ENGINE</span>
+          </div>
+
+          <div className="nv-provider-list">
+            <button className={`nv-p-btn ${provider === 'fast' ? 'active' : ''}`} onClick={() => { setProvider('fast'); setTestState('idle'); }}>
+              <div className="nv-p-icon native"><CloudLightning size={18} /></div>
+              <div className="nv-p-info"><span className="nv-p-name">Netflix Fast</span><span className="nv-p-type">OFFICIAL CDN TEST</span></div>
+              <div className="nv-p-edge" />
+            </button>
+            <button className={`nv-p-btn ${provider === 'ookla' ? 'active' : ''}`} onClick={() => { setProvider('ookla'); setTestState('idle'); }}>
+              <div className="nv-p-icon ookla"><Terminal size={18} /></div>
+              <div className="nv-p-info"><span className="nv-p-name">Ookla Speedtest</span><span className="nv-p-type">OFFICIAL GLOBAL TEST</span></div>
+              <div className="nv-p-edge" />
+            </button>
+            <button className={`nv-p-btn ${provider === 'testmy' ? 'active' : ''}`} onClick={() => { setProvider('testmy'); setTestState('idle'); }}>
+              <div className="nv-p-icon testmy"><Globe size={18} /></div>
+              <div className="nv-p-info"><span className="nv-p-name">TestMy.net</span><span className="nv-p-type">HTML5 MULTI-THREAD</span></div>
+              <div className="nv-p-edge" />
+            </button>
+          </div>
+
+          <div className="nv-scan-control">
+            <div className="nv-scan-status">
+              <span className={`nv-status-dot ${testState === 'running' ? 'pulsing' : ''}`} />
+              <span className="font-mono">{testState === 'running' ? 'TELEMETRY SUBSYSTEM ACTIVE' : 'SYSTEM READY'}</span>
+            </div>
+            <button 
+              className={`nv-fire-btn ${testState === 'running' ? 'stop' : ''}`} 
+              onClick={testState === 'running' ? () => { setTestState('idle'); pingAll(); } : initiateScan}
+            >
+              {testState === 'running' ? <RefreshCcw size={16} /> : <Play size={16} fill="currentColor" />}
+              {testState === 'running' ? 'STOP TELEMETRY' : 'LAUNCH TELEMETRY'}
+            </button>
+          </div>
+        </div>
+
+        <div className="nv-panel nv-center-stage">
+          <div className="nv-stage-glow"></div>
+          <div className="nv-webview-wrapper">
+            <AnimatePresence>
+              {testState === 'idle' && (
+                <motion.div key="waiting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="nv-wv-placeholder">
+                  <Zap size={48} className="nv-cyan-accent" />
+                  <div className="font-mono">INITIALIZE {provider.toUpperCase()} UPLINK</div>
+                </motion.div>
+              )}
+              {wvLoading && (
+                <motion.div key="loader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="nv-wv-loader">
+                  <div className="nv-wv-loader-content">
+                    <div className="nv-loader-ring"><div className="nv-loader-ring-inner" /></div>
+                    <div className="nv-loader-text">SECURING CONNECTION...</div>
+                    <div className="nv-loader-bar"><div className="nv-loader-bar-fill" /></div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <div className={`nv-wv-container ${testState === 'running' ? 'active' : 'hidden'}`}>
+              <SpeedEngine 
+                provider={provider}
+                testState={testState}
+                warmedUp={warmedUp}
+                setWvLoading={setWvLoading}
+                injectCleanerStyles={injectCleanerStyles}
               />
-              <motion.path
-                d="M 20 100 A 80 80 0 0 1 180 100"
-                fill="none" stroke="url(#gaugeGrad)" strokeWidth="12" strokeLinecap="round"
-                strokeDasharray="251.2"
-                initial={{ strokeDashoffset: 251.2 }}
-                animate={{ strokeDashoffset: 251.2 - (gaugeDeg / 180) * 251.2 }}
-                transition={{ duration: 1.2, ease: 'easeOut' }}
-                opacity="0.15" filter="blur(6px)"
-              />
-              <defs>
-                <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#FF4D4D" />
-                  <stop offset="40%" stopColor="#FFD600" />
-                  <stop offset="100%" stopColor="#00FFB2" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <div className="nv-gauge-center">
-              <span className={`nv-gauge-value nv-c-${quality.cls}`}>{avg != null ? avg : '–'}</span>
-              <span className="nv-gauge-unit">ms avg</span>
-              <span className={`nv-gauge-quality nv-c-${quality.cls}`}>{quality.text}</span>
             </div>
           </div>
-          <div className="nv-gauge-ring nv-gauge-ring--1" />
-          <div className="nv-gauge-ring nv-gauge-ring--2" />
-        </motion.div>
-
-        {/* Metric Tiles */}
-        <div className="nv-metrics">
-          {[
-            { label: 'ONLINE', value: `${online}/${total}`, icon: <Signal size={15} />, cls: online === total ? 'green' : 'amber' },
-            { label: 'BEST', value: best != null ? `${best}ms` : '–', icon: <Zap size={15} />, cls: pingColor(best) },
-            { label: 'WORST', value: worst != null ? `${worst}ms` : '–', icon: <Activity size={15} />, cls: pingColor(worst) },
-            { label: 'JITTER', value: jitter != null ? `${jitter}ms` : '–', icon: <BarChart3 size={15} />, cls: jitter != null ? (jitter < 20 ? 'green' : jitter < 50 ? 'amber' : 'red') : 'neutral' },
-          ].map((m, i) => (
-            <motion.div
-              key={m.label}
-              className={`nv-tile nv-tile--${m.cls}`}
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3 + i * 0.07, type: 'spring', stiffness: 160, damping: 20 }}
-            >
-              <div className="nv-tile-icon">{m.icon}</div>
-              <div className="nv-tile-data">
-                <span className="nv-tile-value">{m.value}</span>
-                <span className="nv-tile-label">{m.label}</span>
-              </div>
-              <div className="nv-tile-glow" />
-            </motion.div>
-          ))}
         </div>
-      </div>
 
-      {/* ═══ ENDPOINT TABLES — side by side ═══ */}
-      <div className="nv-tables-row">
-      {SECTIONS.map((section, si) => {
-        const targets = PING_TARGETS.filter(t => t.category === section.key);
-        return (
-          <motion.div
-            key={section.key}
-            className="nv-section"
-            initial={{ y: 24, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.4 + si * 0.12, type: 'spring', stiffness: 140, damping: 22 }}
-          >
-            <div className="nv-section-head">
-              <span className="nv-section-icon">{section.icon}</span>
-              <h3 className="nv-section-title">{section.title}</h3>
-              <div className="nv-section-line" />
-              <span className="nv-section-count">{targets.filter(t => results[t.id]?.time != null).length}/{targets.length}</span>
-            </div>
-
-            <div className="nv-table">
-              <div className="nv-table-head">
-                <span className="nv-th nv-th-status">STATUS</span>
-                <span className="nv-th nv-th-name">ENDPOINT</span>
-                <span className="nv-th nv-th-ping">LATENCY</span>
-                <span className="nv-th nv-th-bar">QUALITY</span>
-              </div>
-              {targets.map((t, ti) => {
+        <div className="nv-panel nv-telemetry">
+          <div className="nv-panel-header">
+            <Globe size={14} className="nv-cyan-accent" />
+            <span>LIVE EDGE TARGETS ({online}/{total})</span>
+          </div>
+          <div className="nv-target-list">
+            {[...PING_TARGETS]
+              .sort((a, b) => {
+                const rtA = results[a.id]?.time;
+                const rtB = results[b.id]?.time;
+                const aValid = rtA !== null && rtA !== undefined;
+                const bValid = rtB !== null && rtB !== undefined;
+                if (aValid && bValid) return rtA - rtB;
+                if (aValid) return -1;
+                if (bValid) return 1;
+                return 0;
+              })
+              .map(t => {
                 const r = results[t.id];
-                const color = pingColor(r?.time);
-                const barW = r?.time != null ? Math.min((r.time / 150) * 100, 100) : 0;
+                const c = pingColor(r?.time, r?.loading);
+                const hasTime = r?.time !== null && r?.time !== undefined;
                 return (
-                  <motion.div
-                    key={t.id}
-                    className={`nv-row nv-row--${color}`}
-                    initial={{ x: -16, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.5 + si * 0.12 + ti * 0.06, type: 'spring', stiffness: 180, damping: 22 }}
-                  >
-                    <span className="nv-td nv-td-status">
-                      <span className={`nv-dot nv-dot--${color}`} />
+                  <div key={t.id} className={`nv-tele-row bg-${c}`}>
+                    <span className="nv-tele-dot" />
+                    <div className="nv-tele-name">
+                      <span className="nv-tn-label">{t.label}</span>
+                      <span className="nv-tn-type">{t.category?.toUpperCase() || 'GAMING'}</span>
+                    </div>
+                    <span className="nv-tele-ping font-mono" style={{ fontSize: !hasTime && !r?.loading ? '10px' : '14px' }}>
+                      {hasTime ? r.time : r?.loading ? '...' : 'TIMEOUT'}
+                      {hasTime && <small>ms</small>}
                     </span>
-                    <span className="nv-td nv-td-name">{t.label}</span>
-                    <span className={`nv-td nv-td-ping nv-c-${color}`}>
-                      {r?.time != null ? r.time : r?.loading ? '···' : '–'}
-                      <small>ms</small>
-                    </span>
-                    <span className="nv-td nv-td-bar">
-                      <span className="nv-bar-track">
-                        <motion.span
-                          className={`nv-bar-fill nv-bg-${color}`}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${barW}%` }}
-                          transition={{ duration: 0.8, ease: 'easeOut' }}
-                        />
-                      </span>
-                    </span>
-                  </motion.div>
+                  </div>
                 );
               })}
-            </div>
-          </motion.div>
-        );
-      })}
+          </div>
+        </div>
       </div>
     </motion.div>
   );

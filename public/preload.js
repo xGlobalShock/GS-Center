@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('electron', {
     once: (channel, func) => ipcRenderer.once(channel, (event, ...args) => func(...args)),
     removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
   },
+  getAppPath: () => ipcRenderer.invoke('app:get-path'),
   windowControls: {
     minimize: () => ipcRenderer.send('window-minimize'),
     maximize: () => ipcRenderer.send('window-maximize'),

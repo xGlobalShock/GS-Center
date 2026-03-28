@@ -93,6 +93,7 @@ function createWindow() {
         nodeIntegration: false,
         contextIsolation: true,
         enableRemoteModule: false,
+        webviewTag: true,
         devTools: false,
       },
     });

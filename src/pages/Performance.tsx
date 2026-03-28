@@ -5,35 +5,6 @@ import { ArrowCounterClockwise } from 'phosphor-react';
 import { performanceTweaks, PerformanceTweak } from '../data/performanceTweaks';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/Performance.css';
-
-declare global {
-  interface Window {
-    electron?: {
-      ipcRenderer: {
-        invoke: (channel: string, ...args: any[]) => Promise<any>;
-        on: (channel: string, func: (...args: any[]) => void) => (() => void);
-        once: (channel: string, func: (...args: any[]) => void) => void;
-        removeAllListeners: (channel: string) => void;
-      };
-      windowControls?: {
-        minimize: () => void;
-        maximize: () => void;
-        close: () => void;
-        isMaximized: () => Promise<boolean>;
-        onMaximizedChange: (callback: (isMaximized: boolean) => void) => (() => void);
-      };
-      updater?: {
-        checkForUpdates: () => Promise<any>;
-        downloadUpdate: () => Promise<any>;
-        cancelUpdate: () => Promise<any>;
-        installUpdate: () => Promise<void>;
-        getVersion: () => Promise<string>;
-        onStatus: (callback: (data: any) => void) => (() => void);
-      };
-    };
-  }
-}
-
 import { Activity } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 
