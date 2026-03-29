@@ -8,6 +8,10 @@ dist/
 out/
 release/
 Image/
+electron/
+assets/
+scripts/
+V-Config/
 
 # ── Environment ──
 .env
