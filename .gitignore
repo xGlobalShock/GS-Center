@@ -12,6 +12,7 @@ electron/
 assets/
 scripts/
 V-Config/
+lib/
 
 # ── Environment ──
 .env
