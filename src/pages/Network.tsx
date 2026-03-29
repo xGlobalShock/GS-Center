@@ -99,7 +99,6 @@ const SpeedEngine = React.memo(({
       partition="persist:speedtest"
       useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
       style={{ width: '100%', height: '100%' }}
-      allowpopups
       webpreferences="contextIsolation=yes, enableRemoteModule=no, sandbox=no, nodeIntegration=no, webSecurity=no, allowRunningInsecureContent=yes, disableBlinkFeatures=AutomationControlled"
     />
   );
@@ -231,12 +230,12 @@ const Network: React.FC = () => {
           <div className="nv-global-stats">
             <div className="nv-gstat">
               <Activity size={12} className="nv-cyan-accent" />
-              <span>AVG LATENCY:</span>
+              <span>AVERAGE PING:</span>
               <span className="font-mono">{avgPing != null ? `${avgPing}ms` : '---'}</span>
             </div>
             <div className="nv-gstat">
               <RefreshCcw size={12} className="nv-cyan-accent" />
-              <button onClick={pingAll} className="nv-gstat-btn">RESCAN TARGETS</button>
+              <button onClick={pingAll} className="nv-gstat-btn">REFRESH SERVERS</button>
             </div>
           </div>
         }
@@ -246,23 +245,23 @@ const Network: React.FC = () => {
         <div className="nv-panel nv-sidebar">
           <div className="nv-panel-header">
             <Zap size={14} className="nv-cyan-accent" />
-            <span>DIAGNOSTIC ENGINE</span>
+            <span>SPEED TEST TOOLS</span>
           </div>
 
           <div className="nv-provider-list">
             <button className={`nv-p-btn ${provider === 'fast' ? 'active' : ''}`} onClick={() => { setProvider('fast'); setTestState('idle'); }}>
               <div className="nv-p-icon native"><CloudLightning size={18} /></div>
-              <div className="nv-p-info"><span className="nv-p-name">Netflix Fast</span><span className="nv-p-type">OFFICIAL CDN TEST</span></div>
+              <div className="nv-p-info"><span className="nv-p-name">Fast.com</span><span className="nv-p-type">CDN Speed Test</span></div>
               <div className="nv-p-edge" />
             </button>
             <button className={`nv-p-btn ${provider === 'ookla' ? 'active' : ''}`} onClick={() => { setProvider('ookla'); setTestState('idle'); }}>
               <div className="nv-p-icon ookla"><Terminal size={18} /></div>
-              <div className="nv-p-info"><span className="nv-p-name">Ookla Speedtest</span><span className="nv-p-type">OFFICIAL GLOBAL TEST</span></div>
+              <div className="nv-p-info"><span className="nv-p-name">Speedtest.net</span><span className="nv-p-type">Bandwidth & Latency</span></div>
               <div className="nv-p-edge" />
             </button>
             <button className={`nv-p-btn ${provider === 'testmy' ? 'active' : ''}`} onClick={() => { setProvider('testmy'); setTestState('idle'); }}>
               <div className="nv-p-icon testmy"><Globe size={18} /></div>
-              <div className="nv-p-info"><span className="nv-p-name">TestMy.net</span><span className="nv-p-type">HTML5 MULTI-THREAD</span></div>
+              <div className="nv-p-info"><span className="nv-p-name">TestMy.net</span><span className="nv-p-type">Multi-Thread Test</span></div>
               <div className="nv-p-edge" />
             </button>
           </div>
@@ -270,14 +269,14 @@ const Network: React.FC = () => {
           <div className="nv-scan-control">
             <div className="nv-scan-status">
               <span className={`nv-status-dot ${testState === 'running' ? 'pulsing' : ''}`} />
-              <span className="font-mono">{testState === 'running' ? 'TELEMETRY SUBSYSTEM ACTIVE' : 'SYSTEM READY'}</span>
+              <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 600 }}>{testState === 'running' ? 'Test in Progress' : 'Ready to Test'}</span>
             </div>
             <button 
               className={`nv-fire-btn ${testState === 'running' ? 'stop' : ''}`} 
               onClick={testState === 'running' ? () => { setTestState('idle'); pingAll(); } : initiateScan}
             >
               {testState === 'running' ? <RefreshCcw size={16} /> : <Play size={16} fill="currentColor" />}
-              {testState === 'running' ? 'STOP TELEMETRY' : 'LAUNCH TELEMETRY'}
+              <span style={{ fontWeight: 700 }}>{testState === 'running' ? 'Stop Test' : 'Start Test'}</span>
             </button>
           </div>
         </div>
@@ -289,14 +288,14 @@ const Network: React.FC = () => {
               {testState === 'idle' && (
                 <motion.div key="waiting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="nv-wv-placeholder">
                   <Zap size={48} className="nv-cyan-accent" />
-                  <div className="font-mono">INITIALIZE {provider.toUpperCase()} UPLINK</div>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: '12px', fontWeight: 700, color: 'rgba(255, 255, 255, 0.7)' }}>Select Test Provider to Begin</div>
                 </motion.div>
               )}
               {wvLoading && (
                 <motion.div key="loader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="nv-wv-loader">
                   <div className="nv-wv-loader-content">
                     <div className="nv-loader-ring"><div className="nv-loader-ring-inner" /></div>
-                    <div className="nv-loader-text">SECURING CONNECTION...</div>
+                    <div className="nv-loader-text" style={{ fontSize: '11px', fontWeight: 700 }}>Connecting to Server...</div>
                     <div className="nv-loader-bar"><div className="nv-loader-bar-fill" /></div>
                   </div>
                 </motion.div>
@@ -317,7 +316,7 @@ const Network: React.FC = () => {
         <div className="nv-panel nv-telemetry">
           <div className="nv-panel-header">
             <Globe size={14} className="nv-cyan-accent" />
-            <span>LIVE EDGE TARGETS ({online}/{total})</span>
+            <span>SERVER RESPONSE TIMES ({online}/{total})</span>
           </div>
           <div className="nv-target-list">
             {[...PING_TARGETS]
@@ -339,11 +338,11 @@ const Network: React.FC = () => {
                   <div key={t.id} className={`nv-tele-row bg-${c}`}>
                     <span className="nv-tele-dot" />
                     <div className="nv-tele-name">
-                      <span className="nv-tn-label">{t.label}</span>
-                      <span className="nv-tn-type">{t.category?.toUpperCase() || 'GAMING'}</span>
+                      <span className="nv-tn-label" style={{ fontWeight: 700 }}>{t.label}</span>
+                      <span className="nv-tn-type">{t.category === 'gaming' ? 'Gaming Server' : 'Network Node'}</span>
                     </div>
                     <span className="nv-tele-ping font-mono" style={{ fontSize: !hasTime && !r?.loading ? '10px' : '14px' }}>
-                      {hasTime ? r.time : r?.loading ? '...' : 'TIMEOUT'}
+                      {hasTime ? r.time : r?.loading ? '...' : 'UNREACHABLE'}
                       {hasTime && <small>ms</small>}
                     </span>
                   </div>

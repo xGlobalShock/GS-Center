@@ -239,14 +239,26 @@ app.on('ready', async () => {
   windowManager.sendSplashProgress(55);
 
   windowManager.createWindow();
+  const appWindow = windowManager.getMainWindow();
+  if (appWindow) {
+    const setActive = () => hardwareMonitor._setRealtimeWindowActive(true);
+    const setInactive = () => hardwareMonitor._setRealtimeWindowActive(false);
+    appWindow.on('focus', setActive);
+    appWindow.on('restore', setActive);
+    appWindow.on('blur', setInactive);
+    appWindow.on('minimize', setInactive);
+    appWindow.on('hide', setInactive);
+  }
+
   hardwareMonitor._startLatencyPoll();
   const prewarmPromise = _prewarmScanCaches();
 
   autoUpdater.initAutoUpdater();
 
+  // Reuse existing window reference (already bound above)
   const mainWindow = windowManager.getMainWindow();
   await new Promise((resolve) => {
-    mainWindow.webContents.on('did-finish-load', resolve);
+    mainWindow?.webContents.on('did-finish-load', resolve);
     setTimeout(resolve, 8000);
   });
 

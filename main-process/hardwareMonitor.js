@@ -551,10 +551,15 @@ function _formatUptimeSeconds(seconds) {
 }
 
 const isWinPing = process.platform === 'win32';
-// Low-end friendly behavior: single ping with low timeout, longer interval
+// Low-end friendly behavior: single ping with low timeout, adaptive polling interval
 const pingArgs1 = isWinPing ? ['-n', '1', '-w', '2000'] : ['-c', '1', '-W', '2'];
 const pingArgsFast = pingArgs1; // keep single packet for smaller overhead
-const LATENCY_POLL_INTERVAL_MS = 30000;
+const LATENCY_POLL_INTERVAL_ACTIVE_MS = 1000; // 1s for active view
+const LATENCY_POLL_INTERVAL_IDLE_MS = 10000; // 10s for inactive/minimized
+
+let _rtWindowActive = true;
+let _rtLatencyPollingIntervalMs = LATENCY_POLL_INTERVAL_ACTIVE_MS;
+let _rtPingInFlight = false;
 
 function _parsePingOutput(stdout) {
   const text = String(stdout);
@@ -588,8 +593,41 @@ async function _pingHost(host, args) {
   }
 }
 
+function _updateLatencyPollInterval() {
+  if (!_realtimeLatencyTimer) return;
+  clearInterval(_realtimeLatencyTimer);
+  _realtimeLatencyTimer = setInterval(_doPing, _rtLatencyPollingIntervalMs);
+}
+
+async function _doPing() {
+  if (_rtPingInFlight) return;
+  _rtPingInFlight = true;
+  try {
+    const res = await _pingHost('8.8.8.8', pingArgsFast);
+    if (res.success) {
+      _rtLastLatency = res.time ?? 0;
+      _rtLastPacketLoss = typeof res.packetLoss === 'number' ? res.packetLoss : 0;
+    } else {
+      _rtLastLatency = res.time ?? 0;
+      _rtLastPacketLoss = typeof res.packetLoss === 'number' ? res.packetLoss : -1;
+    }
+  } finally {
+    _rtPingInFlight = false;
+  }
+}
+
+function _setRealtimeWindowActive(active) {
+  _rtWindowActive = !!active;
+  _rtLatencyPollingIntervalMs = _rtWindowActive ? LATENCY_POLL_INTERVAL_ACTIVE_MS : LATENCY_POLL_INTERVAL_IDLE_MS;
+  if (_realtimeLatencyTimer) {
+    _updateLatencyPollInterval();
+  }
+}
+
 function _startLatencyPoll() {
   if (_realtimeLatencyTimer) return;
+
+  _rtLatencyPollingIntervalMs = _rtWindowActive ? LATENCY_POLL_INTERVAL_ACTIVE_MS : LATENCY_POLL_INTERVAL_IDLE_MS;
 
   (async () => {
     const res = await _pingHost('8.8.8.8', pingArgs1);
@@ -599,19 +637,8 @@ function _startLatencyPoll() {
     }
   })();
 
-  const doPing = async () => {
-    const res = await _pingHost('8.8.8.8', pingArgsFast);
-    if (res.success) {
-      _rtLastLatency = res.time ?? 0;
-      _rtLastPacketLoss = typeof res.packetLoss === 'number' ? res.packetLoss : 0;
-    } else {
-      _rtLastLatency = res.time ?? 0;
-      _rtLastPacketLoss = typeof res.packetLoss === 'number' ? res.packetLoss : -1;
-    }
-  };
-
-  doPing();
-  _realtimeLatencyTimer = setInterval(doPing, LATENCY_POLL_INTERVAL_MS);
+  _doPing();
+  _realtimeLatencyTimer = setInterval(_doPing, _rtLatencyPollingIntervalMs);
 }
 
 function _startWifiPoll() {
@@ -865,6 +892,16 @@ function registerIPC() {
     _startRealtimePush();
     return { success: true };
   });
+
+  ipcMain.handle('system:stop-realtime', () => {
+    _stopRealtimePush();
+    return { success: true };
+  });
+
+  ipcMain.handle('system:set-realtime-active', (_event, active) => {
+    _setRealtimeWindowActive(!!active);
+    return { success: true, active: !!active };
+  });
 }
 
 module.exports = {
@@ -877,6 +914,7 @@ module.exports = {
   _startRealtimePush,
   _stopRealtimePush,
   _startLatencyPoll,
+  _setRealtimeWindowActive,
   getDiskRefreshTimer,
   clearDiskRefreshTimer,
   registerIPC,

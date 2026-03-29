@@ -180,19 +180,28 @@ export function useRealtimeHardware(options: UseRealtimeHardwareOptions = {}) {
   }, [connected]);
 
   useEffect(() => {
-    if (!enabled || !window.electron?.ipcRenderer) return;
+    if (!window.electron?.ipcRenderer) return;
 
-    // Subscribe to push events from main process
-    const unsubscribe = window.electron.ipcRenderer.on(
-      'realtime-hw-update',
-      (payload: RealtimeHWPayload) => {
-        latestRef.current = payload;
-        scheduleFlush();
-      }
-    );
+    let unsubscribe: (() => void) | undefined;
 
-    // Also request the main process to ensure push is running
-    window.electron.ipcRenderer.invoke('system:start-realtime').catch(() => {});
+    if (enabled) {
+      // Subscribe to push events from main process
+      unsubscribe = window.electron.ipcRenderer.on(
+        'realtime-hw-update',
+        (payload: RealtimeHWPayload) => {
+          latestRef.current = payload;
+          scheduleFlush();
+        }
+      );
+
+      // Also request the main process to ensure push is running
+      window.electron.ipcRenderer.invoke('system:start-realtime').catch(() => {});
+      window.electron.ipcRenderer.invoke('system:set-realtime-active', true).catch(() => {});
+    } else {
+      // Disable push when not needed (e.g., different page)
+      window.electron.ipcRenderer.invoke('system:set-realtime-active', false).catch(() => {});
+      window.electron.ipcRenderer.invoke('system:stop-realtime').catch(() => {});
+    }
 
     return () => {
       // Clean up subscription
@@ -201,10 +210,16 @@ export function useRealtimeHardware(options: UseRealtimeHardwareOptions = {}) {
       } else {
         window.electron?.ipcRenderer?.removeAllListeners?.('realtime-hw-update');
       }
+
       // Cancel pending rAF
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
+      }
+
+      // Ensure polling is disabled after unmount
+      if (enabled) {
+        window.electron?.ipcRenderer?.invoke('system:stop-realtime').catch(() => {});
       }
     };
   }, [enabled, scheduleFlush]);

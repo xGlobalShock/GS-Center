@@ -12,6 +12,10 @@ export interface SpaceChild {
   name: string;
   path: string;
   size: number;
+  allocated: number;
+  fileCount?: number;
+  folderCount?: number;
+  modified: string;
   isDir: boolean;
 }
 
@@ -20,6 +24,8 @@ export interface SpaceResult {
   children: SpaceChild[];
   scannedFiles: number;
   scannedDirs: number;
+  driveCapacity: number;
+  driveFree: number;
 }
 
 interface SpaceProgress {
@@ -210,15 +216,15 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
             transition={{ duration: 0.15 }}
             onClick={(e) => e.stopPropagation()} // Prevent closing when clicking menu itself
           >
-            <div className="sa-menu-header">FRAGMENT ANALYSIS</div>
+            <div className="sa-menu-header">Fragment Analysis</div>
             
             <div className="sa-menu-item" onClick={() => { contextMenu.item.isDir ? handleScan(contextMenu.item.path) : copyPath(); }}>
                {contextMenu.item.isDir ? <Search size={14} /> : <Copy size={14} />}
-               {contextMenu.item.isDir ? 'ANALYZE SECTOR' : 'COPY PATH'}
+               {contextMenu.item.isDir ? 'Analyze Sector' : 'Copy Path'}
             </div>
 
             <div className="sa-menu-item" onClick={copyPath}>
-               <Zap size={14} /> COPY COORDINATES
+               <Copy size={14} /> Copy Path
             </div>
 
             <div className="sa-menu-divider" />
@@ -228,7 +234,7 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
               onClick={handleDelete}
             >
                <Trash2 size={14} /> 
-               {isDeleting ? 'ERASING...' : confirmDelete ? 'CONFIRM ERASURE?' : 'ERASE FRAGMENT'}
+               {isDeleting ? 'Deleting...' : confirmDelete ? 'Delete this item?' : 'Delete'}
             </div>
           </motion.div>
         )}
@@ -250,7 +256,7 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
         )}
         <div className="sa-deck-left">
           <button className="sa-btn-cyber" onClick={handleBack} disabled={history.length === 0 || isScanning}>
-            <ChevronLeft size={16} /> REVERT
+            <ChevronLeft size={16} /> Back
           </button>
 
           <div className="sa-path-input-group">
@@ -269,9 +275,9 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
           onClick={() => (isScanning ? handleCancel() : handleScan(undefined, true))}
         >
           {isScanning ? (
-            <><X size={16} /> ABORT SCAN</>
+            <><X size={16} /> Stop Scan</>
           ) : (
-            <><Play size={16} /> LAUNCH SCAN</>
+            <><Play size={16} /> Start Scan</>
           )}
         </button>
       </motion.div>
@@ -287,27 +293,27 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
           transition={{ duration: 0.5, delay: 0.1 }}
         >
           <div className="sa-metric-card">
-            <div className="sa-metric-header"><Cpu size={14} /> CLUSTER INTEGRITY</div>
+            <div className="sa-metric-header"><Cpu size={14} /> Total Files</div>
             <div className="sa-metric-value">{currentFiles.toLocaleString()}</div>
-            <div className="sa-metric-desc">Discovered Data Fragments</div>
+            <div className="sa-metric-desc">Files Found</div>
           </div>
 
           <div className="sa-metric-card">
-            <div className="sa-metric-header"><Radar size={14} /> TOPOLOGY DEPTH</div>
+            <div className="sa-metric-header"><Radar size={14} /> Subdirectories</div>
             <div className="sa-metric-value">{currentDirs.toLocaleString()}</div>
-            <div className="sa-metric-desc">Mapped Sub-Directories</div>
+            <div className="sa-metric-desc">Folders Found</div>
           </div>
 
           <div className="sa-metric-card">
-            <div className="sa-metric-header"><Orbit size={14} /> MASS QUANTUM</div>
-            <div className="sa-metric-value" style={{color: "var(--sa-cyan)"}}>{formatBytes(currentSize)}</div>
-            <div className="sa-metric-desc">Accumulated Volume</div>
+            <div className="sa-metric-header"><Orbit size={14} /> Used Space</div>
+            <div className="sa-metric-value" style={{color: "var(--sa-cyan)"}}>{result && result.driveCapacity > 0 ? formatBytes(result.driveCapacity - result.driveFree) : 'Scanning...'}</div>
+            <div className="sa-metric-desc">{result?.driveCapacity > 0 ? `of ${formatBytes(result.driveCapacity)}` : 'Disk Usage'}</div>
           </div>
           
           <div className="sa-metric-card">
-            <div className="sa-metric-header"><Sparkles size={14} /> NEURAL EFFICIENCY</div>
-            <div className="sa-metric-value" style={{color: "var(--sa-purple)"}}>{efficiency.toFixed(1)}%</div>
-            <div className="sa-metric-desc">Analysis Processing Rate</div>
+            <div className="sa-metric-header"><Sparkles size={14} /> Free Space</div>
+            <div className="sa-metric-value" style={{color: "var(--sa-purple)"}}>{result && result.driveFree >= 0 ? formatBytes(result.driveFree) : 'Loading...'}</div>
+            <div className="sa-metric-desc">Available</div>
           </div>
         </motion.div>
 
@@ -319,32 +325,38 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
           transition={{ duration: 0.4, delay: 0.2 }}
         >
           <div className="sa-dir-header">
-            <div>IDENTIFIER</div>
-            <div style={{textAlign: 'right'}}>VOLUME</div>
-            <div>ALLOCATION</div>
+            <div style={{ flex: '2' }}>Name</div>
+            <div style={{ flex: '1', textAlign: 'right' }}>Size</div>
+            <div style={{ flex: '1', textAlign: 'right' }}>Allocated</div>
+            <div style={{ flex: '0.8', textAlign: 'center' }}>Files</div>
+            <div style={{ flex: '0.8', textAlign: 'center' }}>Folders</div>
+            <div style={{ flex: '0.8', textAlign: 'right' }}>% Parent</div>
+            <div style={{ flex: '1.2', textAlign: 'right' }}>Modified</div>
           </div>
           
           <div className="sa-dir-body">
             {!result && !isScanning && (
               <div className="sa-empty-state">
                 <Crosshair size={64} strokeWidth={1} />
-                <h3>AWAITING TARGET COORDINATES</h3>
-                <p>Input a structural path or initialize scan to begin rendering the holographic volume map.</p>
+                <h3>Ready to Scan</h3>
+                <p>Enter a folder path in the input above to begin the disk space analysis.</p>
               </div>
             )}
 
             {isScanning && !result && (
               <div className="sa-empty-state">
                 <Activity size={64} className="sa-icon-glow" />
-                <h3 style={{color: "var(--sa-cyan)"}}>SYSTEM SCAN IN PROGRESS</h3>
-                <p>Establishing neural uplink to sector {targetPath}...</p>
+                <h3 style={{color: "var(--sa-cyan)"}}>Scanning Folders...</h3>
+                <p>Analyzing files and folders in {targetPath}</p>
               </div>
             )}
 
             <AnimatePresence>
               {result?.children.map((child, idx) => {
                 const pct = percentage(child.size);
-                const barType = pct > 40 ? 'sa-bar-danger' : pct > 15 ? 'sa-bar-warning' : 'sa-bar-normal';
+                const lastMod = child.modified ? new Date(child.modified).toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' }) : 'N/A';
+                const files = child.isDir ? (child.fileCount || 0) : '';
+                const folders = child.isDir ? (child.folderCount || 0) : '';
                 return (
                   <motion.div
                     key={child.path}
@@ -355,27 +367,37 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
                     onClick={() => child.isDir && handleScan(child.path, false)}
                     onContextMenu={(e) => handleRightClick(e, child)}
                   >
-                    <div className="sa-row-name">
-                      {child.isDir ? <Folder size={18} className="sa-icon-glow" /> : <File size={18} color="rgba(255,255,255,0.4)" />}
-                      <span className="sa-name-text" title={child.name}>{child.name}</span>
+                    <div style={{ flex: '2', display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                      {child.isDir ? <Folder size={16} className="sa-icon-glow" /> : <File size={16} color="rgba(255,255,255,0.4)" />}
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={child.name}>{child.name}</span>
                     </div>
-                    <div className="sa-row-size" style={{textAlign: 'right'}}>{formatBytes(child.size)}</div>
-                    <div className="sa-row-usage">
-                      <div className="sa-bar-track">
-                        <motion.div 
-                          className={`sa-bar-fill ${barType}`}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${pct}%` }}
-                          transition={{ duration: 1, ease: "easeOut" }}
-                        />
-                      </div>
-                      <span className="sa-usage-pct">{pct.toFixed(2)}%</span>
-                      {child.isDir ? (
-                        <ChevronRight size={16} color="var(--sa-cyan)" className="sa-row-arrow" />
-                      ) : (
-                        <div className="sa-row-arrow" style={{ width: 16 }} />
-                      )}
+                    <div style={{ flex: '1', textAlign: 'right', color: 'var(--sa-cyan)' }}>{formatBytes(child.size)}</div>
+                    <div style={{ flex: '1', textAlign: 'right', color: 'rgba(255,255,255,0.6)' }}>{formatBytes(child.allocated || 0)}</div>
+                    <div style={{ flex: '0.8', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>{files}</div>
+                    <div style={{ flex: '0.8', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>{folders}</div>
+                    <div style={{ flex: '0.8', position: 'relative', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ position: 'absolute', left: 0, top: 0, right: 0, height: '100%', background: 'rgba(0, 0, 0, 0.4)', borderRadius: '4px', border: '1px solid rgba(0, 242, 255, 0.15)' }} />
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.6, ease: 'easeOut' }}
+                        style={{ 
+                          position: 'absolute', 
+                          left: 0, 
+                          top: 0, 
+                          height: '100%',
+                          background: pct > 50 
+                            ? 'linear-gradient(90deg, rgb(255, 0, 0), rgb(255, 0, 0))'
+                            : pct > 25
+                            ? 'linear-gradient(90deg, rgb(255, 217, 0), rgb(255, 217, 0))'
+                            : 'linear-gradient(90deg, rgb(0, 255, 55), rgb(0, 255, 55))',
+                          borderRadius: '4px',
+                          boxShadow: pct > 50 ? '0 0 12px rgba(255, 45, 85, 0.5)' : pct > 25 ? '0 0 10px rgba(255, 214, 0, 0.4)' : '0 0 10px rgba(0, 255, 136, 0.4)'
+                        }} 
+                      />
+                      <span style={{ position: 'relative', zIndex: 1, color: '#ffffff', fontSize: '11px', fontWeight: 700, textShadow: '0 0 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.6)' }}>{pct.toFixed(1)}%</span>
                     </div>
+                    <div style={{ flex: '1.2', textAlign: 'right', color: 'rgba(255,255,255,0.6)', fontSize: '12px' }}>{lastMod}</div>
                   </motion.div>
                 );
               })}
@@ -391,11 +413,11 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
           transition={{ duration: 0.5, delay: 0.3 }}
         >
           <div className="sa-radar-box">
-            <div className="sa-radar-title"><AlertTriangle size={18} /> CRITICAL HOTSPOTS</div>
+            <div className="sa-radar-title"><AlertTriangle size={18} /> Largest Items</div>
             
             {topUsage.length === 0 ? (
                <div className="sa-empty-state" style={{minHeight: 150}}>
-                 <p style={{fontSize: '0.8rem'}}>NO HAZARDOUS ANOMALIES DETECTED</p>
+                 <p style={{fontSize: '0.8rem'}}>No items to display</p>
                </div>
             ) : (
               <div className="sa-hotspot-list">
@@ -403,8 +425,8 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
                   <div className="sa-hotspot-item" key={item.path}>
                     <div className="sa-hotspot-rank">0{idx + 1}</div>
                     <div className="sa-hotspot-details">
-                      <h4 title={item.name}>{item.name.toUpperCase()}</h4>
-                      <p>{formatBytes(item.size)} // {percentage(item.size).toFixed(1)}% IMPACT</p>
+                      <h4 title={item.name}>{item.name}</h4>
+                      <p>{formatBytes(item.size)} // {percentage(item.size).toFixed(1)}% of Disk</p>
                     </div>
                   </div>
                 ))}
@@ -414,22 +436,22 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
 
           <div className="sa-status-matrix">
             <div className="sa-matrix-cell">
-              SECTORS SCANNED
+              Folders Analyzed
               <strong>{(history.length + 1).toString().padStart(3, '0')}</strong>
             </div>
             <div className="sa-matrix-cell">
-              CACHE ENGINE
-              <strong>{isScanning ? 'BYPASSED' : 'ACTIVE'}</strong>
+              Cache Status
+              <strong>{isScanning ? 'Disabled' : 'Enabled'}</strong>
             </div>
             <div className="sa-matrix-cell">
-              UPLINK STATUS
-              <strong style={{color: isScanning ? 'var(--sa-pink)' : 'var(--sa-cyan)'}}>
-                {isScanning ? 'SYNCING...' : 'LOCKED'}
+              Scan Status
+              <strong style={{color: isScanning ? 'var(--sa-pink)' : 'var(--sa-text)'}}>
+                {isScanning ? 'Running...' : 'Ready'}
               </strong>
             </div>
             <div className="sa-matrix-cell">
-              ANOMALIES &gt; 25%
-              <strong style={{color: 'var(--sa-pink)'}}>{result ? topUsage.filter(x => percentage(x.size) > 25).length : 0}</strong>
+              Items &gt; 25%
+              <strong style={{color: 'var(--sa-text)'}}>{result ? topUsage.filter(x => percentage(x.size) > 25).length : 0}</strong>
             </div>
           </div>
         </motion.div>

@@ -1,6 +1,8 @@
 const { ipcMain, shell } = require('electron');
 const fs = require('fs/promises');
+const fsSync = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 // Track active scans to allow cancellation
 let activeScans = new Set();
@@ -46,6 +48,31 @@ function findNodeByPath(node, targetPath) {
 }
 
 /**
+ * Get drive capacity and free space using PowerShell
+ */
+function getDriveInfo(dirPath) {
+  try {
+    // Extract drive letter from path (e.g., "C" from "C:\\Users")
+    const driveMatch = dirPath.match(/^([A-Z]):/i);
+    if (!driveMatch) return { driveCapacity: 0, driveFree: 0 };
+
+    const driveLetter = driveMatch[1].toUpperCase();
+    
+    // Use PowerShell to get disk info - returns two lines: total size, then free space
+    const cmd = `powershell -Command "$disk = Get-Volume -DriveLetter ${driveLetter}; Write-Output $disk.Size; Write-Output $disk.SizeRemaining"`;
+    const output = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim().split('\n');
+    
+    const driveCapacity = parseInt(output[0]?.trim()) || 0;
+    const driveFree = parseInt(output[1]?.trim()) || 0;
+    
+    return { driveCapacity, driveFree };
+  } catch (err) {
+    // Silently fail - not critical
+  }
+  return { driveCapacity: 0, driveFree: 0 };
+}
+
+/**
  * Converts internal Node representation into the flat list array expected by React
  */
 function formatNodeResult(node, scannedFiles, scannedDirs) {
@@ -53,24 +80,39 @@ function formatNodeResult(node, scannedFiles, scannedDirs) {
     name: c.name,
     path: c.path,
     size: c.size,
+    allocated: c.allocated,
+    fileCount: c.fileCount,
+    folderCount: c.folderCount,
+    modified: c.modified.toISOString(),
     isDir: true
   }));
   // Add individual files instead of a single aggregate
   if (node.files) {
     for (const f of node.files) {
-      childrenList.push({ name: f.name, path: path.join(node.path, f.name), size: f.size, isDir: false });
+      childrenList.push({ 
+        name: f.name, 
+        path: path.join(node.path, f.name), 
+        size: f.size, 
+        allocated: f.allocated,
+        modified: f.modified.toISOString(),
+        isDir: false 
+      });
     }
   }
 
   // Sort descending by size
   childrenList.sort((a, b) => b.size - a.size);
 
+  const driveInfo = getDriveInfo(node.path);
+
   return {
     totalSize: node.size,
     children: childrenList,
     scannedFiles,
     scannedDirs,
-    isCached: true
+    isCached: true,
+    driveCapacity: driveInfo.driveCapacity,
+    driveFree: driveInfo.driveFree
   };
 }
 
@@ -87,9 +129,14 @@ async function getDirSizeConcurrency(startPath, isCancelled, onProgress) {
     path: startPath,
     size: 0,
     filesSize: 0,
+    fileCount: 0,
+    folderCount: 0,
+    allocated: 0,
+    modified: new Date(0),
     children: new Map(),
     isDir: true,
-    parent: null
+    parent: null,
+    files: []
   };
 
   let dirsToProcess = [{ path: startPath, node: rootNode }];
@@ -121,11 +168,17 @@ async function getDirSizeConcurrency(startPath, isCancelled, onProgress) {
               path: fullPath,
               size: 0,
               filesSize: 0,
+              fileCount: 0,
+              folderCount: 0,
+              allocated: 0,
+              modified: new Date(0),
               children: new Map(),
               isDir: true,
-              parent: item.node
+              parent: item.node,
+              files: []
             };
             item.node.children.set(entry.name, childNode);
+            item.node.folderCount++;
             dirsToProcess.push({ path: fullPath, node: childNode });
           } else if (entry.isFile()) {
             statTasks.push({ path: fullPath, parentNode: item.node, name: entry.name });
@@ -141,7 +194,7 @@ async function getDirSizeConcurrency(startPath, isCancelled, onProgress) {
       const chunk = statTasks.slice(i, i + chunkSize);
 
       const stats = await Promise.allSettled(
-        chunk.map(c => fs.stat(c.path).then(s => ({ size: s.size, item: c })))
+        chunk.map(c => fs.stat(c.path).then(s => ({ size: s.size, allocated: Math.ceil(s.size / 4096) * 4096, modified: s.mtime, item: c })))
       );
 
       for (const res of stats) {
@@ -150,14 +203,22 @@ async function getDirSizeConcurrency(startPath, isCancelled, onProgress) {
           const val = res.value;
 
           if (!val.item.parentNode.files) val.item.parentNode.files = [];
-          val.item.parentNode.files.push({ name: val.item.name, size: val.size });
-
+          val.item.parentNode.files.push({ name: val.item.name, size: val.size, allocated: val.allocated, modified: val.modified, isDir: false });
+          val.item.parentNode.fileCount++;
           val.item.parentNode.filesSize += val.size;
+          val.item.parentNode.allocated += val.allocated;
+          
+          // Update modified date (keep the most recent)
+          if (val.modified > val.item.parentNode.modified) {
+            val.item.parentNode.modified = val.modified;
+          }
 
           // Propagate the size all the way up the tree to the root
           let curr = val.item.parentNode;
           while (curr) {
             curr.size += val.size;
+            curr.allocated += val.allocated;
+            if (val.modified > curr.modified) curr.modified = val.modified;
             curr = curr.parent;
           }
         }
@@ -198,10 +259,16 @@ function registerIPC() {
       return await activeScanPromises.get(dirPath);
     }
 
+    // Only clear cache if we're switching to a different drive
+    const newDriveLetter = dirPath.match(/^([A-Z]):/i)?.[1]?.toUpperCase();
+    const cachedDriveLetter = cachedTree?.rootNode?.path?.match(/^([A-Z]):/i)?.[1]?.toUpperCase();
+    
+    if (newDriveLetter && cachedDriveLetter && newDriveLetter !== cachedDriveLetter) {
+      cachedTree = null;
+    }
+
     // Create the background scanning promise
     const scanPromise = (async () => {
-      // If not in cache (e.g. completely new drive being scanned), wipe cache and start fresh
-      cachedTree = null;
       activeScans.add(dirPath);
 
       const onProgress = (files, dirs, size) => {
