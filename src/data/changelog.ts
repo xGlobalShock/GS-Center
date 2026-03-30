@@ -10,6 +10,18 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.6',
+    date: '2026-04-02',
+    highlights: 'Hardware Information Enhancements, Splash UX and Optimization',
+    changes: [
+      { type: 'new', text: 'Added more detailed hardware information in the Performance page.' },
+      { type: 'new', text: 'Added new smoother transitions for hardware information display.' },
+      { type: 'improved', text: 'Enhanced hardware detection for more accurate information display on low-end systems.' },
+      { type: 'improved', text: 'Improved splash screen flow with progressive load steps and smoother progress animation.' },
+      { type: 'improved', text: 'Optimized startup path to avoid blocking on background scans and maintain responsive load behavior.' },
+    ],
+  },
+  {
     version: '1.5.5',
     date: '2026-04-01',
     highlights: 'Minor Bug Fixes & Performance Improvements',

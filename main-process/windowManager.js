@@ -70,6 +70,12 @@ function sendSplashProgress(pct) {
   }
 }
 
+function sendSplashDetails(details) {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send('splash:details', details);
+  }
+}
+
 function createWindow() {
   const isDev = !app.isPackaged;
 
@@ -161,5 +167,6 @@ module.exports = {
   createSplashWindow,
   sendSplashStatus,
   sendSplashProgress,
+  sendSplashDetails,
   createWindow,
 };

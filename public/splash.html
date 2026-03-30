@@ -28,6 +28,7 @@
   .grid-wrap {
     position: absolute; inset: 0; z-index: 0; overflow: hidden; perspective: 800px;
   }
+
   .grid-plane {
     position: absolute; left: -50%; right: -50%; bottom: -30%; height: 130%;
     background-image: 
@@ -105,7 +106,9 @@
   /* Loading Footer */
   .loading-footer { width: 100%; display: flex; flex-direction: column; gap: 8px; }
   .loading-info { display: flex; justify-content: space-between; align-items: flex-end; width: 100%; }
-  .status-msg { font-family: 'Consolas', monospace; font-size: 10px; letter-spacing: 2px; color: #b4e0ca; text-transform: uppercase; }
+  .status-msg { font-family: 'Ubuntu', sans-serif; font-size: 10px; color: #b4e0ca; text-transform: none; }
+  .hardware-details { display: none; }
+  .status-msg { font-size: 12px; }
   .percentage { font-family: 'Consolas', monospace; font-size: 24px; font-weight: 700; color: #00ff88; text-shadow: 0 0 12px rgba(0,255,136,0.6); line-height: 1; }
 
   /* Glow Blade Engine */
@@ -172,6 +175,7 @@
         <span class="status-msg" id="status">INITIALIZING CORE...</span>
         <span class="percentage" id="progressPct">0%</span>
       </div>
+      <div class="hardware-details" id="hardwareDetails">Waiting for hardware discovery...</div>
       <div class="progress-blade">
         <div class="blade-fill" id="progressFill">
           <div class="blade-glint"></div>
@@ -188,22 +192,143 @@
       document.getElementById('versionTag').textContent = 'v' + (v || '1.0.0');
     });
 
+    let statusDotTimer = null;
+
+    const setStatusText = (text) => {
+      const statusEl = document.getElementById('status');
+      if (!statusEl) return;
+
+      if (statusDotTimer) {
+        clearInterval(statusDotTimer);
+        statusDotTimer = null;
+      }
+
+      const discoverMatch = /^discovering\s+(.+)$/i.exec(text);
+      if (discoverMatch) {
+        let base = `Discovering ${discoverMatch[1]}`;
+        let dots = 0;
+        statusEl.textContent = `${base}...`;
+
+        statusDotTimer = setInterval(() => {
+          dots = (dots + 1) % 4; // 0..3
+          const dotText = '.'.repeat(dots);
+          statusEl.textContent = `${base}${dotText}`;
+        }, 400);
+      } else {
+        statusEl.textContent = text;
+      }
+    };
+
     ipcRenderer.on('splash:status', (_e, msg) => {
-      document.getElementById('status').textContent = msg;
+      setStatusText(msg);
     });
 
-    ipcRenderer.on('splash:progress', (_e, pct) => {
+    let currentPct = 0;
+    let percentAnimation = null;
+
+    const setPercent = (targetPct) => {
       const fill = document.getElementById('progressFill');
       const pctText = document.getElementById('progressPct');
-      fill.style.width = Math.min(pct, 100) + '%';
-      pctText.textContent = Math.floor(pct) + '%';
+      targetPct = Math.min(100, Math.max(0, targetPct));
+
+      if (percentAnimation) {
+        cancelAnimationFrame(percentAnimation);
+      }
+
+      const startPct = currentPct;
+      const diff = targetPct - startPct;
+      const duration = 500;
+      const startTime = performance.now();
+
+      const animate = (time) => {
+        const progress = Math.min(1, (time - startTime) / duration);
+        const eased = startPct + diff * (1 - Math.pow(1 - progress, 2));
+
+        fill.style.width = `${eased}%`;
+        pctText.textContent = `${Math.round(eased)}%`;
+
+        if (progress < 1) {
+          percentAnimation = requestAnimationFrame(animate);
+        } else {
+          currentPct = targetPct;
+          fill.style.width = `${targetPct}%`;
+          pctText.textContent = `${Math.round(targetPct)}%`;
+          percentAnimation = null;
+        }
+      };
+
+      percentAnimation = requestAnimationFrame(animate);
+    };
+
+    ipcRenderer.on('splash:progress', (_e, pct) => {
+      setPercent(pct);
+    });
+
+    let hardwareDetailsLines = ['Waiting for hardware discovery...'];
+    let hardwareDetailsIndex = 0;
+    let hardwareDetailsTimer = null;
+
+    const renderHardwareDetail = (idx) => {
+      const detailsEl = document.getElementById('hardwareDetails');
+      if (!detailsEl) return;
+
+      detailsEl.innerHTML = '';
+      hardwareDetailsLines.forEach((line, i) => {
+        const span = document.createElement('span');
+        span.textContent = line;
+        span.classList.toggle('active', i === idx);
+        detailsEl.appendChild(span);
+      });
+    };
+
+    const updateHardwareDetails = (text) => {
+      const detailsEl = document.getElementById('hardwareDetails');
+      if (!detailsEl) return;
+
+      hardwareDetailsLines = String(text || 'Hardware discovery in progress...')
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      if (hardwareDetailsLines.length === 0) {
+        hardwareDetailsLines = ['Hardware discovery in progress...'];
+      }
+
+      hardwareDetailsIndex = 0;
+      renderHardwareDetail(hardwareDetailsIndex);
+
+      if (hardwareDetailsTimer) {
+        clearInterval(hardwareDetailsTimer);
+      }
+
+      hardwareDetailsTimer = setInterval(() => {
+        hardwareDetailsIndex = (hardwareDetailsIndex + 1) % hardwareDetailsLines.length;
+        renderHardwareDetail(hardwareDetailsIndex);
+      }, 2000); // slower rotation
+    };
+
+    ipcRenderer.on('splash:details', (_e, details) => {
+      updateHardwareDetails(details);
     });
 
     ipcRenderer.on('splash:done', () => {
-      document.getElementById('progressFill').style.width = '100%';
-      document.getElementById('progressPct').textContent = '100%';
-      document.getElementById('status').textContent = 'READY. LAUNCHING...';
-      
+      if (hardwareDetailsTimer) {
+        clearInterval(hardwareDetailsTimer);
+        hardwareDetailsTimer = null;
+      }
+      if (statusDotTimer) {
+        clearInterval(statusDotTimer);
+        statusDotTimer = null;
+      }
+      if (percentAnimation) {
+        cancelAnimationFrame(percentAnimation);
+        percentAnimation = null;
+      }
+
+      setStatusText('READY. LAUNCHING...');
+      setPercent(100);
+      currentPct = 100;
+
       setTimeout(() => {
         document.getElementById('content').classList.add('fade-out');
       }, 400);

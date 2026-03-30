@@ -2,6 +2,14 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const { execSync } = require('child_process');
 const path = require('path');
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[UNHANDLED_REJECTION]', reason, promise);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[UNCAUGHT_EXCEPTION]', err);
+});
+
 // ── Modules ─────────────────────────────────────────────────────────────────
 const windowManager = require('../main-process/windowManager');
 const autoUpdater = require('../main-process/autoUpdater');
@@ -206,13 +214,21 @@ app.on('ready', async () => {
 
   const splash = windowManager.getSplashWindow();
   if (splash && !splash.isDestroyed()) {
-    splash.webContents.on('did-finish-load', () => {
-      splash.webContents.send('splash:version', app.getVersion());
+    await new Promise((resolve) => {
+      const onReady = () => {
+        if (splash && !splash.isDestroyed()) {
+          splash.webContents.send('splash:version', app.getVersion());
+        }
+        resolve();
+      };
+      splash.webContents.once('did-finish-load', onReady);
+      setTimeout(resolve, 3000);
     });
   }
 
   windowManager.sendSplashStatus('Checking for updates...');
   windowManager.sendSplashProgress(5);
+  windowManager.sendSplashDetails('Waiting for hardware discovery...');
   const softwareUpdatesPromise = softwareUpdates.checkSoftwareUpdatesImpl()
     .then(result => softwareUpdates.setSoftwareUpdatesCache(result))
     .catch(() => { });
@@ -237,19 +253,63 @@ app.on('ready', async () => {
   hardwareMonitor._startDiskRefresh();
   hardwareMonitor._startRamCacheRefresh();
 
-  windowManager.sendSplashStatus('Discovering system hardware...');
-  windowManager.sendSplashProgress(40);
+  windowManager.sendSplashStatus('Discovering Processor');
+  windowManager.sendSplashProgress(20);
 
   hardwareInfo.initHardwareInfo();
+
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const componentDelay = 900;
+
   try {
     const hwPromise = hardwareInfo.getHwInfoPromise();
     if (hwPromise) {
-      await hwPromise;
+      windowManager.sendSplashStatus('Discovering CPU');
+      windowManager.sendSplashProgress(20);
+      await sleep(componentDelay);
+
+      const hwInfo = await hwPromise;
+      if (hwInfo) {
+        const cpuText = (hwInfo.cpuName || 'unknown cpu').slice(0, 28) + (hwInfo.cpuName && hwInfo.cpuName.length > 28 ? '...' : '');
+        const gpuText = (hwInfo.gpuName || 'unknown gpu').slice(0, 28) + (hwInfo.gpuName && hwInfo.gpuName.length > 28 ? '...' : '');
+        const ramText = (hwInfo.ramInfo || 'unknown ram').slice(0, 28) + (hwInfo.ramInfo && hwInfo.ramInfo.length > 28 ? '...' : '');
+
+        windowManager.sendSplashStatus(`CPU: ${cpuText}`);
+        windowManager.sendSplashDetails(`CPU details: ${hwInfo.cpuName || 'unknown cpu'}`);
+        windowManager.sendSplashProgress(34);
+        await sleep(componentDelay);
+
+        windowManager.sendSplashStatus('Discovering GPU');
+        await sleep(componentDelay);
+        windowManager.sendSplashStatus(`GPU: ${gpuText}`);
+        windowManager.sendSplashDetails(`GPU details: ${hwInfo.gpuName || 'unknown gpu'}`);
+        windowManager.sendSplashProgress(55);
+        await sleep(componentDelay);
+
+        windowManager.sendSplashStatus('Discovering RAM');
+        await sleep(componentDelay);
+        windowManager.sendSplashStatus(`RAM: ${ramText}`);
+        windowManager.sendSplashDetails(`RAM details: ${hwInfo.ramInfo || 'unknown ram'}`);
+        windowManager.sendSplashProgress(75);
+        await sleep(componentDelay);
+
+        windowManager.sendSplashStatus('Finalizing');
+        windowManager.sendSplashProgress(87);
+        await sleep(650);
+      }
     }
-  } catch { }
+  } catch (err) {
+    console.error('[MAIN] hardware discovery failed', err);
+    windowManager.sendSplashStatus('Hardware discovery failed');
+    windowManager.sendSplashDetails('CPU: Unknown');
+    await sleep(200);
+    windowManager.sendSplashDetails('GPU: Unknown');
+    await sleep(200);
+    windowManager.sendSplashDetails('RAM: Unknown');
+  }
 
   windowManager.sendSplashStatus('Preparing user interface...');
-  windowManager.sendSplashProgress(55);
+  windowManager.sendSplashProgress(90);
 
   windowManager.createWindow();
   const appWindow = windowManager.getMainWindow();
@@ -279,7 +339,7 @@ app.on('ready', async () => {
   softwareUpdatesPromise.catch(() => { });
 
   windowManager.sendSplashStatus('Finalizing setup...');
-  windowManager.sendSplashProgress(85);
+  windowManager.sendSplashProgress(95);
 
   hardwareMonitor._startRealtimePush();
 
