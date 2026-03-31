@@ -244,7 +244,9 @@ const Performance: React.FC = () => {
     'Fullscreen Optimization Mode',
     'Set Games Priority',
   ].includes(item.category));
-  const appliedCount = Object.values(enabledTweaks).filter(Boolean).length;
+  const appliedCount = activeTweaks.reduce((total, tweak) => {
+    return total + (enabledTweaks[tweak.id] ? 1 : 0);
+  }, 0);
   const totalCount = activeTweaks.length;
 
   return (

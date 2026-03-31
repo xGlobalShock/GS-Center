@@ -15,6 +15,7 @@ const changelog: ChangelogEntry[] = [
     highlights: 'PC Tweaks - Description Updates', 
     changes: [
       { type: 'improved', text: 'Updated descriptions for various PC tweaks to provide clearer explanations and usage guidance.' },
+      { type: 'fixed', text: 'Fixed a bug causing incorrect tweak status display in certain scenarios.' },
     ],  
   },
   {
