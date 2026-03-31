@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.9',
+    date: '2026-04-01',
+    highlights: 'App Logo / Icon Update',
+    changes: [
+      { type: 'new', text: 'Updated the application logo and icon to a new design, enhancing the visual identity of the app.' },
+    ],
+  },
+  {
     version: '1.5.8',
     date: '2026-03-31',
     highlights: 'Cleanup Toolkit - Clear All Cache Feature',
