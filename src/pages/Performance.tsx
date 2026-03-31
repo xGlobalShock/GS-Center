@@ -236,11 +236,12 @@ const Performance: React.FC = () => {
     'Timeout Detection and Recovery',
     'Disable Memory Compression',
     'Stabilize Ping',
-    'Disable Fullscreen Optimization',
     'Disable USB Suspend',
     'Disable Game DVR',
     'Game DVR Policy',
     'Disable App Capture',
+    'DWM Overlay Test Mode',
+    'Fullscreen Optimization Mode',
     'Set Games Priority',
   ].includes(item.category));
   const appliedCount = Object.values(enabledTweaks).filter(Boolean).length;

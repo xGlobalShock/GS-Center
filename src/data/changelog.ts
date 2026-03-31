@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.7',
+    date: '2026-04-03',
+    highlights: 'PC Tweaks - Description Updates', 
+    changes: [
+      { type: 'improved', text: 'Updated descriptions for various PC tweaks to provide clearer explanations and usage guidance.' },
+    ],  
+  },
+  {
     version: '1.5.6',
     date: '2026-04-02',
     highlights: 'Hardware Information Enhancements, Splash UX and Optimization',
