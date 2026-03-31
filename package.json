@@ -1,6 +1,6 @@
 {
   "name": "gs-center",
-  "version": "1.5.7",
+  "version": "1.5.8",
   "description": "GS Center - Advanced System Optimization Tool",
   "author": "GS Center Team",
   "main": "electron/main.js",
@@ -101,6 +101,7 @@
     "directories": {
       "buildResources": "public"
     },
+    "icon": "public/app-icons/GSC.ico",
     "extends": null,
     "publish": {
       "provider": "github",
@@ -122,7 +123,11 @@
       "createStartMenuShortcut": true,
       "runAfterFinish": true,
       "shortcutName": "GS Center",
-      "artifactName": "GS-Center-Setup-${version}.${ext}"
+      "artifactName": "GS-Center-Setup-${version}.${ext}",
+      "installerIcon": "public/app-icons/GSC.ico",
+      "uninstallerIcon": "public/app-icons/GSC.ico",
+      "installerHeaderIcon": "public/app-icons/GSC.ico",
+      "include": "installer.nsh"
     }
   },
   "browserslist": {

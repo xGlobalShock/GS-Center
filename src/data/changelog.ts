@@ -10,81 +10,23 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.8',
+    date: '2026-03-31',
+    highlights: 'Cleanup Toolkit - Clear All Cache Feature',
+    changes: [
+      { type: 'new', text: 'Enhanced the "Cleanup Toolkit" with a new "Clear All Cache" feature, allowing users to quickly remove all cached data for improved performance.' },
+      { type: 'improved', text: 'Optimized the cache clearing algorithm for faster execution and reduced resource usage during the cleanup process.' },
+      { type: 'improved', text: 'Updated the user interface for the "Clear All Cache" feature to provide clearer feedback on the progress and completion of the cache clearing operation.' },
+    ],
+  },
+  {
     version: '1.5.7',
-    date: '2026-04-03',
+    date: '2026-03-30',
     highlights: 'PC Tweaks - Description Updates', 
     changes: [
       { type: 'improved', text: 'Updated descriptions for various PC tweaks to provide clearer explanations and usage guidance.' },
       { type: 'fixed', text: 'Fixed a bug causing incorrect tweak status display in certain scenarios.' },
     ],  
-  },
-  {
-    version: '1.5.6',
-    date: '2026-04-02',
-    highlights: 'Hardware Information Enhancements, Splash UX and Optimization',
-    changes: [
-      { type: 'new', text: 'Added more detailed hardware information in the Performance page.' },
-      { type: 'new', text: 'Added new smoother transitions for hardware information display.' },
-      { type: 'improved', text: 'Enhanced hardware detection for more accurate information display on low-end systems.' },
-      { type: 'improved', text: 'Improved splash screen flow with progressive load steps and smoother progress animation.' },
-      { type: 'improved', text: 'Optimized startup path to avoid blocking on background scans and maintain responsive load behavior.' },
-    ],
-  },
-  {
-    version: '1.5.5',
-    date: '2026-04-01',
-    highlights: 'Minor Bug Fixes & Performance Improvements',
-    changes: [
-      { type: 'fixed', text: 'Fixed minor UI glitches in the Performance page.' },
-      { type: 'fixed', text: 'Resolved an issue with the software updater not recognizing certain updates.' },
-      { type: 'improved', text: 'Enhanced overall app performance and stability.' },
-      { type: 'improved', text: 'Optimized background processes for better overall performance.' },
-    ],
-  },
-  {
-    version: '1.5.4',
-    date: '2026-03-30',
-    highlights: 'New Performance Tweaks & Registry Handling Fixes',
-    changes: [
-      { type: 'new', text: 'Added new tweak: Adjusted TDR timeout with TdrLevel control.' },
-      { type: 'new', text: 'Added new tweak: Adjusted GameDVR policy override through AllowGameDVR flag.' },
-      { type: 'new', text: 'Added new tweak: Adjusted AppCapture settings in GameDVR.' },
-      { type: 'new', text: 'Added new tweak: Adjusted fullscreen optimization system mode via GameDVR_FSEBehaviorMode.' },
-      { type: 'new', text: 'Added new tweak: Adjusted DWM overlay test mode with OverlayTestMode setting.' },
-      { type: 'fixed', text: 'Fixed registry path escape issues for tweak status detection and reverted handling for GameDVR and DWM settings.' },
-    ],
-  },
-  {
-    version: '1.5.3',
-    date: '2026-03-29',
-    highlights: 'Disk Analyzer & App Performance Improvement',
-    changes: [
-      { type: 'improved', text: 'Improved the performance of the Disk Analyzer for faster scanning and analysis.' },
-      { type: 'fixed', text: 'Resolved an issue where the Disk Analyzer would occasionally freeze during large scans.' },
-      { type: 'fixed', text: 'Addressed a bug that caused incorrect disk usage reporting in certain scenarios.' },
-      { type: 'fixed', text: 'Fixed an issue with Electron updater, failing to update.' },
-    ],
-  },
-  {
-    version: '1.5.2',
-    date: '2026-03-29',
-    highlights: 'Network Diagnoser - Servers Bug Fix',
-    changes: [
-      { type: 'fixed', text: 'Fixed the issue where the Network Diagnoser was not able to ping the servers.' },
-    ],
-  },
-  {
-    version: '1.5.1',
-    date: '2026-03-29',
-    highlights: 'Network Diagnoser & Disk Analyzer updates',
-    changes: [
-      { type: 'improved', text: 'Enhanced Disk Analyzer with improved performance and user interface.' },
-      { type: 'improved', text: 'Updated Network Diagnoser with more accurate diagnostics and a refreshed UI.' },
-      { type: 'fixed', text: 'Resolved minor bugs in both tools for a smoother user experience.' },
-      { type: 'new', text: 'Added new features to the Network Diagnoser for better network analysis.' },
-      { type: 'new', text: 'Introduced new visualizations in the Disk Analyzer for easier data interpretation.' },
-      { type: 'improved', text: 'Optimized resource usage in both tools for faster performance.' },
-    ],
   },
 ];
 

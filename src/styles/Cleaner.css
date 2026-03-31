@@ -206,3 +206,17 @@
   transform: scaleX(1);
   transform-origin: left;
 }
+
+/* Clear All Cache button near tabs */
+.clear-all-cache {
+  background: linear-gradient(90deg, rgba(0,242,255,0.08), rgba(151,63,255,0.06));
+  color: #eaffff;
+  border: 1px solid rgba(0,242,255,0.12);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0,242,255,0.03);
+}
+
+.clear-all-cache:hover { transform: translateY(-2px); }

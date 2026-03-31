@@ -16,24 +16,36 @@ export const ToastContainer: React.FC = () => {
   return (
     <div className="toast-container">
       <AnimatePresence>
-        {toasts.map(toast => (
-          <motion.div
-            key={toast.id}
-            className={`toast toast-${toast.type}`}
-            initial={{ opacity: 0, x: 32, scale: 0.95 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 32, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="toast-content">
-              <span className="toast-icon">{iconByType[toast.type]}</span>
-              <p className="toast-message">{toast.message}</p>
-            </div>
-            <button className="toast-close" onClick={() => removeToast(toast.id)}>
-              ×
-            </button>
-          </motion.div>
-        ))}
+        {toasts.map(toast => {
+          const isRaw = React.isValidElement(toast.message) && !!(toast.message.props?.toastKey);
+          const cls = isRaw ? 'toast toast-raw' : `toast toast-${toast.type}`;
+
+          return (
+            <motion.div
+              key={toast.id}
+              className={cls}
+              initial={{ opacity: 0, x: 32, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 32, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+            >
+              {isRaw ? (
+                // render the element directly for full-overlay toasts
+                toast.message
+              ) : (
+                <>
+                  <div className="toast-content">
+                    <span className="toast-icon">{iconByType[toast.type]}</span>
+                    <p className="toast-message">{toast.message}</p>
+                  </div>
+                  <button className="toast-close" onClick={() => removeToast(toast.id)}>
+                    ×
+                  </button>
+                </>
+              )}
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
     </div>
   );

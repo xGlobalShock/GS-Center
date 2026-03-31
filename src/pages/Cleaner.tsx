@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import CleanerCard from '../components/CleanerCard';
 import { cleanerUtilities } from '../data/cleanerUtilities';
 import { useToast } from '../contexts/ToastContext';
+import CacheCleanupToast from '../components/CacheCleanupToast';
 import PageHeader from '../components/PageHeader';
 import { Trash2 } from 'lucide-react';
 import '../styles/Cleaner.css';
@@ -21,6 +22,12 @@ const Cleaner: React.FC = () => {
   const [cleaningId, setCleaningId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'windows' | 'games' | 'nvidia'>('windows');
   const { addToast } = useToast();
+
+  const handleShowClearAllToast = () => {
+    const k = Math.random().toString(36).substr(2, 9);
+    const windowsIds = utilityTabs.windows.map((u) => u.id);
+    addToast(<CacheCleanupToast toastKey={k} windowsIds={windowsIds} />, 'info', 0);
+  };
 
   const cleanerMap: { [key: string]: string } = {
     'nvidia-cache': 'cleaner:clear-nvidia-cache',
@@ -193,7 +200,10 @@ const Cleaner: React.FC = () => {
             </button>
           ))}
         </div>
-        <div className="cleaner-tab-desc">{tabDescriptions[activeTab]}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+          <div className="cleaner-tab-desc">{tabDescriptions[activeTab]}</div>
+          <button className="clear-all-cache" onClick={handleShowClearAllToast} style={{ marginLeft: 'auto' }}>Clear All Cache</button>
+        </div>
       </div>
 
       {/* Cards grid */}

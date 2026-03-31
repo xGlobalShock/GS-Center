@@ -26,6 +26,26 @@
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
+/* Raw/full-overlay toasts (e.g. CacheCleanupToast) should render without the outer chrome */
+.toast-raw {
+  background: transparent !important;
+  border: none !important;
+  border-left: none !important;
+  padding: 0 !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  pointer-events: all;
+}
+
+.toast-raw .toast-content,
+.toast-raw .toast-message,
+.toast-raw .toast-icon,
+.toast-raw .toast-close {
+  display: none;
+}
+
 .toast:hover {
   transform: translateY(-2px);
 }
