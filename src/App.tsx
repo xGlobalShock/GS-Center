@@ -94,23 +94,15 @@ function App() {
     const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo | undefined>(undefined);
-
-  // ── Real-Time Push: subscribe to hardware metrics from main process ──
-  // The hook listens for 'realtime-hw-update' events pushed via webContents.send
-  // at 1000ms intervals. Uses useRef internally to avoid re-rendering on every push;
-  // state is flushed once per animation frame for smooth batched UI updates.
   const shouldStream = isLoading || currentPage === 'dashboard' || currentPage === 'performance';
   const { systemStats, extendedStats, connected } = useRealtimeHardware({ enabled: shouldStream });
 
-  // Dismiss the loader as soon as the first real-time push arrives
   useEffect(() => {
     if (isLoading && connected) {
       setIsLoading(false);
     }
   }, [isLoading, connected]);
 
-  // Fallback: if real-time push hasn't connected within 5s, try a single poll
-  // to unblock the loader (covers dev mode without Electron)
   useEffect(() => {
     if (!isLoading) return;
     const timer = setTimeout(async () => {
@@ -120,14 +112,13 @@ function App() {
           setIsLoading(false);
         } catch {}
       }
-      // If no electron at all (browser dev), just dismiss after timeout
+
       if (!window.electron) setIsLoading(false);
     }, 5000);
     return () => clearTimeout(timer);
   }, [isLoading, connected]);
 
   useEffect(() => {
-    // Fetch hardware info once (always fresh, no disk cache)
     const fetchHardwareInfo = async () => {
       if (window.electron?.ipcRenderer) {
         try {
@@ -140,17 +131,12 @@ function App() {
     };
     fetchHardwareInfo();
 
-    // Do not auto-trigger Space Analyzer scan on app startup; scan begins explicitly with the Start Scan button.
-    // This behavior ensures system resources are saved for low-end PCs.
-
-    // Listen for slow background data (phase 2) and merge into state
     let unsub: (() => void) | undefined;
     if (window.electron?.ipcRenderer) {
       unsub = window.electron.ipcRenderer.on('hw-info-update', (partial: Partial<HardwareInfo>) => {
         setHardwareInfo(prev => prev ? { ...prev, ...partial } : prev);
       });
       
-      // Catch pre-loaded Windows Debloat data dispatched during splash screen
       window.electron.ipcRenderer.on('wdebloat:preloaded', (data: any) => {
         (window as any).__WDEBLOAT_PRELOADED__ = data;
       });
@@ -158,12 +144,10 @@ function App() {
     return () => { unsub?.(); };
   }, []);
 
-  // Pre-computed display styles to avoid creating new objects on every render
   const show = { display: 'block' } as const;
   const hide = { display: 'none' } as const;
-  const pageStyle = useCallback((id: string) => currentPage === id ? show : hide, [currentPage]);
 
-  // Memoize static pages so they don't create new JSX on every state change
+  const pageStyle = useCallback((id: string) => currentPage === id ? show : hide, [currentPage]);
   const staticPages = useMemo(() => (
     <>
       <div style={pageStyle('performance')}><Performance /></div>
