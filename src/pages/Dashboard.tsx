@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import SystemDetails from '../components/SystemDetails';
+import HealthScore from '../components/HealthScore';
+import AdvisorPanel from '../components/AdvisorPanel';
 import type { HardwareInfo, ExtendedStats } from '../App';
 import '../styles/Dashboard.css';
 
@@ -14,14 +16,36 @@ interface DashboardProps {
   extendedStats?: ExtendedStats;
 }
 
-import { Home } from 'lucide-react';
-import PageHeader from '../components/PageHeader';
-
 const Dashboard: React.FC<DashboardProps> = React.memo(({ systemStats, hardwareInfo, extendedStats }) => {
+  const [openPanel, setOpenPanel] = useState<'health' | 'advisor' | null>(null);
+
   return (
     <div className="dashboard-page">
-      <PageHeader icon={<Home size={16} />} title="System Details" />
-      <SystemDetails systemStats={systemStats} hardwareInfo={hardwareInfo} extendedStats={extendedStats} hideHeader />
+      <SystemDetails
+        systemStats={systemStats}
+        hardwareInfo={hardwareInfo}
+        extendedStats={extendedStats}
+        headerActions={
+          <>
+            <HealthScore
+              systemStats={systemStats}
+              extendedStats={extendedStats}
+              hardwareInfo={hardwareInfo}
+              compact
+              isExpanded={openPanel === 'health'}
+              onToggle={() => setOpenPanel(p => p === 'health' ? null : 'health')}
+            />
+            <AdvisorPanel
+              systemStats={systemStats}
+              extendedStats={extendedStats}
+              hardwareInfo={hardwareInfo}
+              compact
+              isExpanded={openPanel === 'advisor'}
+              onToggle={() => setOpenPanel(p => p === 'advisor' ? null : 'advisor')}
+            />
+          </>
+        }
+      />
     </div>
   );
 });

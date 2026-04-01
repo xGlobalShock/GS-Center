@@ -321,52 +321,20 @@
 /* ——— TWEAKS GRID ——— */
 .perf-tweaks-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
   width: 100%;
 }
 
 
 @media (max-width: 1280px) {
   .perf-tweaks-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 860px) {
   .perf-tweaks-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .perf-hero-content {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 20px;
-  }
-
-  .perf-hero-right {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .perf-tweaks-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 480px) {
-  .perf-hero-title {
-    font-size: 22px;
-  }
-
-  .perf-hero-actions {
-    width: 100%;
-  }
-
-  .perf-action-btn {
-    width: 100%;
-    justify-content: center;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
 }

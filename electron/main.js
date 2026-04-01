@@ -34,6 +34,10 @@ const gameProfiles = require('../main-process/gameProfiles');
 const network = require('../main-process/network');
 const windowsDebloat = require('../main-process/windowsDebloat');
 const spaceAnalyzer = require('../main-process/spaceAnalyzer');
+const healthScore = require('../main-process/healthScore');
+const overlay = require('../main-process/overlay');
+const advisor = require('../main-process/advisor');
+const resolutionManager = require('../main-process/resolutionManager');
 const { execAsync } = require('../main-process/utils');
 
 // ── Rendering Pipeline ──────────────────────────────────────────────────────
@@ -130,6 +134,10 @@ network.registerIPC();
 autoUpdater.registerIPC();
 windowsDebloat.registerIPC();
 spaceAnalyzer.registerIPC();
+healthScore.registerIPC();
+overlay.registerIPC();
+advisor.registerIPC();
+resolutionManager.registerIPC();
 
 // ── Pre-warm scan caches (orchestrator) ─────────────────────────────────────
 async function _prewarmScanCaches({ updateSplash = false } = {}) {
@@ -335,6 +343,8 @@ app.on('ready', async () => {
   }
 
   hardwareMonitor._startLatencyPoll();
+
+  overlay.init();
 
   autoUpdater.initAutoUpdater();
 

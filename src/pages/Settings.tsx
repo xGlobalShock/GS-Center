@@ -3,23 +3,23 @@ import { motion } from 'framer-motion';
 import '../styles/Settings.css';
 import { loadSettings, saveSettings } from '../utils/settings';
 import PageHeader from '../components/PageHeader';
-import { Settings as SettingsIcon, Monitor, AlertTriangle, Lock } from 'lucide-react';
+import { Settings as SettingsIcon, Monitor, AlertTriangle, Layers } from 'lucide-react';
 
 const Settings: React.FC = () => {
   const [settings, setSettings] = useState(() => {
     const saved = loadSettings();
     return {
-      autoClean: saved.autoClean ?? false,
-      notifications: saved.notifications ?? false,
-      autoOptimize: saved.autoOptimize ?? false,
-      autoUpdate: saved.autoUpdate ?? false,
-      theme: saved.theme ?? 'dark',
-      startupLaunch: saved.startupLaunch ?? false,
       autoCleanupOnStartup: saved.autoCleanupOnStartup ?? false,
+      theme: saved.theme ?? 'dark',
     };
   });
   const [appVersion, setAppVersion] = useState('1.0.0');
   const [gpuStatus, setGpuStatus] = useState<{ status: string; renderer: string; detail: string } | null>(null);
+
+  // Overlay state
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  const [overlayPosition, setOverlayPosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('top-right');
+  const ipc = (window as any).electron?.ipcRenderer;
 
   useEffect(() => {
     window.electron?.updater?.getVersion().then((v: string) => {
@@ -34,7 +34,24 @@ const Settings: React.FC = () => {
     const unsub = (window as any).electron?.gpu?.onStatusChanged((s: any) => {
       if (s) setGpuStatus(s);
     });
-    return () => unsub?.();
+
+    // Load overlay state
+    ipc?.invoke('overlay:get-state').then((state: any) => {
+      if (state) {
+        setOverlayVisible(state.visible);
+        if (state.config?.position) setOverlayPosition(state.config.position);
+      }
+    }).catch(() => {});
+
+    // Keep toggle in sync when the hotkey is used
+    const unsubOverlay = ipc?.on?.('overlay:state-changed', (visible: boolean) => {
+      setOverlayVisible(!!visible);
+    });
+
+    return () => {
+      unsub?.();
+      if (typeof unsubOverlay === 'function') unsubOverlay();
+    };
   }, []);
 
   useEffect(() => {
@@ -59,6 +76,20 @@ const Settings: React.FC = () => {
     saveSettings(updated as any);
   };
 
+  const handleOverlayToggle = async () => {
+    try {
+      const res = await ipc?.invoke('overlay:toggle');
+      if (res) setOverlayVisible(res.visible);
+    } catch {}
+  };
+
+  const handleOverlayPosition = async (pos: typeof overlayPosition) => {
+    setOverlayPosition(pos);
+    try {
+      await ipc?.invoke('overlay:set-config', { position: pos });
+    } catch {}
+  };
+
   return (
     <motion.div
       className="settings-container"
@@ -69,91 +100,6 @@ const Settings: React.FC = () => {
       <PageHeader icon={<SettingsIcon size={16} />} title="Settings" />
 
       <div className="settings-sections">
-        <div className="settings-section settings-section--locked">
-          <div className="settings-lock-overlay">
-            <Lock size={22} />
-            <span>COMING SOON</span>
-          </div>
-          <h3 className="section-header">General</h3>
-          
-          <div className="setting-item">
-            <div className="setting-label">
-              <span className="label-title">Auto Clean</span>
-              <span className="label-description">Automatically clean junk files weekly</span>
-            </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.autoClean}
-                onChange={() => handleToggle('autoClean')}
-              />
-              <span className="slider"></span>
-            </label>
-          </div>
-
-          <div className="setting-item">
-            <div className="setting-label">
-              <span className="label-title">Enable Notifications</span>
-              <span className="label-description">Receive alerts for system issues</span>
-            </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.notifications}
-                onChange={() => handleToggle('notifications')}
-              />
-              <span className="slider"></span>
-            </label>
-          </div>
-
-          <div className="setting-item">
-            <div className="setting-label">
-              <span className="label-title">Auto Optimize on Startup</span>
-              <span className="label-description">Run optimization when launching games</span>
-            </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.autoOptimize}
-                onChange={() => handleToggle('autoOptimize')}
-              />
-              <span className="slider"></span>
-            </label>
-          </div>
-
-          <div className="setting-item">
-            <div className="setting-label">
-              <span className="label-title">Launch on Startup</span>
-              <span className="label-description">Start GS Control Center when Windows boots</span>
-            </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.startupLaunch}
-                onChange={() => handleToggle('startupLaunch')}
-              />
-              <span className="slider"></span>
-            </label>
-          </div>
-
-          <div className="setting-item">
-            <div className="setting-label">
-              <span className="label-title">Auto Update</span>
-              <span className="label-description">Automatically check for new versions</span>
-            </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.autoUpdate}
-                onChange={() => handleToggle('autoUpdate')}
-              />
-              <span className="slider"></span>
-            </label>
-          </div>
-
-
-        </div>
-
         <div className="settings-section">
           <h3 className="section-header">Startup</h3>
 
@@ -208,6 +154,55 @@ const Settings: React.FC = () => {
                 </span>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <h3 className="section-header">Overlay</h3>
+
+          {/* Toggle */}
+          <div className="setting-item">
+            <div className="setting-label">
+              <span className="label-title">
+                <Layers size={14} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle', opacity: 0.7 }} />
+                Enable FPS Overlay
+              </span>
+              <span className="label-description">
+                Show real-time stats overlay in-game · <kbd className="overlay-hotkey">Ctrl+Shift+F</kbd>
+              </span>
+            </div>
+            <label className="toggle-switch">
+              <input type="checkbox" checked={overlayVisible} onChange={handleOverlayToggle} />
+              <span className="slider"></span>
+            </label>
+          </div>
+
+          {/* Position picker */}
+          <div className="setting-item">
+            <div className="setting-label">
+              <span className="label-title">Overlay Position</span>
+              <span className="label-description">Where to display the overlay on screen</span>
+            </div>
+            <div className="overlay-pos-grid">
+              {([
+                ['top-left', '↖ Top Left'],
+                ['top-right', '↗ Top Right'],
+                ['bottom-left', '↙ Bottom Left'],
+                ['bottom-right', '↘ Bottom Right'],
+              ] as const).map(([pos, label]) => (
+                <button
+                  key={pos}
+                  className={`overlay-pos-btn${overlayPosition === pos ? ' overlay-pos-btn--active' : ''}`}
+                  onClick={() => handleOverlayPosition(pos)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="overlay-note">
+            Works in <strong>Borderless Windowed</strong> mode. Exclusive fullscreen bypasses the compositor.
           </div>
         </div>
 

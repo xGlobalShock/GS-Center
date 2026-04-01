@@ -1,0 +1,167 @@
+.health-score-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
+}
+.health-score-card:hover {
+  border-color: rgba(16, 185, 129, 0.15);
+}
+.health-score-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.health-score-gauge {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+}
+.health-score-ring {
+  width: 100%;
+  height: 100%;
+}
+.health-score-number {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.health-score-info {
+  flex: 1;
+  min-width: 0;
+}
+.health-score-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(228, 228, 231, 0.9);
+}
+.health-score-label {
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+.health-score-toggle {
+  color: rgba(228, 228, 231, 0.4);
+  flex-shrink: 0;
+}
+/* ── Expanded Factors ───────────────────────────────────────────────── */
+.health-factors {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.health-factor-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+}
+.health-factor-label {
+  color: rgba(228, 228, 231, 0.6);
+  min-width: 100px;
+}
+.health-factor-value {
+  color: rgba(228, 228, 231, 0.85);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  min-width: 60px;
+  text-align: right;
+}
+.health-factor-bar-wrap {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.health-factor-bar {
+  height: 100%;
+  border-radius: 2px;
+}
+.health-bar-good { background: #10b981; }
+.health-bar-warning { background: #f59e0b; }
+.health-bar-critical { background: #ef4444; }
+.health-bar-unknown { background: rgba(255, 255, 255, 0.2); }
+/* ── Status Icons ───────────────────────────────────────────────────── */
+.health-icon-good { color: #10b981; }
+.health-icon-warning { color: #f59e0b; }
+.health-icon-critical { color: #ef4444; }
+.health-icon-unknown { color: rgba(228, 228, 231, 0.3); }
+
+/* ── Compact variant (inside PageHeader actions) ────────────────────── */
+.health-score-card--compact {
+  padding: 7px 11px;
+  margin-bottom: 0;
+  border-radius: 10px;
+  width: 230px;
+  height: 52px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  box-sizing: border-box;
+}
+.health-score-card--compact .health-score-gauge {
+  width: 36px;
+  height: 36px;
+}
+.health-score-card--compact .health-score-number {
+  font-size: 12px;
+}
+.health-score-card--compact .health-score-header {
+  gap: 8px;
+}
+.health-score-card--compact .health-score-title {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.health-score-card--compact .health-score-label {
+  font-size: 10px;
+  white-space: nowrap;
+}
+.health-score-card--compact .health-factors {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999;
+  min-width: 220px;
+  max-width: 260px;
+  background: #0f1117;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  margin-top: 0;
+  border-top: none;
+}
+.health-score-card--compact .health-factor-row {
+  font-size: 10px;
+  gap: 6px;
+}
+.health-score-card--compact .health-factor-label {
+  min-width: 80px;
+}
+.health-score-card--compact .health-factor-value {
+  min-width: 46px;
+  font-size: 10px;
+}

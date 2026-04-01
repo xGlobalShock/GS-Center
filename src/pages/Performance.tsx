@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import PerformanceTweakCard from '../components/PerformanceTweakCard';
 import { ArrowCounterClockwise } from 'phosphor-react';
-import { performanceTweaks, PerformanceTweak } from '../data/performanceTweaks';
+import { performanceTweaks } from '../data/performanceTweaks';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/Performance.css';
-import { Activity } from 'lucide-react';
+import '../styles/Cleaner.css';
+import { Activity, Cpu, Layers, Server, Wifi, Monitor, Gamepad2, Usb } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 
 /* ── IPC channel maps — constant, never need to be recreated ── */
@@ -60,11 +61,24 @@ const CHECK_MAP: Record<string, string> = {
   'games-priority': 'tweak:check-games-priority',
 };
 
+type CategoryId = 'cpu' | 'gpu' | 'memory' | 'network' | 'display' | 'gamedvr' | 'hardware';
+
+const TWEAK_CATEGORIES: Record<CategoryId, string[]> = {
+  cpu:      ['irq-priority', 'win32-priority', 'games-priority'],
+  gpu:      ['gpu-scheduling', 'tdr-level'],
+  memory:   ['memory-compression'],
+  network:  ['network-interrupts'],
+  display:  ['fullscreen-optimization', 'overlay-test-mode', 'fse-behavior-mode'],
+  gamedvr:  ['game-dvr', 'gdrv-policy', 'appcapture-disabled'],
+  hardware: ['usb-suspend'],
+};
+
 const Performance: React.FC = () => {
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [enabledTweaks, setEnabledTweaks] = useState<{ [key: string]: boolean }>({});
   const [tweakChecks, setTweakChecks] = useState<Record<string, any>>({});
   const [creatingRestore, setCreatingRestore] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<CategoryId>('cpu');
   const { addToast } = useToast();
 
   const runChecks = useCallback(async () => {
@@ -193,25 +207,24 @@ const Performance: React.FC = () => {
   };
 
   // Use categories matching the current performanceTweaks dataset.
-  const activeTweaks = performanceTweaks.filter(item => [
-    'IRQ Priority',
-    'Win32 Priority',
-    'GPU Scheduling',
-    'Timeout Detection and Recovery',
-    'Disable Memory Compression',
-    'Stabilize Ping',
-    'Disable USB Suspend',
-    'Disable Game DVR',
-    'Game DVR Policy',
-    'Disable App Capture',
-    'DWM Overlay Test Mode',
-    'Fullscreen Optimization Mode',
-    'Set Games Priority',
-  ].includes(item.category));
+  const allTweakIds = Object.values(TWEAK_CATEGORIES).flat();
+  const activeTweaks = performanceTweaks.filter(item => allTweakIds.includes(item.id));
   const appliedCount = activeTweaks.reduce((total, tweak) => {
     return total + (enabledTweaks[tweak.id] ? 1 : 0);
   }, 0);
   const totalCount = activeTweaks.length;
+
+  const categories = [
+    { id: 'cpu'      as CategoryId, label: 'CPU & Priority', icon: <Cpu size={18} />,     count: TWEAK_CATEGORIES.cpu.length,      description: 'Boost CPU scheduling and IRQ priority.',              accent: '#00F2FF' },
+    { id: 'gpu'      as CategoryId, label: 'GPU',            icon: <Layers size={18} />,   count: TWEAK_CATEGORIES.gpu.length,      description: 'GPU scheduling and timeout detection.',               accent: '#9D4EDD' },
+    { id: 'memory'   as CategoryId, label: 'Memory',         icon: <Server size={18} />,   count: TWEAK_CATEGORIES.memory.length,   description: 'Physical RAM usage and compression.',                 accent: '#FF851B' },
+    { id: 'network'  as CategoryId, label: 'Network',        icon: <Wifi size={18} />,     count: TWEAK_CATEGORIES.network.length,  description: 'Reduce latency and stabilize ping.',                  accent: '#00D4AA' },
+    { id: 'display'  as CategoryId, label: 'Display',        icon: <Monitor size={18} />,  count: TWEAK_CATEGORIES.display.length,  description: 'Fullscreen optimization and overlay mode.',           accent: '#FFDC00' },
+    { id: 'gamedvr'  as CategoryId, label: 'Game DVR',       icon: <Gamepad2 size={18} />, count: TWEAK_CATEGORIES.gamedvr.length,  description: 'Disable recording, capture and DVR features.',        accent: '#FF4455' },
+    { id: 'hardware' as CategoryId, label: 'Hardware',       icon: <Usb size={18} />,      count: TWEAK_CATEGORIES.hardware.length, description: 'USB and peripheral suspend settings.',                accent: '#7ED321' },
+  ];
+
+  const visibleTweaks = performanceTweaks.filter(t => TWEAK_CATEGORIES[activeCategory].includes(t.id));
 
   return (
     <motion.div
@@ -256,30 +269,63 @@ const Performance: React.FC = () => {
         }
       />
 
-      {/* Tweaks Grid */}
-      <div className="perf-tweaks-grid">
-        {activeTweaks.map((tweak, index) => (
-          <motion.div
-            key={tweak.id}
-            initial={{ y: 30, opacity: 0, scale: 0.95 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.08, type: 'spring', stiffness: 200, damping: 20 }}
-          >
-            <PerformanceTweakCard
-              id={tweak.id}
-              title={tweak.title}
-              icon={tweak.icon}
-              category={tweak.category}
-              description={tweak.description}
-              buttonText={tweak.buttonText}
-              color={tweak.color}
-              onApply={handleApplyTweak}
-              onReset={handleResetTweak}
-              isLoading={applyingId === tweak.id}
-              isEnabled={enabledTweaks[tweak.id] || false}
-            />
-          </motion.div>
-        ))}
+      <div className="cleaner-split">
+        {/* ── LEFT: Vertical nav ── */}
+        <nav className="cleaner-sidenav">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              className={`cleaner-navitem ${activeCategory === cat.id ? 'cleaner-navitem--active' : ''}`}
+              style={{ '--cat-accent': cat.accent } as React.CSSProperties}
+              onClick={() => setActiveCategory(cat.id)}
+            >
+              <span className="cleaner-navitem-icon">{cat.icon}</span>
+              <span className="cleaner-navitem-body">
+                <span className="cleaner-navitem-label">{cat.label}</span>
+                <span className="cleaner-navitem-desc">{cat.description}</span>
+              </span>
+              <span className="cleaner-navitem-count">{cat.count}</span>
+            </button>
+          ))}
+        </nav>
+
+        {/* ── RIGHT: Content ── */}
+        <div className="cleaner-content">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeCategory}
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.16 }}
+            >
+              <div className="perf-tweaks-grid">
+                {visibleTweaks.map((tweak, index) => (
+                  <motion.div
+                    key={tweak.id}
+                    initial={{ y: 20, opacity: 0, scale: 0.97 }}
+                    animate={{ y: 0, opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.06, type: 'spring', stiffness: 200, damping: 22 }}
+                  >
+                    <PerformanceTweakCard
+                      id={tweak.id}
+                      title={tweak.title}
+                      icon={tweak.icon}
+                      category={tweak.category}
+                      description={tweak.description}
+                      buttonText={tweak.buttonText}
+                      color={tweak.color}
+                      onApply={handleApplyTweak}
+                      onReset={handleResetTweak}
+                      isLoading={applyingId === tweak.id}
+                      isEnabled={enabledTweaks[tweak.id] || false}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
     </motion.div>
   );

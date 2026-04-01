@@ -1,0 +1,202 @@
+.advisor-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
+}
+.advisor-card:hover {
+  border-color: rgba(139, 92, 246, 0.2);
+}
+.advisor-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.advisor-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 92, 246, 0.1);
+  flex-shrink: 0;
+}
+.advisor-brain-good { color: #10b981; }
+.advisor-brain-active { color: #8b5cf6; }
+.advisor-title-area { flex: 1; min-width: 0; }
+.advisor-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(228, 228, 231, 0.9);
+}
+.advisor-summary {
+  font-size: 11px;
+  color: rgba(228, 228, 231, 0.5);
+  margin-top: 1px;
+}
+.advisor-toggle { color: rgba(228, 228, 231, 0.4); flex-shrink: 0; }
+
+/* ── Body ──────────────────────────────────────────────────── */
+.advisor-body {
+  overflow: hidden;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Insight Cards ─────────────────────────────────────────── */
+.advisor-insight {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+  background: rgba(255, 255, 255, 0.02);
+}
+.advisor-severity-critical { border-left-color: #ef4444; }
+.advisor-severity-warning { border-left-color: #f59e0b; }
+.advisor-severity-good { border-left-color: #10b981; }
+
+.advisor-insight-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.advisor-insight-icon { display: flex; color: rgba(228, 228, 231, 0.6); }
+.advisor-insight-title {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(228, 228, 231, 0.85);
+}
+.advisor-insight-expand { color: rgba(228, 228, 231, 0.3); }
+.advisor-insight-desc {
+  font-size: 11px;
+  color: rgba(228, 228, 231, 0.5);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.advisor-suggestions {
+  overflow: hidden;
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.advisor-suggestions li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(228, 228, 231, 0.65);
+  line-height: 1.5;
+}
+.advisor-suggestions li svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #f59e0b;
+}
+
+/* ── Upgrade Recommendations ───────────────────────────────── */
+.advisor-upgrades {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+.advisor-upgrades-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(228, 228, 231, 0.7);
+  margin-bottom: 6px;
+}
+.advisor-upgrades-title svg { color: #8b5cf6; }
+.advisor-upgrade-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  padding: 4px 0;
+}
+.advisor-upgrade-component {
+  font-weight: 600;
+  color: rgba(228, 228, 231, 0.8);
+  min-width: 60px;
+}
+.advisor-upgrade-current { color: rgba(228, 228, 231, 0.4); }
+.advisor-upgrade-arrow { color: rgba(228, 228, 231, 0.2); }
+.advisor-upgrade-rec { color: #10b981; font-weight: 500; }
+
+/* ── Compact variant (inside PageHeader actions) ────────────────────── */
+.advisor-card--compact {
+  padding: 7px 11px;
+  margin-bottom: 0;
+  border-radius: 10px;
+  width: 230px;
+  height: 52px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  box-sizing: border-box;
+}
+.advisor-card--compact .advisor-header {
+  gap: 8px;
+}
+.advisor-card--compact .advisor-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+.advisor-card--compact .advisor-icon-wrap svg {
+  width: 16px;
+  height: 16px;
+}
+.advisor-card--compact .advisor-title {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.advisor-card--compact .advisor-summary {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.advisor-card--compact .advisor-body {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 999;
+  min-width: 300px;
+  max-width: 360px;
+  background: #0f1117;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  margin-top: 0;
+  border-top: none;
+}
+.advisor-card--compact .advisor-insight {
+  padding: 6px 8px;
+}
+.advisor-card--compact .advisor-insight-title {
+  font-size: 10.5px;
+}
+.advisor-card--compact .advisor-insight-desc {
+  font-size: 9.5px;
+  margin-top: 2px;
+}

@@ -123,7 +123,13 @@ const AutoCleanupRunner: React.FC<Props> = ({ ready }) => {
 
     // Delay slightly so the UI finishes rendering before background I/O starts.
     const timer = setTimeout(runCleanup, 3000);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      // Reset guards so React StrictMode's simulate-unmount/remount cycle
+      // doesn't permanently block the timer on the real mount.
+      hasRun.current = false;
+      sessionStorage.removeItem(SESSION_KEY);
+    };
   }, [ready, addToast]);
 
   return null;

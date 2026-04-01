@@ -21,6 +21,7 @@ interface SystemDetailsProps {
   hardwareInfo?: HardwareInfo;
   extendedStats?: ExtendedStats;
   hideHeader?: boolean; // when true, skip the internal section header (outer page already has one)
+  headerActions?: React.ReactNode; // optional widgets rendered on the right side of the header
 }
 
 /* ═══════════════════════════════════════════
@@ -427,7 +428,7 @@ const BentoCard: React.FC<{
 /* ═══════════════════════════════════════════
    Main SystemDetails Component
 ═══════════════════════════════════════════ */
-const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo, extendedStats, hideHeader }) => {
+const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo, extendedStats, hideHeader, headerActions }) => {
   const hw = hardwareInfo;
   const ext = extendedStats;
   const s = systemStats;
@@ -483,6 +484,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
           <div className="hud-section-icon"><Server size={16} /></div>
           <h3 className="hud-section-title">SYSTEM DETAILS</h3>
           <div className="hud-section-line" />
+          {headerActions && <div className="page-header-actions">{headerActions}</div>}
         </div>
       )}
 

@@ -579,7 +579,7 @@ const AppUninstaller: React.FC<AppUninstallerProps> = ({ isActive = false, activ
       {/* ══ POPUP WIZARD OVERLAY ══ */}
       {createPortal(
         <AnimatePresence>
-          {phase !== 'list' && targetApp && (
+          {isActive && phase !== 'list' && targetApp && (
             <motion.div
               className="au-wiz-backdrop"
               initial={{ opacity: 0 }}

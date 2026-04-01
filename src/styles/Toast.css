@@ -18,8 +18,8 @@
   border-left: 4px solid rgba(64, 255, 245, 0.92);
   border-radius: 12px;
   padding: 14px 16px;
-  min-width: 320px;
-  max-width: 460px;
+  min-width: 380px;
+  max-width: 520px;
   backdrop-filter: blur(14px);
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
   pointer-events: all;

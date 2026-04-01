@@ -1,6 +1,6 @@
 {
   "name": "gs-center",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "GS Center - Advanced System Optimization Tool",
   "author": "GS Center Team",
   "main": "electron/main.js",
@@ -76,7 +76,8 @@
         "from": "lib",
         "to": "lib",
         "filter": [
-          "**/*.dll"
+          "**/*.dll",
+          "**/*.exe"
         ]
       },
       {

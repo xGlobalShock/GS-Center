@@ -132,6 +132,8 @@ function startLHMService() {
   }
 
   const scriptContent = [
+    '[System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::GetCultureInfo(\'en-US\')',
+    '[System.Threading.Thread]::CurrentThread.CurrentUICulture = [System.Globalization.CultureInfo]::GetCultureInfo(\'en-US\')',
     '# LHM sensor service — errors reported on stderr, data on stdout',
     '$ErrorActionPreference = "Stop"',
     '',
@@ -180,21 +182,7 @@ function startLHMService() {
     '$ErrorActionPreference = "SilentlyContinue"',
     '[Console]::Error.WriteLine("LHMOK:READY")',
     '',
-    '# Disk I/O perf counters',
-    'try { $diskReadCounter = New-Object System.Diagnostics.PerformanceCounter("PhysicalDisk", "Disk Read Bytes/sec", "_Total") ; $diskReadCounter.NextValue() | Out-Null } catch { $diskReadCounter = $null }',
-    'try { $diskWriteCounter = New-Object System.Diagnostics.PerformanceCounter("PhysicalDisk", "Disk Write Bytes/sec", "_Total") ; $diskWriteCounter.NextValue() | Out-Null } catch { $diskWriteCounter = $null }',
-    'try { $procCounter = New-Object System.Diagnostics.PerformanceCounter("System", "Processes") } catch { $procCounter = $null }',
-    '',
-    '# Network I/O perf counters (fallback when LHM Throughput sensors are unavailable)',
-    '$netRecvCounters = @(); $netSendCounters = @()',
-    'try {',
-    '  $netCat = New-Object System.Diagnostics.PerformanceCounterCategory("Network Interface")',
-    '  foreach ($inst in $netCat.GetInstanceNames()) {',
-    '    if ($inst -match "Loopback|isatap|Teredo|6to4|WFP") { continue }',
-    '    try { $rc = New-Object System.Diagnostics.PerformanceCounter("Network Interface", "Bytes Received/sec", $inst); $rc.NextValue() | Out-Null; $netRecvCounters += $rc } catch {}',
-    '    try { $sc = New-Object System.Diagnostics.PerformanceCounter("Network Interface", "Bytes Sent/sec", $inst); $sc.NextValue() | Out-Null; $netSendCounters += $sc } catch {}',
-    '  }',
-    '} catch {}',
+    '# Disk, process, and network counters use CIM (language-agnostic; no localized PerformanceCounter names)',
     '$wddmGpuFailed = $false',
     '',
     '$iteration = 0',
@@ -348,12 +336,10 @@ function startLHMService() {
     '    if ($gpuLoad -ne $null) { $parts += "GPUL:" + [math]::Round($gpuLoad, 1) }',
     '    if ($gpuVramUsed -ne $null) { $parts += "GPUVRU:" + [math]::Round($gpuVramUsed) }',
     '    if ($gpuVramTotal -ne $null) { $parts += "GPUVRT:" + [math]::Round($gpuVramTotal) }',
-    '    if ($diskReadCounter) { try { $parts += "DR:" + [math]::Round($diskReadCounter.NextValue()) } catch {} }',
-    '    if ($diskWriteCounter) { try { $parts += "DW:" + [math]::Round($diskWriteCounter.NextValue()) } catch {} }',
-    '    if ($procCounter) { try { $parts += "PROCS:" + [math]::Round($procCounter.NextValue()) } catch {} }',
-    '    if ($netRxTotal -eq 0 -and $netTxTotal -eq 0 -and $netRecvCounters.Count -gt 0) {',
-    '      foreach ($rc in $netRecvCounters) { try { $netRxTotal += $rc.NextValue() } catch {} }',
-    '      foreach ($sc in $netSendCounters) { try { $netTxTotal += $sc.NextValue() } catch {} }',
+    '    try { $dc = Get-CimInstance Win32_PerfFormattedData_PerfDisk_PhysicalDisk -Filter "Name=\'_Total\'" -EA 0; if ($dc) { $parts += "DR:" + [math]::Round($dc.DiskReadBytesPersec); $parts += "DW:" + [math]::Round($dc.DiskWriteBytesPersec) } } catch {}',
+    '    try { $psc = Get-CimInstance Win32_PerfFormattedData_PerfOS_System -EA 0; if ($psc -and $psc.Processes -gt 0) { $parts += "PROCS:" + [math]::Round($psc.Processes) } } catch {}',
+    '    if ($netRxTotal -eq 0 -and $netTxTotal -eq 0) {',
+    '      try { $ni = Get-CimInstance Win32_PerfFormattedData_Tcpip_NetworkInterface -EA 0 | Where-Object { $_.Name -notmatch "Loopback|isatap|Teredo|6to4|WFP" }; if ($ni) { $netRxTotal = ($ni | Measure-Object -Property BytesReceivedPersec -Sum).Sum; $netTxTotal = ($ni | Measure-Object -Property BytesSentPersec -Sum).Sum } } catch {}',
     '    }',
     '    $parts += "NETRX:" + [math]::Round($netRxTotal); $parts += "NETTX:" + [math]::Round($netTxTotal)',
     '    if ($parts.Count -gt 0) {',
@@ -452,16 +438,13 @@ function _startPerfCounterService() {
   if (_perfCounterProcess) return;
 
   const scriptContent = [
+    '[System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::GetCultureInfo(\'en-US\')',
+    '[System.Threading.Thread]::CurrentThread.CurrentUICulture = [System.Globalization.CultureInfo]::GetCultureInfo(\'en-US\')',
     '$ErrorActionPreference = "SilentlyContinue"',
-    '',
-    'try { $cpuP = New-Object System.Diagnostics.PerformanceCounter("Processor Information", "% Processor Performance", "_Total") } catch { $cpuP = $null }',
-    '',
-    'if ($cpuP) { $cpuP.NextValue() | Out-Null }',
-    'Start-Sleep -Milliseconds 500',
     '',
     'while ($true) {',
     '  $parts = @()',
-    '  if ($cpuP) { try { $parts += "CPUP:" + [math]::Round($cpuP.NextValue(), 1) } catch {} }',
+    '  try { $cp = Get-CimInstance Win32_PerfFormattedData_Counters_ProcessorInformation -Filter "Name=\'_Total\'" -EA 0; if ($cp -and $cp.PercentProcessorPerformance -gt 0) { $parts += "CPUP:" + [math]::Round($cp.PercentProcessorPerformance, 1) } } catch {}',
     '  if ($parts.Count -gt 0) {',
     '    [Console]::Out.WriteLine($parts -join "|")',
     '    [Console]::Out.Flush()',
@@ -913,7 +896,15 @@ async function _startRealtimePush() {
         _ts: Date.now(),
       };
 
-      mainWindow.webContents.send('realtime-hw-update', payload);
+      try {
+        mainWindow.webContents.send('realtime-hw-update', payload);
+      } catch (_) {}
+
+      // Push stats to overlay — isolated so renderer navigation never blocks it
+      try {
+        const overlay = require('./overlay');
+        if (overlay.isVisible()) overlay.pushStatsToOverlay(payload);
+      } catch (_) {}
     } catch (err) {
     }
   }, 1000);
@@ -940,6 +931,11 @@ function registerIPC() {
   });
 
   ipcMain.handle('system:stop-realtime', () => {
+    // Don't stop if the overlay is actively showing — it needs the same timer
+    try {
+      const overlay = require('./overlay');
+      if (overlay.isVisible()) return { success: true, skipped: 'overlay-active' };
+    } catch (_) {}
     _stopRealtimePush();
     return { success: true };
   });

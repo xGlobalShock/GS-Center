@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Layers,
   PieChart,
+  Monitor,
 } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 import '../styles/Sidebar.css';
@@ -39,6 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
     { id: 'softwareUpdates', label: 'Updates', icon: RefreshCw },
     { id: 'apps', label: 'Apps', icon: Layers },
     { id: 'cleaner', label: 'Utilities', icon: SlidersHorizontal },
+    { id: 'resolutionManager', label: 'Display', icon: Monitor },
     { id: 'space', label: 'Disk', icon: PieChart },
     { id: 'settings', label: 'Settings', icon: Settings },
   ], []);

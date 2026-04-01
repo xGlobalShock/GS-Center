@@ -629,6 +629,116 @@ ipcMain.handle('cleaner:clear-valorant-shaders', async () => {
 
 // ── Individual Disk Cleanup Handlers ──
 
+// Windows Temp Directory (%WINDIR%\Temp)
+ipcMain.handle('cleaner:clear-windows-temp', async () => {
+  try {
+    const winTemp = path.join(process.env.WINDIR || 'C:\\Windows', 'Temp');
+    let filesDeleted = 0, totalSize = 0, filesBefore = 0;
+    if (fs.existsSync(winTemp)) {
+      const entries = fs.readdirSync(winTemp);
+      filesBefore = entries.length;
+      for (const entry of entries) {
+        try {
+          const fp = path.join(winTemp, entry);
+          const stats = fs.statSync(fp);
+          totalSize += stats.isDirectory() ? 0 : stats.size;
+          fs.rmSync(fp, { recursive: true, force: true });
+          filesDeleted++;
+        } catch (e) { }
+      }
+    }
+    return { success: true, message: 'Cleared Windows Temp', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
+  } catch (error) {
+    if (isPermissionError(error)) return { success: false, message: 'Run the app as administrator' };
+    return { success: false, message: `Error: ${error.message}` };
+  }
+});
+
+// Windows Error Reports (WER)
+ipcMain.handle('cleaner:clear-error-reports', async () => {
+  try {
+    const werDirs = [
+      path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Microsoft', 'Windows', 'WER'),
+      path.join('C:\\ProgramData', 'Microsoft', 'Windows', 'WER'),
+    ];
+    let filesDeleted = 0, totalSize = 0, filesBefore = 0;
+    for (const dir of werDirs) {
+      if (!fs.existsSync(dir)) continue;
+      const walk = (d) => {
+        try {
+          for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+            const fp = path.join(d, entry.name);
+            filesBefore++;
+            try {
+              if (!entry.isDirectory()) totalSize += fs.statSync(fp).size;
+              fs.rmSync(fp, { recursive: true, force: true });
+              filesDeleted++;
+            } catch (e) { }
+          }
+        } catch (e) { }
+      };
+      walk(dir);
+    }
+    return { success: true, message: 'Cleared Windows Error Reports', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
+  } catch (error) {
+    if (isPermissionError(error)) return { success: false, message: 'Run the app as administrator' };
+    return { success: false, message: `Error: ${error.message}` };
+  }
+});
+
+// Delivery Optimization Cache
+ipcMain.handle('cleaner:clear-delivery-optimization', async () => {
+  try {
+    const doDir = path.join('C:\\Windows', 'SoftwareDistribution', 'DeliveryOptimization');
+    let filesDeleted = 0, totalSize = 0, filesBefore = 0;
+    if (fs.existsSync(doDir)) {
+      const walk = (d) => {
+        try {
+          for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+            const fp = path.join(d, entry.name);
+            filesBefore++;
+            try {
+              if (!entry.isDirectory()) totalSize += fs.statSync(fp).size;
+              fs.rmSync(fp, { recursive: true, force: true });
+              filesDeleted++;
+            } catch (e) { }
+          }
+        } catch (e) { }
+      };
+      walk(doDir);
+    }
+    return { success: true, message: 'Cleared Delivery Optimization cache', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
+  } catch (error) {
+    if (isPermissionError(error)) return { success: false, message: 'Run the app as administrator' };
+    return { success: false, message: `Error: ${error.message}` };
+  }
+});
+
+// Recent Files list
+ipcMain.handle('cleaner:clear-recent-files', async () => {
+  try {
+    const recentDir = path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'Microsoft', 'Windows', 'Recent');
+    let filesDeleted = 0, totalSize = 0, filesBefore = 0;
+    if (fs.existsSync(recentDir)) {
+      const entries = fs.readdirSync(recentDir);
+      filesBefore = entries.length;
+      for (const entry of entries) {
+        try {
+          const fp = path.join(recentDir, entry);
+          const stats = fs.statSync(fp);
+          totalSize += stats.isDirectory() ? 0 : stats.size;
+          fs.rmSync(fp, { recursive: true, force: true });
+          filesDeleted++;
+        } catch (e) { }
+      }
+    }
+    return { success: true, message: 'Cleared Recent Files list', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
+  } catch (error) {
+    if (isPermissionError(error)) return { success: false, message: 'Run the app as administrator' };
+    return { success: false, message: `Error: ${error.message}` };
+  }
+});
+
 // Thumbnail Cache
 ipcMain.handle('cleaner:clear-thumbnail-cache', async () => {
   try {

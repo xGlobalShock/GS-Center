@@ -12,6 +12,7 @@ import Network from './pages/Network';
 import SoftwareUpdates from './pages/SoftwareUpdates';
 import AppsPage from './pages/AppsPage';
 import SpaceAnalyzer from './pages/SpaceAnalyzer';
+import ResolutionManager from './pages/ResolutionManager';
 import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from './components/ToastContainer';
 import AutoCleanupRunner from './components/AutoCleanupRunner';
@@ -163,6 +164,7 @@ function App() {
       <div style={pageStyle('network')}><Network /></div>
       <div style={pageStyle('obsPresets')}><OBSPresets /></div>
       <div style={pageStyle('settings')}><Settings /></div>
+      <div style={pageStyle('resolutionManager')}><ResolutionManager /></div>
     </>
   ), [pageStyle]);
 

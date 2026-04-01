@@ -101,8 +101,9 @@ try {
 # Section 1: GPU
 $s1 = 'Unknown GPU|||0|||N/A'
 try {
-  $gpu = Get-CimInstance Win32_VideoController | Where-Object { $_.Status -eq 'OK' -and $_.Name -notmatch '(Virtual|Dummy|Parsec|Remote|Generic)' } | Select-Object -First 1
-  if (-not $gpu) { $gpu = Get-CimInstance Win32_VideoController | Where-Object { $_.Status -eq 'OK' } | Select-Object -First 1 }
+  $gpu = Get-CimInstance Win32_VideoController | Where-Object { $_.ConfigManagerErrorCode -eq 0 -and $_.Name -notmatch '(Virtual|Dummy|Parsec|Remote|Generic)' } | Select-Object -First 1
+  if (-not $gpu) { $gpu = Get-CimInstance Win32_VideoController | Where-Object { $_.ConfigManagerErrorCode -eq 0 } | Select-Object -First 1 }
+  if (-not $gpu) { $gpu = Get-CimInstance Win32_VideoController | Where-Object { $_.Name -notmatch '(Virtual|Dummy|Parsec|Remote|Generic)' } | Select-Object -First 1 }
   if ($gpu) {
     $vramGB = 0
     if ($gpu.AdapterRAM -and $gpu.AdapterRAM -gt 0) {
@@ -163,7 +164,9 @@ try {
   if ($d) {
     $pSize = [math]::Round($d.Size/1GB)
     $finalSize = if ($cSize -gt $pSize) { $cSize } else { $pSize }
-    $s3 = "$($d.FriendlyName)|||$($d.MediaType)|||$($d.HealthStatus)|||$finalSize"
+    $hsVal = try { [int]$d.HealthStatus } catch { -1 }
+    $hsStr = switch ($hsVal) { 0 { 'Healthy' } 1 { 'Warning' } 2 { 'Unhealthy' } default { "$($d.HealthStatus)" } }
+    $s3 = "$($d.FriendlyName)|||$($d.MediaType)|||$hsStr|||$finalSize"
   } else {
     $d2 = Get-CimInstance Win32_DiskDrive | Select-Object -First 1
     $pSize2 = [math]::Round($d2.Size/1GB)
@@ -184,7 +187,7 @@ try {
 # Section 5: Network
 $s5 = '||||||||||||||'
 try {
-  $a = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1
+  $a = Get-NetAdapter | Where-Object { $_.ifOperStatus -eq 1 } | Select-Object -First 1
   $ipv4 = (Get-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Select-Object -First 1).IPAddress
   $ipv6 = (Get-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily IPv6 -ErrorAction SilentlyContinue | Select-Object -First 1).IPAddress
   $mac = $a.MacAddress
@@ -192,7 +195,7 @@ try {
   $dns = (Get-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ErrorAction SilentlyContinue -AddressFamily IPv4 | Select-Object -First 1).ServerAddresses -join ','
   $allAdapters = ''
   try {
-    $adapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
+    $adapters = Get-NetAdapter | Where-Object { $_.ifOperStatus -eq 1 }
     $parts = @()
     foreach ($ad in $adapters) {
       $adType = if ($ad.MediaType -match '802\\.11|Wireless|Wi-?Fi') { 'WiFi' } elseif ($ad.MediaType -match '802\\.3|Ethernet') { 'Ethernet' } else { 'Other' }
@@ -227,7 +230,14 @@ $s7 = ''
 if ($osObj) { try { $up = (Get-Date) - $osObj.LastBootUpTime; $s7 = '{0}d {1}h {2}m' -f $up.Days, $up.Hours, $up.Minutes } catch {} }
 
 $s8 = ''
-try { $s8 = (Get-CimInstance -Namespace root\\cimv2\\power -ClassName Win32_PowerPlan | Where-Object { $_.IsActive }).ElementName } catch {}
+try {
+  $pp = Get-CimInstance -Namespace root\\cimv2\\power -ClassName Win32_PowerPlan | Where-Object { $_.IsActive } | Select-Object -First 1
+  if ($pp) {
+    # InstanceID format: "Microsoft:PowerPlan\\{GUID}" — extract the GUID
+    $guid = if ($pp.InstanceID -match '\\{([^}]+)}') { $Matches[1] } else { '' }
+    $s8 = "$guid|||$($pp.ElementName)"
+  }
+} catch {}
 
 $s9 = 'false'
 try {
@@ -295,8 +305,12 @@ try {
 } catch { Write-Output 'Unknown' }
     `, 10000),
 
-    execAsync('cscript //nologo C:\\Windows\\System32\\slmgr.vbs /dli', { timeout: 8000, windowsHide: true })
-      .then(({ stdout }) => (stdout || '').trim()).catch(() => ''),
+    runPSScript(`
+try {
+  $lic = Get-CimInstance SoftwareLicensingProduct -Filter "PartialProductKey IS NOT NULL AND ApplicationId = '55c92734-d682-4d71-983e-d6ec3f16059f'" -EA 0 | Select-Object -First 1
+  if ($lic) { Write-Output $lic.LicenseStatus } else { Write-Output '0' }
+} catch { Write-Output '0' }
+    `, 8000),
   ]);
 
   const valOf = (r) => r.status === 'fulfilled' ? (r.value || '') : '';
@@ -310,14 +324,13 @@ try {
   const lastUpdRaw = valOf(lastUpdateR).trim();
   if (lastUpdRaw && lastUpdRaw !== 'Unknown') info.lastWindowsUpdate = lastUpdRaw;
 
-  const slmgrOut = valOf(licenseR).toLowerCase();
-  if (slmgrOut) {
-    if (slmgrOut.includes('licensed') || slmgrOut.includes('license status: licensed') || slmgrOut.includes('sous licence')) {
+  const licenseStatus = parseInt(valOf(licenseR).trim());
+  if (!isNaN(licenseStatus)) {
+    // LicenseStatus: 0=Unlicensed, 1=Licensed, 2=OOBGrace, 3=OOTGrace, 4=NonGenuineGrace, 5=Notification, 6=ExtendedGrace
+    if (licenseStatus === 1) {
       info.windowsActivation = 'Licensed';
-    } else if (slmgrOut.includes('notification') || slmgrOut.includes('grace') || slmgrOut.includes('riode de gr')) {
+    } else if (licenseStatus >= 0) {
       info.windowsActivation = 'Not Activated';
-    } else if (slmgrOut.includes('initial grace') || slmgrOut.includes('oob grace') || slmgrOut.includes('initiale')) {
-      info.windowsActivation = 'Trial';
     }
   }
 
@@ -421,20 +434,40 @@ try {
   // 7: Uptime
   try { info.systemUptime = get(7) || ''; } catch { }
 
-  // 8: Power plan
-  try { info.powerPlan = get(8) || ''; } catch { }
+  // 8: Power plan — GUID-based to avoid localized names
+  const KNOWN_POWER_PLANS = {
+    '381b4222-f694-41f0-9685-ff5bb260df2e': 'Balanced',
+    '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c': 'High Performance',
+    'a1841308-3541-4fab-bc81-f71556f20b4a': 'Power Saver',
+    'e9a42b02-d5df-448d-aa00-03f14749eb61': 'Ultimate Performance',
+  };
+  try {
+    const s8raw = get(8);
+    const s8parts = s8raw.split('|||');
+    const guid = (s8parts[0] || '').trim().toLowerCase();
+    const localName = (s8parts[1] || '').trim();
+    if (guid && KNOWN_POWER_PLANS[guid]) {
+      info.powerPlan = KNOWN_POWER_PLANS[guid];
+    } else if (localName) {
+      // Custom plan — no English equivalent exists, use OS name as-is
+      info.powerPlan = localName;
+    }
+  } catch { }
 
   if (!info.powerPlan) {
     try {
       const pc = await execFileAsync('powercfg', ['/getactivescheme'], { timeout: 4000, windowsHide: true });
       const out = (pc.stdout || '').trim();
-      const m = out.match(/\(([^)]+)\)$/);
-      if (m && m[1]) {
-        info.powerPlan = m[1].trim();
-      } else {
-        const parts = out.split(/\)\s*/).map(p => p.trim()).filter(Boolean);
-        const last = parts[parts.length - 1] || '';
-        if (last) info.powerPlan = last.replace(/^\(|\)$/g, '').trim();
+      // Extract GUID from line: "Power Scheme GUID: xxxxxxxx-... (Name)"
+      const guidMatch = out.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+      if (guidMatch) {
+        const g = guidMatch[1].toLowerCase();
+        if (KNOWN_POWER_PLANS[g]) {
+          info.powerPlan = KNOWN_POWER_PLANS[g];
+        } else {
+          const m = out.match(/\(([^)]+)\)$/);
+          if (m && m[1]) info.powerPlan = m[1].trim();
+        }
       }
     } catch { }
   }
@@ -657,14 +690,14 @@ Write-Output $lastUpd
   }
 
   if (!fastInfo.windowsActivation || fastInfo.windowsActivation === 'Unknown') {
-    tasks.push(execAsync('cscript //nologo C:\\Windows\\System32\\slmgr.vbs /dli', {
-      timeout: 8000, windowsHide: true
-    }).then(({ stdout }) => {
-      const out = (stdout || '').toLowerCase();
-      let activation = 'Unknown';
-      if (out.includes('licensed') || out.includes('license status: licensed')) activation = 'Licensed';
-      else if (out.includes('notification') || out.includes('grace')) activation = 'Not Activated';
-      else if (out.includes('initial grace') || out.includes('oob grace')) activation = 'Trial';
+    tasks.push(runPSScript(`
+try {
+  $lic = Get-CimInstance SoftwareLicensingProduct -Filter "PartialProductKey IS NOT NULL AND ApplicationId = '55c92734-d682-4d71-983e-d6ec3f16059f'" -EA 0 | Select-Object -First 1
+  if ($lic) { Write-Output $lic.LicenseStatus } else { Write-Output '0' }
+} catch { Write-Output '0' }
+    `, 8000).then(result => {
+      const status = parseInt((result || '').trim());
+      const activation = status === 1 ? 'Licensed' : (status >= 0 ? 'Not Activated' : 'Unknown');
       pushUpdate({ windowsActivation: activation });
     }).catch(() => { pushUpdate({ windowsActivation: 'Unknown' }); }));
   }
