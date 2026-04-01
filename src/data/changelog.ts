@@ -10,6 +10,25 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.6.5',
+    date: '2026-04-02',
+    highlights: 'UI overhaul for Settings and Disk Analyzer, plus performance and bug fixes.',
+    changes: [
+      // New Features
+      { type: 'new', text: 'Settings page fully redesigned with a two-panel layout — vertical nav sidebar and animated content panels.' },
+      { type: 'new', text: 'Hardware Acceleration card redesigned with animated scan-line, status pill, and renderer info rows.' },
+      { type: 'new', text: 'Added Check for Updates button in Settings → About with live states (Checking, Up to Date, Available).' },
+
+      // Fixes
+      { type: 'fixed', text: 'Fixed Disk Space Analyzer showing "Scanning..." and "Loading..." on all metric cards before any scan is started.' },
+      { type: 'fixed', text: 'Fixed navigation becoming laggy and unresponsive while Auto Cleanup Toolkit runs on startup.' },
+
+      // Improvements
+      { type: 'improved', text: 'Disk Space Analyzer metric cards now show a neutral dash when idle and animated dots during scanning.' },
+      { type: 'improved', text: 'Auto-updater background check interval reduced from 4 hours to 30 seconds for near-instant new release detection.' },
+    ],
+  },
+  {
     version: '1.6.4',
     date: '2026-04-02',
     highlights: 'Minor hotfix addressing critical bugs and improving stability.',
