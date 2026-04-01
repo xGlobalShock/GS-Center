@@ -372,13 +372,13 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
 
           <div className="sa-metric-card">
             <div className="sa-metric-header"><Orbit size={14} /> Used Space</div>
-            <div className="sa-metric-value" style={{color: "var(--sa-cyan)"}}>{result && result.driveCapacity > 0 ? formatBytes(result.driveCapacity - result.driveFree) : 'Scanning...'}</div>
+            <div className="sa-metric-value" style={{color: "var(--sa-cyan)"}}>{result && result.driveCapacity > 0 ? formatBytes(result.driveCapacity - result.driveFree) : isScanning ? 'Scanning...' : '—'}</div>
             <div className="sa-metric-desc">{result?.driveCapacity > 0 ? `of ${formatBytes(result.driveCapacity)}` : 'Disk Usage'}</div>
           </div>
           
           <div className="sa-metric-card">
             <div className="sa-metric-header"><Sparkles size={14} /> Free Space</div>
-            <div className="sa-metric-value" style={{color: "var(--sa-purple)"}}>{result && result.driveFree >= 0 ? formatBytes(result.driveFree) : 'Loading...'}</div>
+            <div className="sa-metric-value" style={{color: "var(--sa-purple)"}}>{result && result.driveFree >= 0 ? formatBytes(result.driveFree) : isScanning ? 'Scanning...' : '—'}</div>
             <div className="sa-metric-desc">Available</div>
           </div>
         </motion.div>
