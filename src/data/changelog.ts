@@ -10,6 +10,17 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.6.0',
+    date: '2026-04-02',
+    highlights: 'Splash Screen Update',
+    changes: [
+      { type: 'new', text: 'Updated the splash screen with a new design and improved loading indicators.' },
+      { type: 'new', text: 'Added dynamic status messages during the loading process to provide better feedback to users.' },
+      { type: 'fixed', text: 'Resolved an issue where the splash screen would occasionally freeze during loading.' },
+      { type: 'improved', text: 'Enhanced the loading performance and visual feedback during application startup.' },
+    ],
+  },
+  {
     version: '1.5.9',
     date: '2026-04-01',
     highlights: 'App Logo / Icon Update',
