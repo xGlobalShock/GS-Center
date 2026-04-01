@@ -32,22 +32,7 @@ export const applyObsPreset = async (presetId: string): Promise<ApplyPresetResul
   }
 };
 
-/**
- * Check if OBS is installed
- */
-export const checkObsInstalled = async (): Promise<boolean> => {
-  try {
-    if (!window.electron?.ipcRenderer) {
-      return false;
-    }
 
-    const isInstalled = await window.electron.ipcRenderer.invoke('obs:check-installed');
-    return isInstalled;
-  } catch (error) {
-    console.error('Error checking OBS installation:', error);
-    return false;
-  }
-};
 
 /**
  * Launch OBS
@@ -72,19 +57,4 @@ export const launchObs = async (): Promise<ApplyPresetResult> => {
   }
 };
 
-/**
- * Get OBS installation path
- */
-export const getObsPath = async (): Promise<string | null> => {
-  try {
-    if (!window.electron?.ipcRenderer) {
-      return null;
-    }
 
-    const path = await window.electron.ipcRenderer.invoke('obs:get-path');
-    return path;
-  } catch (error) {
-    console.error('Error getting OBS path:', error);
-    return null;
-  }
-};

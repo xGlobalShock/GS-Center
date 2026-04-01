@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import PerformanceTweakCard from '../components/PerformanceTweakCard';
 import { ArrowCounterClockwise } from 'phosphor-react';
@@ -8,6 +8,58 @@ import '../styles/Performance.css';
 import { Activity } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 
+/* ── IPC channel maps — constant, never need to be recreated ── */
+const TWEAK_MAP: Record<string, string> = {
+  'irq-priority': 'tweak:apply-irq-priority',
+  'network-interrupts': 'tweak:apply-network-interrupts',
+  'gpu-scheduling': 'tweak:apply-gpu-scheduling',
+  'tdr-level': 'tweak:apply-tdr-level',
+  'gdrv-policy': 'tweak:apply-gdrv-policy',
+  'appcapture-disabled': 'tweak:apply-appcapture-disabled',
+  'fse-behavior-mode': 'tweak:apply-fse-behavior-mode',
+  'overlay-test-mode': 'tweak:apply-overlay-test-mode',
+  'fullscreen-optimization': 'tweak:apply-fullscreen-optimization',
+  'usb-suspend': 'tweak:apply-usb-suspend',
+  'game-dvr': 'tweak:apply-game-dvr',
+  'win32-priority': 'tweak:apply-win32-priority',
+  'memory-compression': 'tweak:apply-memory-compression',
+  'games-priority': 'tweak:apply-games-priority',
+};
+
+const RESET_MAP: Record<string, string> = {
+  'irq-priority': 'tweak:reset-irq-priority',
+  'network-interrupts': 'tweak:reset-network-interrupts',
+  'gpu-scheduling': 'tweak:reset-gpu-scheduling',
+  'tdr-level': 'tweak:reset-tdr-level',
+  'gdrv-policy': 'tweak:reset-gdrv-policy',
+  'appcapture-disabled': 'tweak:reset-appcapture-disabled',
+  'fse-behavior-mode': 'tweak:reset-fse-behavior-mode',
+  'overlay-test-mode': 'tweak:reset-overlay-test-mode',
+  'fullscreen-optimization': 'tweak:reset-fullscreen-optimization',
+  'usb-suspend': 'tweak:reset-usb-suspend',
+  'game-dvr': 'tweak:reset-game-dvr',
+  'win32-priority': 'tweak:reset-win32-priority',
+  'memory-compression': 'tweak:reset-memory-compression',
+  'games-priority': 'tweak:reset-games-priority',
+};
+
+const CHECK_MAP: Record<string, string> = {
+  'irq-priority': 'tweak:check-irq-priority',
+  'network-interrupts': 'tweak:check-network-interrupts',
+  'gpu-scheduling': 'tweak:check-gpu-scheduling',
+  'tdr-level': 'tweak:check-tdr-level',
+  'gdrv-policy': 'tweak:check-gdrv-policy',
+  'appcapture-disabled': 'tweak:check-appcapture-disabled',
+  'fse-behavior-mode': 'tweak:check-fse-behavior-mode',
+  'overlay-test-mode': 'tweak:check-overlay-test-mode',
+  'fullscreen-optimization': 'tweak:check-fullscreen-optimization',
+  'usb-suspend': 'tweak:check-usb-suspend',
+  'game-dvr': 'tweak:check-game-dvr',
+  'win32-priority': 'tweak:check-win32-priority',
+  'memory-compression': 'tweak:check-memory-compression',
+  'games-priority': 'tweak:check-games-priority',
+};
+
 const Performance: React.FC = () => {
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [enabledTweaks, setEnabledTweaks] = useState<{ [key: string]: boolean }>({});
@@ -15,34 +67,25 @@ const Performance: React.FC = () => {
   const [creatingRestore, setCreatingRestore] = useState(false);
   const { addToast } = useToast();
 
-  const runChecksOnDemand = async () => {
-    // expose to refresh button
-    if (typeof window !== 'undefined') {
-      // run the checks by triggering focus handler approach
+  const runChecks = useCallback(async () => {
+    const entries = Object.entries(CHECK_MAP);
+    const initial: Record<string, any> = {};
+    for (const [tweakId] of entries) initial[tweakId] = { loading: true };
+    setTweakChecks(prev => ({ ...prev, ...initial }));
+
+    const promises = entries.map(async ([tweakId, channel]) => {
       try {
-        // reuse the effect's runChecks by programmatically focusing window, but better to call same logic inline
-        const entries = Object.entries(checkMap);
-        const initial: any = {};
-        for (const [tweakId] of entries) initial[tweakId] = { loading: true };
-        setTweakChecks(prev => ({ ...prev, ...initial }));
-
-        const promises = entries.map(async ([tweakId, channel]) => {
-          try {
-            const result = await window.electron!.ipcRenderer.invoke(channel);
-            setTweakChecks(prev => ({ ...prev, [tweakId]: { loading: false, applied: !!result.applied, exists: !!result.exists, value: result.value ?? null } }));
-            setEnabledTweaks(prev => ({ ...prev, [tweakId]: !!result.applied }));
-          } catch (err) {
-            setTweakChecks(prev => ({ ...prev, [tweakId]: { loading: false, applied: false, exists: false, error: err instanceof Error ? err.message : String(err) } }));
-            setEnabledTweaks(prev => ({ ...prev, [tweakId]: false }));
-          }
-        });
-
-        await Promise.all(promises);
-      } catch (e) {
-        // ignore
+        const result = await window.electron!.ipcRenderer.invoke(channel);
+        setTweakChecks(prev => ({ ...prev, [tweakId]: { loading: false, applied: !!result.applied, exists: !!result.exists, value: result.value ?? null } }));
+        setEnabledTweaks(prev => ({ ...prev, [tweakId]: !!result.applied }));
+      } catch (err) {
+        setTweakChecks(prev => ({ ...prev, [tweakId]: { loading: false, applied: false, exists: false, error: err instanceof Error ? err.message : String(err) } }));
+        setEnabledTweaks(prev => ({ ...prev, [tweakId]: false }));
       }
-    }
-  };
+    });
+
+    await Promise.all(promises);
+  }, []);
 
   const handleCreateRestorePoint = async () => {
     setCreatingRestore(true);
@@ -80,101 +123,22 @@ const Performance: React.FC = () => {
     }
   };
 
-  const tweakMap: { [key: string]: string } = {
-    'irq-priority': 'tweak:apply-irq-priority',
-    'network-interrupts': 'tweak:apply-network-interrupts',
-    'gpu-scheduling': 'tweak:apply-gpu-scheduling',
-    'tdr-level': 'tweak:apply-tdr-level',
-    'gdrv-policy': 'tweak:apply-gdrv-policy',
-    'appcapture-disabled': 'tweak:apply-appcapture-disabled',
-    'fse-behavior-mode': 'tweak:apply-fse-behavior-mode',
-    'overlay-test-mode': 'tweak:apply-overlay-test-mode',
-    'fullscreen-optimization': 'tweak:apply-fullscreen-optimization',
-    'usb-suspend': 'tweak:apply-usb-suspend',
-    'game-dvr': 'tweak:apply-game-dvr',
-    'win32-priority': 'tweak:apply-win32-priority',
-    'memory-compression': 'tweak:apply-memory-compression',
-    'games-priority': 'tweak:apply-games-priority',
-  };
-
-  const resetMap: { [key: string]: string } = {
-    'irq-priority': 'tweak:reset-irq-priority',
-    'network-interrupts': 'tweak:reset-network-interrupts',
-    'gpu-scheduling': 'tweak:reset-gpu-scheduling',
-    'tdr-level': 'tweak:reset-tdr-level',
-    'gdrv-policy': 'tweak:reset-gdrv-policy',
-    'appcapture-disabled': 'tweak:reset-appcapture-disabled',
-    'fse-behavior-mode': 'tweak:reset-fse-behavior-mode',
-    'overlay-test-mode': 'tweak:reset-overlay-test-mode',
-    'fullscreen-optimization': 'tweak:reset-fullscreen-optimization',
-    'usb-suspend': 'tweak:reset-usb-suspend',
-    'game-dvr': 'tweak:reset-game-dvr',
-    'win32-priority': 'tweak:reset-win32-priority',
-    'memory-compression': 'tweak:reset-memory-compression',
-    'games-priority': 'tweak:reset-games-priority',
-  };
-
-  const checkMap: { [key: string]: string } = {
-    'irq-priority': 'tweak:check-irq-priority',
-    'network-interrupts': 'tweak:check-network-interrupts',
-    'gpu-scheduling': 'tweak:check-gpu-scheduling',
-    'tdr-level': 'tweak:check-tdr-level',
-    'gdrv-policy': 'tweak:check-gdrv-policy',
-    'appcapture-disabled': 'tweak:check-appcapture-disabled',
-    'fse-behavior-mode': 'tweak:check-fse-behavior-mode',
-    'overlay-test-mode': 'tweak:check-overlay-test-mode',
-    'fullscreen-optimization': 'tweak:check-fullscreen-optimization',
-    'usb-suspend': 'tweak:check-usb-suspend',
-    'game-dvr': 'tweak:check-game-dvr',
-    'win32-priority': 'tweak:check-win32-priority',
-    'memory-compression': 'tweak:check-memory-compression',
-    'games-priority': 'tweak:check-games-priority',
-  };
-
   // Check tweak status on mount only. Manual refresh via Scan Status button.
   useEffect(() => {
-    let mounted = true;
-
-    const runChecks = async () => {
-      const entries = Object.entries(checkMap);
-      const initial: any = {};
-      for (const [tweakId] of entries) initial[tweakId] = { loading: true };
-      setTweakChecks(prev => ({ ...prev, ...initial }));
-
-      const promises = entries.map(async ([tweakId, channel]) => {
-        try {
-          const result = await window.electron!.ipcRenderer.invoke(channel);
-          if (!mounted) return;
-          setTweakChecks(prev => ({ ...prev, [tweakId]: { loading: false, applied: !!result.applied, exists: !!result.exists, value: result.value ?? null } }));
-          setEnabledTweaks(prev => ({ ...prev, [tweakId]: !!result.applied }));
-        } catch (err) {
-          if (!mounted) return;
-          setTweakChecks(prev => ({ ...prev, [tweakId]: { loading: false, applied: false, exists: false, error: err instanceof Error ? err.message : String(err) } }));
-          setEnabledTweaks(prev => ({ ...prev, [tweakId]: false }));
-        }
-      });
-
-      await Promise.all(promises);
-    };
-
     runChecks();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  }, [runChecks]);
 
   const handleApplyTweak = async (id: string) => {
     setApplyingId(id);
     try {
       // Apply tweak
-      const channel = tweakMap[id];
+      const channel = TWEAK_MAP[id];
       if (window.electron?.ipcRenderer && channel) {
         const result: any = await window.electron.ipcRenderer.invoke(channel);
         if (result.success) {
           addToast(result.message, 'success');
           // Check status after applying
-          const checkChannel = checkMap[id];
+          const checkChannel = CHECK_MAP[id];
           if (checkChannel) {
             const checkResult = await window.electron.ipcRenderer.invoke(checkChannel);
             setEnabledTweaks({ ...enabledTweaks, [id]: checkResult.applied });
@@ -197,7 +161,7 @@ const Performance: React.FC = () => {
   const handleResetTweak = async (id: string) => {
     setApplyingId(id);
     try {
-      const channel = resetMap[id];
+      const channel = RESET_MAP[id];
       if (window.electron?.ipcRenderer && channel) {
         const result: any = await window.electron.ipcRenderer.invoke(channel);
         if (result.success) {
@@ -207,7 +171,7 @@ const Performance: React.FC = () => {
           if (id === 'win32-priority') {
             setEnabledTweaks(prev => ({ ...prev, [id]: false }));
           } else {
-            const checkChannel = checkMap[id];
+            const checkChannel = CHECK_MAP[id];
             if (checkChannel) {
               const checkResult = await window.electron.ipcRenderer.invoke(checkChannel);
               setEnabledTweaks(prev => ({ ...prev, [id]: checkResult.applied || false }));

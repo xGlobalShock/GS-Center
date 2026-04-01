@@ -45,8 +45,11 @@ function createSplashWindow() {
       center: true,
       icon: iconPath,
       webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false,
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: isDev
+          ? path.join(_rootDir, 'public', 'splash-preload.js')
+          : path.join(_rootDir, 'build', 'splash-preload.js'),
         devTools: false,
       },
     });

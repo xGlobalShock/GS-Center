@@ -6,15 +6,18 @@ import PageHeader from '../components/PageHeader';
 import { Settings as SettingsIcon, Monitor, AlertTriangle, Lock } from 'lucide-react';
 
 const Settings: React.FC = () => {
-  const [settings, setSettings] = useState(() => ({
-    autoClean: false,
-    notifications: false,
-    autoOptimize: false,
-    autoUpdate: false,
-    theme: 'dark',
-    startupLaunch: false,
-    autoCleanupOnStartup: false,
-  }));
+  const [settings, setSettings] = useState(() => {
+    const saved = loadSettings();
+    return {
+      autoClean: saved.autoClean ?? false,
+      notifications: saved.notifications ?? false,
+      autoOptimize: saved.autoOptimize ?? false,
+      autoUpdate: saved.autoUpdate ?? false,
+      theme: saved.theme ?? 'dark',
+      startupLaunch: saved.startupLaunch ?? false,
+      autoCleanupOnStartup: saved.autoCleanupOnStartup ?? false,
+    };
+  });
   const [appVersion, setAppVersion] = useState('1.0.0');
   const [gpuStatus, setGpuStatus] = useState<{ status: string; renderer: string; detail: string } | null>(null);
 
@@ -180,7 +183,7 @@ const Settings: React.FC = () => {
             <select
               className="theme-select"
               value={settings.theme}
-              onChange={(e) => setSettings(prev => ({ ...prev, theme: e.target.value }))}
+              onChange={(e) => setSettings(prev => ({ ...prev, theme: e.target.value as 'light' | 'dark' }))}
             >
               <option value="dark">Dark (Default)</option>
               <option value="light">Light</option>

@@ -51,8 +51,6 @@ interface WindowsDebloatProps {
 const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false, activeTab = 'debloat', onTabChange }) => {
   const { addToast } = useToast();
 
-  const IS_COMING_SOON = false; // LOCK / UNLOCK PAGE
-
   /* ── State ────────────────────────────────────────────────────────────── */
   const [items, setItems] = useState<DebloatItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -99,7 +97,6 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false, activ
 
   /* ── Fetch all sections in one view ── */
   const fetchItems = useCallback(async () => {
-    if (IS_COMING_SOON) return;
     if (!window.electron?.ipcRenderer) return;
     setLoading(true);
     setSelected(new Set());
@@ -443,16 +440,8 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false, activ
       {/* ── Page Header ── */}
       <PageHeader icon={<LayoutGrid size={16} />} title="Apps Manager" />
 
-      {IS_COMING_SOON && (
-        <div className="wd-lock-overlay">
-          <Lock size={36} strokeWidth={1.5} />
-          <span className="wd-lock-caption">Coming Soon</span>
-          <span className="wd-lock-sub">Windows Debloat is currently in development</span>
-        </div>
-      )}
-
-      {/* ── Page Content (Locked) ── */}
-      <div className={`wd-content ${IS_COMING_SOON ? 'wd-content--locked' : ''}`}>
+      {/* ── Page Content ── */}
+      <div className="wd-content">
         {/* ── Not-elevated warning ── */}
         {!isElevated && (
           <div className="wd-elevate-warn">

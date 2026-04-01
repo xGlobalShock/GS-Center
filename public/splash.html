@@ -187,9 +187,10 @@
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
+    // Use the secure splashAPI bridge (exposed via splash-preload.js)
+    const api = window.splashAPI;
 
-    ipcRenderer.on('splash:version', (_e, v) => {
+    api.onVersion((v) => {
       document.getElementById('versionTag').textContent = 'v' + (v || '1.0.0');
     });
 
@@ -220,7 +221,7 @@
       }
     };
 
-    ipcRenderer.on('splash:status', (_e, msg) => {
+    api.onStatus((msg) => {
       setStatusText(msg);
     });
 
@@ -281,7 +282,7 @@
       }
     }, 200);
 
-    ipcRenderer.on('splash:progress', (_e, pct) => {
+    api.onProgress((pct) => {
       setPercent(pct);
     });
 
@@ -328,11 +329,11 @@
       }, 2000); // slower rotation
     };
 
-    ipcRenderer.on('splash:details', (_e, details) => {
+    api.onDetails((details) => {
       updateHardwareDetails(details);
     });
 
-    ipcRenderer.on('splash:done', () => {
+    api.onDone(() => {
       clearInterval(trickleTimer);
       if (hardwareDetailsTimer) {
         clearInterval(hardwareDetailsTimer);
@@ -367,14 +368,14 @@
         if (content) {
           content.classList.add('fade-out');
           content.addEventListener('animationend', () => {
-            ipcRenderer.send('splash:fade-complete');
+            api.sendFadeComplete();
           }, { once: true });
           // Safety timeout in case animationend never fires
           setTimeout(() => {
-            ipcRenderer.send('splash:fade-complete');
+            api.sendFadeComplete();
           }, 800);
         } else {
-          ipcRenderer.send('splash:fade-complete');
+          api.sendFadeComplete();
         }
       }, 150);
     });

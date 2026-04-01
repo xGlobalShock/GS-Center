@@ -26,7 +26,7 @@ const Cleaner: React.FC = () => {
   const { addToast } = useToast();
 
   const handleShowClearAllToast = () => {
-    const k = Math.random().toString(36).substr(2, 9);
+    const k = Math.random().toString(36).substring(2, 11);
     const windowsIds = utilityTabs.windows.map((u) => u.id);
     addToast(<CacheCleanupToast toastKey={k} windowsIds={windowsIds} />, 'info', 0);
   };

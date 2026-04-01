@@ -2,7 +2,7 @@ const { ipcMain, shell } = require('electron');
 const fs = require('fs/promises');
 const fsSync = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execAsync } = require('./utils');
 
 
 const PROTECTED_PATHS = [
@@ -39,14 +39,15 @@ function findNodeByPath(node, targetPath) {
   return null;
 }
 
-function getDriveInfo(dirPath) {
+async function getDriveInfo(dirPath) {
   try {
     const driveMatch = dirPath.match(/^([A-Z]):/i);
     if (!driveMatch) return { driveCapacity: 0, driveFree: 0 };
 
     const driveLetter = driveMatch[1].toUpperCase();
     const cmd = `powershell -Command "$disk = Get-Volume -DriveLetter ${driveLetter}; Write-Output $disk.Size; Write-Output $disk.SizeRemaining"`;
-    const output = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim().split('\n');
+    const { stdout } = await execAsync(cmd);
+    const output = stdout.trim().split('\n');
     
     const driveCapacity = parseInt(output[0]?.trim()) || 0;
     const driveFree = parseInt(output[1]?.trim()) || 0;
@@ -58,7 +59,7 @@ function getDriveInfo(dirPath) {
   return { driveCapacity: 0, driveFree: 0 };
 }
 
-function formatNodeResult(node, scannedFiles, scannedDirs, fromCache = false, driveInfoOverride = null) {
+async function formatNodeResult(node, scannedFiles, scannedDirs, fromCache = false, driveInfoOverride = null) {
   let childrenList = Array.from(node.children.values()).map(c => ({
     name: c.name,
     path: c.path,
@@ -85,7 +86,7 @@ function formatNodeResult(node, scannedFiles, scannedDirs, fromCache = false, dr
   // Sort descending by size
   childrenList.sort((a, b) => b.size - a.size);
 
-  const driveInfo = driveInfoOverride || getDriveInfo(node.path);
+  const driveInfo = driveInfoOverride || await getDriveInfo(node.path);
 
   return {
     totalSize: node.size,
@@ -280,12 +281,12 @@ async function scanDirectory(targetPath, forceRescan = false) {
       };
 
       if (normalizedPath.toLowerCase() === cachedPath.toLowerCase()) {
-        return formatNodeResult(cacheEntry.rootNode, cacheEntry.scannedFiles, cacheEntry.scannedDirs, true, driveInfo);
+        return await formatNodeResult(cacheEntry.rootNode, cacheEntry.scannedFiles, cacheEntry.scannedDirs, true, driveInfo);
       }
       if (isDescendantPath(cachedPath, normalizedPath)) {
         const node = findNodeByPath(cacheEntry.rootNode, normalizedPath);
         if (node) {
-          return formatNodeResult(node, cacheEntry.scannedFiles, cacheEntry.scannedDirs, true, driveInfo);
+          return await formatNodeResult(node, cacheEntry.scannedFiles, cacheEntry.scannedDirs, true, driveInfo);
         }
       }
     }
@@ -338,7 +339,7 @@ async function scanDirectory(targetPath, forceRescan = false) {
         return null;
       }
 
-      const driveInfo = getDriveInfo(normalizedPath);
+      const driveInfo = await getDriveInfo(normalizedPath);
 
       scanCache.set(normalizedPath.toLowerCase(), {
         rootNode: result.rootNode,
@@ -349,7 +350,7 @@ async function scanDirectory(targetPath, forceRescan = false) {
         ts: Date.now()
       });
 
-      return formatNodeResult(result.rootNode, result.scannedFiles, result.scannedDirs, false, driveInfo);
+      return await formatNodeResult(result.rootNode, result.scannedFiles, result.scannedDirs, false, driveInfo);
     } finally {
       activeScan.inProgress = false;
       activeScan.path = null;
@@ -377,7 +378,7 @@ function clearCacheForPath(targetPath) {
   }
 }
 
-function getCachedNode(targetPath) {
+async function getCachedNode(targetPath) {
   const normalizedPath = normalizePath(targetPath);
   if (!normalizedPath) return null;
 
@@ -388,13 +389,13 @@ function getCachedNode(targetPath) {
     };
 
     if (normalizedPath.toLowerCase() === cachedPath.toLowerCase()) {
-      return formatNodeResult(cacheEntry.rootNode, cacheEntry.scannedFiles, cacheEntry.scannedDirs, true, driveInfo);
+      return await formatNodeResult(cacheEntry.rootNode, cacheEntry.scannedFiles, cacheEntry.scannedDirs, true, driveInfo);
     }
 
     if (isDescendantPath(cachedPath, normalizedPath)) {
       const node = findNodeByPath(cacheEntry.rootNode, normalizedPath);
       if (node) {
-        return formatNodeResult(node, cacheEntry.scannedFiles, cacheEntry.scannedDirs, true, driveInfo);
+        return await formatNodeResult(node, cacheEntry.scannedFiles, cacheEntry.scannedDirs, true, driveInfo);
       }
     }
   }

@@ -10,7 +10,6 @@ import '../styles/OBSPresets.css';
 
 const ICON_MAP: Record<string, React.ReactNode> = {
   broadcast: <Monitor size={52} weight="bold" />,
-  gamepad:   <Monitor size={52} weight="bold" />,
 };
 
 /* Only show the Gaming preset */
