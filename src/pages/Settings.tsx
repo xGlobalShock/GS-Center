@@ -1,19 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import '../styles/Settings.css';
 import { loadSettings, saveSettings } from '../utils/settings';
 import {
   Zap, Palette, Layers, Monitor, AlertTriangle, Info,
-  RefreshCw, CheckCircle, ArrowUpCircle, ChevronRight,
+  RefreshCw, CheckCircle, ArrowUpCircle, ChevronRight, ChevronDown, Check,
 } from 'lucide-react';
 
-type Section = 'startup' | 'appearance' | 'overlay' | 'rendering' | 'about';
+type Section = 'startup' | 'appearance' | 'overlay' | 'about';
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode; desc: string }[] = [
   { id: 'startup',    label: 'Startup',    icon: <Zap size={15} />,     desc: 'Boot behavior'       },
   { id: 'appearance', label: 'Appearance', icon: <Palette size={15} />, desc: 'Theme & display'     },
   { id: 'overlay',    label: 'Overlay',    icon: <Layers size={15} />,  desc: 'FPS HUD'             },
-  { id: 'rendering',  label: 'Rendering',  icon: <Monitor size={15} />, desc: 'GPU acceleration'    },
   { id: 'about',      label: 'About',      icon: <Info size={15} />,    desc: 'Version & updates'   },
 ];
 
@@ -28,13 +27,47 @@ const Settings: React.FC = () => {
   });
   const [appVersion, setAppVersion] = useState('1.0.0');
   const [gpuStatus, setGpuStatus] = useState<{ status: string; renderer: string; detail: string } | null>(null);
+  const [hwAccelEnabled, setHwAccelEnabled] = useState(true);
+  const [showHwAccelPopup, setShowHwAccelPopup] = useState(false);
+  const [hwAccelBeforeChange, setHwAccelBeforeChange] = useState(true);
   const [checkState, setCheckState] = useState<'idle' | 'checking' | 'up-to-date' | 'available'>('idle');
   const [checkVersion, setCheckVersion] = useState('');
+  const [showThemeDropdown, setShowThemeDropdown] = useState(false);
+  const themeDropdownRef = useRef<HTMLDivElement>(null);
 
   // Overlay state
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [overlayPosition, setOverlayPosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('top-right');
+  const [overlayColor, setOverlayColor] = useState('#00F2FF');
+  const [overlayOpacity, setOverlayOpacity] = useState(0.85);
+  const [overlayFont, setOverlayFont] = useState('Share Tech Mono');
+  const [overlaySensors, setOverlaySensors] = useState({
+    showFps:      true,
+    showCpuUsage: true,
+    showGpuUsage: true,
+    showCpuTemp:  true,
+    showGpuTemp:  true,
+    showRamUsage: true,
+    showLatency:  true,
+  });
   const ipc = (window as any).electron?.ipcRenderer;
+
+  const OVERLAY_COLORS = [
+    { hex: '#00F2FF', label: 'Cyan'   },
+    { hex: '#00FF88', label: 'Green'  },
+    { hex: '#FF8C00', label: 'Orange' },
+    { hex: '#FF4444', label: 'Red'    },
+    { hex: '#A855F7', label: 'Purple' },
+    { hex: '#FFFFFF', label: 'White'  },
+  ];
+
+  const OVERLAY_FONTS = [
+    { family: 'Share Tech Mono', label: 'Share Tech',  preview: 'ABC 123' },
+    { family: 'JetBrains Mono',  label: 'JetBrains',   preview: 'ABC 123' },
+    { family: 'Orbitron',        label: 'Orbitron',    preview: 'ABC 123' },
+    { family: 'Rajdhani',        label: 'Rajdhani',    preview: 'ABC 123' },
+    { family: 'Courier Prime',   label: 'Courier',     preview: 'ABC 123' },
+  ];
 
   useEffect(() => {
     window.electron?.updater?.getVersion().then((v: string) => {
@@ -50,11 +83,28 @@ const Settings: React.FC = () => {
       if (s) setGpuStatus(s);
     });
 
+    // Fetch hardware acceleration setting
+    (window as any).electron?.gpu?.getHwAccel().then((enabled: boolean) => {
+      setHwAccelEnabled(enabled);
+    }).catch(() => {});
+
     // Load overlay state
     ipc?.invoke('overlay:get-state').then((state: any) => {
       if (state) {
         setOverlayVisible(state.visible);
         if (state.config?.position) setOverlayPosition(state.config.position);
+        if (state.config?.color)    setOverlayColor(state.config.color);
+        if (state.config?.opacity != null) setOverlayOpacity(state.config.opacity);
+        if (state.config?.font) setOverlayFont(state.config.font);
+        setOverlaySensors(prev => ({
+          showFps:      state.config?.showFps      ?? prev.showFps,
+          showCpuUsage: state.config?.showCpuUsage ?? prev.showCpuUsage,
+          showGpuUsage: state.config?.showGpuUsage ?? prev.showGpuUsage,
+          showCpuTemp:  state.config?.showCpuTemp  ?? prev.showCpuTemp,
+          showGpuTemp:  state.config?.showGpuTemp  ?? prev.showGpuTemp,
+          showRamUsage: state.config?.showRamUsage ?? prev.showRamUsage,
+          showLatency:  state.config?.showLatency  ?? prev.showLatency,
+        }));
       }
     }).catch(() => {});
 
@@ -84,6 +134,17 @@ const Settings: React.FC = () => {
     window.addEventListener('settings:updated', onUpdated as EventListener);
     return () => window.removeEventListener('settings:updated', onUpdated as EventListener);
   }, []);
+
+  // Close theme dropdown on outside click
+  useEffect(() => {
+    if (!showThemeDropdown) return;
+    const handle = (e: MouseEvent) => {
+      if (themeDropdownRef.current && !themeDropdownRef.current.contains(e.target as Node))
+        setShowThemeDropdown(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [showThemeDropdown]);
 
   const handleToggle = (key: keyof typeof settings) => {
     const updated = { ...settings, [key]: !settings[key] };
@@ -145,7 +206,29 @@ const Settings: React.FC = () => {
     } catch {}
   };
 
+  const handleOverlayColor = async (color: string) => {
+    setOverlayColor(color);
+    try { await ipc?.invoke('overlay:set-config', { color }); } catch {}
+  };
+
+  const handleOverlayOpacity = async (opacity: number) => {
+    setOverlayOpacity(opacity);
+    try { await ipc?.invoke('overlay:set-config', { opacity }); } catch {}
+  };
+
+  const handleOverlayFont = async (font: string) => {
+    setOverlayFont(font);
+    try { await ipc?.invoke('overlay:set-config', { font }); } catch {}
+  };
+
+  const handleOverlaySensor = async (key: keyof typeof overlaySensors) => {
+    const updated = { ...overlaySensors, [key]: !overlaySensors[key] };
+    setOverlaySensors(updated);
+    try { await ipc?.invoke('overlay:set-config', { [key]: updated[key] }); } catch {}
+  };
+
   return (
+    <>
     <motion.div
       className="settings-container"
       initial={{ opacity: 0 }}
@@ -232,14 +315,32 @@ const Settings: React.FC = () => {
                         <span className="setting-row-title">Theme</span>
                         <span className="setting-row-desc">Choose your preferred color theme</span>
                       </div>
-                      <select
-                        className="theme-select"
-                        value={settings.theme}
-                        onChange={(e) => setSettings(prev => ({ ...prev, theme: e.target.value as 'light' | 'dark' }))}
-                      >
-                        <option value="dark">Dark (Default)</option>
-                        <option value="light">Light</option>
-                      </select>
+                      <div className="theme-dropdown" ref={themeDropdownRef}>
+                        <button
+                          className={`theme-dropdown__trigger${showThemeDropdown ? ' theme-dropdown__trigger--open' : ''}`}
+                          onClick={() => setShowThemeDropdown(p => !p)}
+                        >
+                          <span>{settings.theme === 'dark' ? 'Dark (Default)' : 'Light'}</span>
+                          <ChevronDown size={13} className="theme-dropdown__chevron" />
+                        </button>
+                        {showThemeDropdown && (
+                          <div className="theme-dropdown__menu">
+                            {(['dark', 'light'] as const).map(opt => (
+                              <button
+                                key={opt}
+                                className={`theme-dropdown__item${settings.theme === opt ? ' theme-dropdown__item--active' : ''}`}
+                                onClick={() => {
+                                  setSettings(prev => ({ ...prev, theme: opt }));
+                                  setShowThemeDropdown(false);
+                                }}
+                              >
+                                {settings.theme === opt && <Check size={12} />}
+                                {opt === 'dark' ? 'Dark (Default)' : 'Light'}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </>
@@ -250,114 +351,145 @@ const Settings: React.FC = () => {
                 <>
                   <div className="panel-header">
                     <span className="panel-header-icon"><Layers size={18} /></span>
-                    <div>
+                    <div style={{ flex: 1 }}>
                       <h2 className="panel-title">Overlay</h2>
                       <p className="panel-subtitle">Real-time in-game FPS HUD</p>
                     </div>
-                  </div>
-                  <div className="panel-body">
-                    <div className="setting-row">
-                      <div className="setting-row-info">
-                        <span className="setting-row-title">Enable FPS Overlay</span>
-                        <span className="setting-row-desc">
-                          Show real-time stats in-game · <kbd className="overlay-hotkey">Ctrl+Shift+F</kbd>
-                        </span>
+                    <div className="panel-header-toggle">
+                      <div className="panel-header-toggle-info">
+                        <span className={`overlay-enable-dot${overlayVisible ? ' overlay-enable-dot--on' : ''}`} style={{ display: 'inline-block' }} />
+                        <span className="panel-header-toggle-label">FPS Overlay</span>
+                        <kbd className="overlay-hotkey">Ctrl+Shift+F</kbd>
                       </div>
                       <label className="toggle-switch">
                         <input type="checkbox" checked={overlayVisible} onChange={handleOverlayToggle} />
                         <span className="slider"></span>
                       </label>
                     </div>
+                  </div>
+                  <div className="panel-body">
 
-                    <div className="setting-row setting-row--block">
-                      <div className="setting-row-info">
-                        <span className="setting-row-title">Overlay Position</span>
-                        <span className="setting-row-desc">Where to anchor the HUD on screen</span>
+                    {/* ── Controls grid ── */}
+                    <div className="overlay-cfg-grid">
+
+                      {/* Position — visual screen picker */}
+                      <div className="overlay-cfg-card">
+                        <span className="overlay-cfg-card-title">Position</span>
+                        <div className="overlay-screen-picker">
+                          <div className="overlay-screen-frame">
+                            {([
+                              ['top-left',     'top-left'    ],
+                              ['top-right',    'top-right'   ],
+                              ['bottom-left',  'bottom-left' ],
+                              ['bottom-right', 'bottom-right'],
+                            ] as const).map(([pos, corner]) => (
+                              <button
+                                key={pos}
+                                className={`overlay-screen-dot overlay-screen-dot--${corner}${overlayPosition === pos ? ' overlay-screen-dot--active' : ''}`}
+                                onClick={() => handleOverlayPosition(pos)}
+                                title={pos.replace('-', ' ')}
+                              />
+                            ))}
+                            <div className="overlay-screen-scanline" />
+                          </div>
+                          <span className="overlay-screen-label">
+                            {overlayPosition.replace('-', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                          </span>
+                        </div>
                       </div>
-                      <div className="overlay-pos-grid">
-                        {([
-                          ['top-left',     '↖', 'Top Left'    ],
-                          ['top-right',    '↗', 'Top Right'   ],
-                          ['bottom-left',  '↙', 'Bottom Left' ],
-                          ['bottom-right', '↘', 'Bottom Right'],
-                        ] as const).map(([pos, arrow, label]) => (
-                          <button
-                            key={pos}
-                            className={`overlay-pos-btn${overlayPosition === pos ? ' overlay-pos-btn--active' : ''}`}
-                            onClick={() => handleOverlayPosition(pos)}
-                          >
-                            <span className="overlay-pos-arrow">{arrow}</span>
-                            <span>{label}</span>
-                          </button>
-                        ))}
+
+                      {/* Color + Opacity */}
+                      <div className="overlay-cfg-card">
+                        <span className="overlay-cfg-card-title">Accent Color</span>
+                        <div className="overlay-color-grid">
+                          {OVERLAY_COLORS.map(({ hex, label }) => (
+                            <button
+                              key={hex}
+                              className={`overlay-color-swatch${overlayColor === hex ? ' overlay-color-swatch--active' : ''}`}
+                              style={{ '--swatch-color': hex } as React.CSSProperties}
+                              onClick={() => handleOverlayColor(hex)}
+                              title={label}
+                            />
+                          ))}
+                        </div>
+
+                        <div className="overlay-opacity-row">
+                          <span className="overlay-cfg-card-title">Opacity</span>
+                          <span className="overlay-opacity-val">{Math.round(overlayOpacity * 100)}%</span>
+                        </div>
+                        <div className="overlay-slider-track">
+                          <div
+                            className="overlay-slider-fill"
+                            style={{ width: `${((overlayOpacity - 0.2) / 0.8) * 100}%`, background: overlayColor }}
+                          />
+                          <input
+                            type="range"
+                            className="overlay-opacity-slider"
+                            min={0.2}
+                            max={1}
+                            step={0.05}
+                            value={overlayOpacity}
+                            onChange={e => handleOverlayOpacity(parseFloat(e.target.value))}
+                          />
+                        </div>
                       </div>
+                    </div>
+
+                    {/* ── Metrics + Font side by side ── */}
+                    <div className="overlay-twin-grid">
+
+                      {/* Visible Metrics */}
+                      <div className="overlay-cfg-card">
+                        <span className="overlay-cfg-card-title">Visible Metrics</span>
+                        <div className="overlay-toggle-list">
+                          {([
+                            ['showFps',      'FPS'     ],
+                            ['showCpuUsage', 'CPU %'   ],
+                            ['showGpuUsage', 'GPU %'   ],
+                            ['showCpuTemp',  'CPU Temp'],
+                            ['showGpuTemp',  'GPU Temp'],
+                            ['showRamUsage', 'RAM'     ],
+                            ['showLatency',  'Ping'    ],
+                          ] as const).map(([key, label]) => (
+                            <div
+                              key={key}
+                              className="overlay-toggle-row"
+                              style={{ '--sensor-color': overlayColor } as React.CSSProperties}
+                              onClick={() => handleOverlaySensor(key)}
+                            >
+                              <span className="overlay-toggle-label">{label}</span>
+                              <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`}>
+                                <div className="overlay-toggle-thumb" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Font Style */}
+                      <div className="overlay-cfg-card">
+                        <span className="overlay-cfg-card-title">Font Style</span>
+                        <div className="overlay-toggle-list">
+                          {OVERLAY_FONTS.map(({ family, label }) => (
+                            <div
+                              key={family}
+                              className="overlay-toggle-row"
+                              style={{ '--sensor-color': overlayColor } as React.CSSProperties}
+                              onClick={() => handleOverlayFont(family)}
+                            >
+                              <span className="overlay-toggle-label" style={{ fontFamily: family }}>{label}</span>
+                              <div className={`overlay-toggle-switch${overlayFont === family ? ' overlay-toggle-switch--on' : ''}`}>
+                                <div className="overlay-toggle-thumb" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
                     </div>
 
                     <div className="overlay-note">
                       Works in <strong>Borderless Windowed</strong> mode. Exclusive fullscreen bypasses the compositor.
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* RENDERING */}
-              {activeSection === 'rendering' && (
-                <>
-                  <div className="panel-header">
-                    <span className="panel-header-icon"><Monitor size={18} /></span>
-                    <div>
-                      <h2 className="panel-title">Rendering</h2>
-                      <p className="panel-subtitle">GPU acceleration & renderer status</p>
-                    </div>
-                  </div>
-                  <div className="panel-body">
-                    <div className={`gpu-card ${gpuStatus?.status === 'crashed' ? 'gpu-card--crashed' : 'gpu-card--active'}`}>
-
-                      {/* Scan-line accent */}
-                      <div className="gpu-card-scanline" />
-
-                      {/* Top row: icon + title + badge */}
-                      <div className="gpu-card-top">
-                        <div className="gpu-card-icon">
-                          {gpuStatus?.status === 'crashed'
-                            ? <AlertTriangle size={24} />
-                            : <Monitor size={24} />
-                          }
-                        </div>
-                        <div className="gpu-card-title-group">
-                          <span className="gpu-card-title">Hardware Acceleration</span>
-                          <span className="gpu-card-sub">Electron Chromium Renderer</span>
-                        </div>
-                        <div className="gpu-card-status-pill">
-                          <span className="gpu-card-status-dot" />
-                          {gpuStatus?.status === 'crashed' ? 'CRASHED' : 'ACTIVE'}
-                        </div>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="gpu-card-divider" />
-
-                      {/* Info rows */}
-                      <div className="gpu-card-rows">
-                        <div className="gpu-card-row">
-                          <span className="gpu-card-row-key">Acceleration</span>
-                          <span className="gpu-card-row-val">
-                            {gpuStatus?.status === 'crashed' ? 'Disabled — GPU process crashed' : 'Hardware-accelerated'}
-                          </span>
-                        </div>
-                        <div className="gpu-card-row">
-                          <span className="gpu-card-row-key">Compositing</span>
-                          <span className="gpu-card-row-val">
-                            {gpuStatus?.status === 'crashed' ? 'Software fallback' : 'GPU compositing'}
-                          </span>
-                        </div>
-                        <div className="gpu-card-row">
-                          <span className="gpu-card-row-key">Status</span>
-                          <span className={`gpu-card-row-val ${gpuStatus?.status === 'crashed' ? 'gpu-val--error' : 'gpu-val--ok'}`}>
-                            {gpuStatus?.status === 'crashed' ? 'Requires restart to recover' : 'Running normally'}
-                          </span>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </>
@@ -368,9 +500,21 @@ const Settings: React.FC = () => {
                 <>
                   <div className="panel-header">
                     <span className="panel-header-icon"><Info size={18} /></span>
-                    <div>
+                    <div style={{ flex: 1 }}>
                       <h2 className="panel-title">About</h2>
                       <p className="panel-subtitle">Version info & updates</p>
+                    </div>
+                    <div className="panel-header-toggle">
+                      <button
+                        className={`update-check-btn${checkState === 'checking' ? ' update-check-btn--checking' : checkState === 'up-to-date' ? ' update-check-btn--ok' : checkState === 'available' ? ' update-check-btn--available' : ''}`}
+                        onClick={handleCheckUpdate}
+                        disabled={checkState === 'checking'}
+                      >
+                        {checkState === 'checking'  && <><RefreshCw size={13} className="spin" /> Checking...</>}
+                        {checkState === 'up-to-date' && <><CheckCircle size={13} /> Up to Date</>}
+                        {checkState === 'available'  && <><ArrowUpCircle size={13} /> v{checkVersion} Available</>}
+                        {checkState === 'idle'       && 'Check for Updates'}
+                      </button>
                     </div>
                   </div>
                   <div className="panel-body">
@@ -386,24 +530,75 @@ const Settings: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="update-section">
-                      <div className="update-section-label">Software Updates</div>
-                      <div className="update-action-row">
-                        <button
-                          className={`update-check-btn${checkState === 'checking' ? ' update-check-btn--checking' : checkState === 'up-to-date' ? ' update-check-btn--ok' : checkState === 'available' ? ' update-check-btn--available' : ''}`}
-                          onClick={handleCheckUpdate}
-                          disabled={checkState === 'checking'}
-                        >
-                          {checkState === 'checking'  && <><RefreshCw size={13} className="spin" /> Checking...</>}
-                          {checkState === 'up-to-date' && <><CheckCircle size={13} /> Up to Date</>}
-                          {checkState === 'available'  && <><ArrowUpCircle size={13} /> v{checkVersion} Available</>}
-                          {checkState === 'idle'       && 'Check for Updates'}
-                        </button>
-                        {checkState === 'available' && (
-                          <span className="update-hint">See the toolbar notification to download</span>
-                        )}
+                    {(() => {
+                      const gpuDisplay = gpuStatus?.status === 'crashed'
+                        ? 'crashed'
+                        : hwAccelEnabled ? 'active' : 'disabled';
+                      return (
+                    <div className={`gpu-card ${gpuDisplay === 'active' ? 'gpu-card--active' : 'gpu-card--crashed'}`}>
+                      <div className="gpu-card-scanline" />
+                      <div className="gpu-card-top">
+                        <div className="gpu-card-icon">
+                          {gpuDisplay === 'crashed' ? <AlertTriangle size={24} /> : <Monitor size={24} />}
+                        </div>
+                        <div className="gpu-card-title-group">
+                          <span className="gpu-card-title">Hardware Acceleration</span>
+                          <span className="gpu-card-sub">Electron Chromium Renderer</span>
+                        </div>
+                        <div className="gpu-card-status-pill">
+                          <span className="gpu-card-status-dot" />
+                          {gpuDisplay === 'crashed' ? 'CRASHED' : gpuDisplay === 'disabled' ? 'DISABLED' : 'ACTIVE'}
+                        </div>
+                      </div>
+                      <div className="gpu-card-divider" />
+                      <div className="gpu-card-rows">
+                        <div className="gpu-card-row">
+                          <span className="gpu-card-row-key">Acceleration</span>
+                          <span className="gpu-card-row-val">
+                            {gpuDisplay === 'active' ? 'Hardware-accelerated' : gpuDisplay === 'crashed' ? 'Disabled — GPU process crashed' : 'Disabled'}
+                          </span>
+                        </div>
+                        <div className="gpu-card-row">
+                          <span className="gpu-card-row-key">Compositing</span>
+                          <span className="gpu-card-row-val">
+                            {gpuDisplay === 'active' ? 'GPU compositing' : 'Software fallback'}
+                          </span>
+                        </div>
+                        <div className="gpu-card-row">
+                          <span className="gpu-card-row-key">Status</span>
+                          <span className={`gpu-card-row-val ${gpuDisplay === 'active' ? 'gpu-val--ok' : 'gpu-val--error'}`}>
+                            {gpuDisplay === 'active' ? 'Running normally'
+                              : gpuDisplay === 'crashed' ? 'Requires restart to recover'
+                              : 'Will disable on next restart'}
+                          </span>
+                        </div>
+                        <div className="gpu-card-divider" style={{ margin: '10px 0 6px' }} />
+                        <div className="gpu-card-row gpu-card-row--toggle">
+                          <div className="gpu-card-row-toggle-info">
+                            <span className="gpu-card-row-key">Hardware Acceleration</span>
+                          </div>
+                          <label className="toggle-switch">
+                            <input
+                              type="checkbox"
+                              checked={hwAccelEnabled}
+                              onChange={(e) => {
+                                const newVal = e.target.checked;
+                                setHwAccelBeforeChange(hwAccelEnabled);
+                                setHwAccelEnabled(newVal);
+                                setShowHwAccelPopup(true);
+                              }}
+                            />
+                            <span className="slider"></span>
+                          </label>
+                        </div>
                       </div>
                     </div>
+                      );
+                    })()}
+
+                    {checkState === 'available' && (
+                      <div className="update-hint" style={{ paddingLeft: 2 }}>See the toolbar notification to download</div>
+                    )}
                   </div>
                 </>
               )}
@@ -414,6 +609,49 @@ const Settings: React.FC = () => {
 
       </div>
     </motion.div>
+
+    {/* ── HW Accel restart popup ── */}
+    {showHwAccelPopup && (
+      <div className="hw-accel-popup-overlay">
+        <div className="hw-accel-popup">
+          <div className="hw-accel-popup-icon">
+            <Monitor size={22} />
+          </div>
+          <div className="hw-accel-popup-body">
+            <span className="hw-accel-popup-title">
+              {hwAccelEnabled ? 'Enable' : 'Disable'} Hardware Acceleration?
+            </span>
+            <span className="hw-accel-popup-desc">
+              This change requires an app restart to take effect.
+            </span>
+          </div>
+          <div className="hw-accel-popup-actions">
+            <button
+              className="hw-accel-popup-btn hw-accel-popup-btn--dismiss"
+              onClick={() => {
+                setHwAccelEnabled(hwAccelBeforeChange);
+                setShowHwAccelPopup(false);
+              }}
+            >
+              Dismiss
+            </button>
+            <button
+              className="hw-accel-popup-btn hw-accel-popup-btn--restart"
+              onClick={async () => {
+                try {
+                  await (window as any).electron?.gpu?.setHwAccel(hwAccelEnabled);
+                  await (window as any).electron?.gpu?.relaunch();
+                } catch {}
+                setShowHwAccelPopup(false);
+              }}
+            >
+              Restart Now
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

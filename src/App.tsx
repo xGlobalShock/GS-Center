@@ -5,7 +5,6 @@ import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import Performance from './pages/Performance';
 import Cleaner from './pages/Cleaner';
-import Settings from './pages/Settings';
 import GameLibrary from './pages/GameLibrary';
 import OBSPresets from './pages/OBSPresets';
 import Network from './pages/Network';
@@ -162,7 +161,6 @@ function App() {
       <div style={pageStyle('cleaner')}><Cleaner /></div>
       <div style={pageStyle('network')}><Network /></div>
       <div style={pageStyle('obsPresets')}><OBSPresets /></div>
-      <div style={pageStyle('settings')}><Settings /></div>
       <div style={pageStyle('resolutionManager')}><ResolutionManager /></div>
     </>
   ), [pageStyle]);

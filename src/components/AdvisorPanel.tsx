@@ -96,7 +96,7 @@ const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ systemStats, extendedStats,
           <Brain size={18} className={isAllGood ? 'advisor-brain-good' : 'advisor-brain-active'} />
         </div>
         <div className="advisor-title-area">
-          <div className="advisor-title">AI Performance Advisor</div>
+          <div className="advisor-title">System Advisor</div>
           <div className="advisor-summary">
             {!data ? 'Analyzing...' :
               isAllGood ? 'System running optimally' :

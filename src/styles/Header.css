@@ -363,3 +363,126 @@
   border-radius: 2px;
   transition: width 0.3s ease;
 }
+
+/* ── Settings Header Button ── */
+
+.settings-header-btn {
+  width: 46px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #aaa);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+  position: relative;
+}
+
+.settings-header-btn:hover {
+  background: rgba(0, 242, 255, 0.08);
+  color: #00f2ff;
+}
+
+.settings-header-btn--active {
+  color: #00f2ff;
+  background: rgba(0, 242, 255, 0.06);
+}
+
+/* ── Settings Overlay Modal ── */
+
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+  animation: settings-overlay-in 0.18s ease-out;
+}
+
+@keyframes settings-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.settings-modal {
+  width: 900px;
+  height: 650px;
+  background: rgba(4, 6, 14, 0.97);
+  border: 1px solid rgba(0, 242, 255, 0.12);
+  border-radius: 16px;
+  box-shadow:
+    0 0 80px rgba(0, 0, 0, 0.7),
+    0 0 30px rgba(0, 242, 255, 0.04),
+    inset 0 1px 0 rgba(0, 242, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: settings-modal-in 0.18s ease-out;
+}
+
+@keyframes settings-modal-in {
+  from { opacity: 0; transform: scale(0.97) translateY(-8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+.settings-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(0, 242, 255, 0.07);
+  flex-shrink: 0;
+  background: rgba(2, 4, 10, 0.6);
+}
+
+.settings-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(0, 242, 255, 0.6);
+}
+
+.settings-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: rgba(180, 200, 220, 0.45);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-modal-close:hover {
+  background: rgba(232, 17, 35, 0.12);
+  border-color: rgba(232, 17, 35, 0.25);
+  color: rgba(232, 17, 35, 0.85);
+}
+
+.settings-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}

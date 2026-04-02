@@ -1,6 +1,26 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { execSync } = require('child_process');
 const path = require('path');
+const fs = require('fs');
+
+// ── Persistent app settings — must run before ANY Electron internals ─────────
+const APP_SETTINGS_FILE = path.join(app.getPath('userData'), 'gs-app-settings.json');
+let _appSettings = {};
+try { _appSettings = JSON.parse(fs.readFileSync(APP_SETTINGS_FILE, 'utf8')); } catch {}
+const _hwAccelEnabled = _appSettings.hardwareAcceleration !== false;
+
+// ── Rendering Pipeline — must be called before app.ready AND before requires ─
+if (!_hwAccelEnabled) {
+  app.disableHardwareAcceleration();
+} else {
+  // Use ANGLE (hardware-backed) via EGL — stable on Windows without GPU process crashes
+  app.commandLine.appendSwitch('use-gl', 'angle');
+  app.commandLine.appendSwitch('use-angle', 'gl');
+  app.commandLine.appendSwitch('enable-gpu-rasterization');
+  app.commandLine.appendSwitch('disable-gpu-sandbox');
+}
+app.commandLine.appendSwitch('disk-cache-dir',     path.join(app.getPath('userData'), 'Cache'));
+app.commandLine.appendSwitch('gpu-disk-cache-dir', path.join(app.getPath('userData'), 'GPUCache'));
 
 // Ensure Windows taskbar uses our AppUserModelID (must match build.appId)
 if (process.platform === 'win32' && app && typeof app.setAppUserModelId === 'function') {
@@ -40,17 +60,39 @@ const advisor = require('../main-process/advisor');
 const resolutionManager = require('../main-process/resolutionManager');
 const { execAsync } = require('../main-process/utils');
 
-// ── Rendering Pipeline ──────────────────────────────────────────────────────
-app.commandLine.appendSwitch('use-gl', 'swiftshader');
-app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('disk-cache-dir', path.join(app.getPath('userData'), 'Cache'));
-app.commandLine.appendSwitch('gpu-disk-cache-dir', path.join(app.getPath('userData'), 'GPUCache'));
-
 // ── GPU status tracking ─────────────────────────────────────────────────────
-let _gpuStatus = { status: 'active', renderer: 'SwiftShader', detail: 'Initializing…' };
+let _gpuStatus = _hwAccelEnabled
+  ? { status: 'active',   renderer: 'SwiftShader', detail: 'Initializing…' }
+  : { status: 'disabled', renderer: 'None',        detail: 'Hardware acceleration is disabled' };
 
 ipcMain.handle('gpu:get-status', () => _gpuStatus);
-ipcMain.handle('app:get-path', () => app.getAppPath());
+ipcMain.handle('app:get-path',   () => app.getAppPath());
+
+// Read saved preference from file (accurate after set-hw-accel is called)
+ipcMain.handle('gpu:get-hw-accel', () => {
+  try {
+    const data = JSON.parse(fs.readFileSync(APP_SETTINGS_FILE, 'utf8'));
+    return data.hardwareAcceleration !== false;
+  } catch { return true; }
+});
+
+ipcMain.handle('gpu:set-hw-accel', (_event, enabled) => {
+  try {
+    let current = {};
+    try { current = JSON.parse(fs.readFileSync(APP_SETTINGS_FILE, 'utf8')); } catch {}
+    current.hardwareAcceleration = enabled;
+    fs.mkdirSync(path.dirname(APP_SETTINGS_FILE), { recursive: true });
+    fs.writeFileSync(APP_SETTINGS_FILE, JSON.stringify(current, null, 2));
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
+
+ipcMain.handle('app:relaunch', () => {
+  app.relaunch();
+  app.exit(0);
+});
 
 app.on('gpu-info-update', (info) => {
   _gpuStatus.detail = info?.gpuDevice?.[0]?.driverVersion || 'SwiftShader';

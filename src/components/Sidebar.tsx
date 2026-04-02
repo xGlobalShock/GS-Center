@@ -4,7 +4,6 @@ import {
   Home,
   Activity,
   SlidersHorizontal,
-  Settings,
   Gamepad2,
   Video,
   Wifi,
@@ -32,17 +31,16 @@ interface MenuItem {
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
 
   const navItems: MenuItem[] = useMemo(() => [
-    { id: 'dashboard', label: 'Home', icon: Home },
-    { id: 'performance', label: 'Tweaks', icon: Activity },
-    { id: 'network', label: 'Network', icon: Wifi },
-    { id: 'gameLibrary', label: 'Games', icon: Gamepad2 },
-    { id: 'obsPresets', label: 'Stream', icon: Video },
-    { id: 'softwareUpdates', label: 'Updates', icon: RefreshCw },
-    { id: 'apps', label: 'Apps', icon: Layers },
-    { id: 'cleaner', label: 'Utilities', icon: SlidersHorizontal },
-    { id: 'resolutionManager', label: 'Display', icon: Monitor },
-    { id: 'space', label: 'Disk', icon: PieChart },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'dashboard',         label: 'Home',      icon: Home             },
+    { id: 'performance',       label: 'Tweaks',    icon: Activity         },
+    { id: 'gameLibrary',       label: 'Games',     icon: Gamepad2         },
+    { id: 'obsPresets',        label: 'Stream',    icon: Video            },
+    { id: 'resolutionManager', label: 'Display',   icon: Monitor          },
+    { id: 'network',           label: 'Network',   icon: Wifi             },
+    { id: 'apps',              label: 'Apps',      icon: Layers           },
+    { id: 'softwareUpdates',   label: 'Updates',   icon: RefreshCw        },
+    { id: 'cleaner',           label: 'Utilities', icon: SlidersHorizontal},
+    { id: 'space',             label: 'Disk',      icon: PieChart         },
   ], []);
 
   return (

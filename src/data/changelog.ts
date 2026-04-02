@@ -10,6 +10,33 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.6.6',
+    date: '2026-04-02',
+    highlights: 'Overlay font picker, Settings restructure, Hardware Acceleration toggle with restart flow, and GPU crash fixes.',
+    changes: [
+      // New Features
+      { type: 'new', text: 'Overlay: added font style picker with 5 options — Share Tech Mono, JetBrains Mono, Orbitron, Rajdhani, and Courier Prime.' },
+      { type: 'new', text: 'Overlay: Visible Metrics and Font Style redesigned as toggle switches and placed side by side in a twin-column layout.' },
+      { type: 'new', text: 'Overlay: FPS Overlay enable toggle moved into the section panel header, freeing the body for configuration controls.' },
+      { type: 'new', text: 'Settings: Hardware Acceleration toggle added to the GPU card with full on/off support and per-boot persistence.' },
+      { type: 'new', text: 'Settings: toggling Hardware Acceleration shows a popup with Restart Now (saves + relaunches) and Dismiss (reverts toggle).' },
+      { type: 'new', text: 'Settings: Rendering tab removed — Hardware Acceleration card consolidated into the About tab.' },
+      { type: 'new', text: 'Settings: Check for Updates button moved inline into the About panel header next to the title.' },
+
+      // Fixes
+      { type: 'fixed', text: 'Fixed GPU card incorrectly displaying ACTIVE status when Hardware Acceleration was saved as disabled.' },
+      { type: 'fixed', text: 'Fixed disableHardwareAcceleration() being called after module requires — moved to top of main.js so it takes effect on boot.' },
+      { type: 'fixed', text: 'Fixed SwiftShader (CPU renderer) being forced on all sessions regardless of the acceleration setting.' },
+      { type: 'fixed', text: 'Fixed GPU process crashes (exit code 0xC0000409 / STATUS_STACK_BUFFER_OVERRUN) caused by raw GPU sandbox access on Windows.' },
+
+      // Improvements
+      { type: 'improved', text: 'Overlay position bounds corrected — window width matched to HUD content so the HUD sits flush with screen edges.' },
+      { type: 'improved', text: 'Hardware Acceleration enabled mode now uses ANGLE (Direct3D-backed OpenGL) for real GPU compositing instead of SwiftShader.' },
+      { type: 'improved', text: 'Hardware Acceleration disabled mode fully removes the GPU process — app runs 100% on CPU.' },
+      { type: 'improved', text: 'gpu:get-hw-accel IPC now reads from the settings file on every call, ensuring the UI always reflects the saved preference.' },
+    ],
+  },
+  {
     version: '1.6.5',
     date: '2026-04-02',
     highlights: 'UI overhaul for Settings and Disk Analyzer, plus performance and bug fixes.',
@@ -85,9 +112,9 @@ const changelog: ChangelogEntry[] = [
       { type: 'improved', text: 'Proceed button updated with gradient fill and enhanced hover state.' },
       { type: 'improved', text: 'Progress bar now smoothly animates from 0% to 100% without jumps or stalls.' },
       { type: 'improved', text: 'Display Manager redesigned with a Windows-style layout and improved readability.' },
-      { type: 'improved', text: 'System Health and AI Performance Advisor moved to header with shared toggle behavior.' },
+      { type: 'improved', text: 'System Health and System Advisor moved to header with shared toggle behavior.' },
       { type: 'improved', text: 'Toast notifications widened for better readability of longer messages.' },
-      { type: 'improved', text: 'AI Advisor dropdown repositioned and widened to prevent text clipping.' },
+      { type: 'improved', text: 'System Advisor dropdown repositioned and widened to prevent text clipping.' },
 
       // Improvements (System / Backend)
       { type: 'improved', text: 'PowerShell execution forced to en-US culture for consistent hardware data parsing.' },

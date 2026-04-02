@@ -14,6 +14,8 @@ let _overlayConfig = {
   showCpuTemp: true,
   position: 'top-right', // top-left, top-right, bottom-left, bottom-right
   opacity: 0.85,
+  color: '#00F2FF',
+  font: 'Share Tech Mono',
   hotkey: 'CommandOrControl+Shift+F',
 };
 
@@ -21,8 +23,8 @@ function getOverlayBounds() {
   const { screen } = require('electron');
   const display = screen.getPrimaryDisplay();
   const { width: sw, height: sh } = display.workAreaSize;
-  const ow = 260, oh = 200;
-  const margin = 16;
+  const ow = 214, oh = 210;
+  const margin = 10;
 
   switch (_overlayConfig.position) {
     case 'top-right': return { x: sw - ow - margin, y: margin, width: ow, height: oh };
@@ -70,6 +72,13 @@ function createOverlayWindow() {
 
   overlayWindow.loadFile(overlayPath).catch(err => {
     console.error('Failed to load overlay:', err);
+  });
+
+  // Push current config (color, opacity, sensors) once the page is ready
+  overlayWindow.webContents.once('did-finish-load', () => {
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      overlayWindow.webContents.send('overlay:config', _overlayConfig);
+    }
   });
 
   overlayWindow.on('closed', () => {
@@ -149,7 +158,6 @@ function registerIPC() {
       // Reposition if position changed
       const bounds = getOverlayBounds();
       overlayWindow.setBounds(bounds);
-      overlayWindow.setOpacity(_overlayConfig.opacity);
       overlayWindow.webContents.send('overlay:config', _overlayConfig);
     }
     // Re-register hotkey if changed

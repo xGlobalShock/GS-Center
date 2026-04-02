@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Minus, Square, X, Copy, ArrowDownCircle, Download, RefreshCw, CheckCircle, AlertTriangle, XCircle, Sparkles, Radio } from 'lucide-react';
+import { Minus, Square, X, Copy, ArrowDownCircle, Download, RefreshCw, CheckCircle, AlertTriangle, XCircle, Sparkles, Radio, Settings as SettingsIcon } from 'lucide-react';
+import SettingsPage from '../pages/Settings';
 import changelog from '../data/changelog';
 import devUpdatesDefault from '../data/devUpdates';
 import type { DevUpdate } from '../data/devUpdates';
@@ -127,6 +128,7 @@ const Header: React.FC = React.memo(() => {
   const [hasUnseenChanges, setHasUnseenChanges] = useState(false);
   const [showDevUpdates, setShowDevUpdates] = useState(false);
   const [hasUnseenDevUpdates, setHasUnseenDevUpdates] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [devUpdates, setDevUpdates] = useState<DevUpdate[]>(devUpdatesDefault);
   const [hasGitHubUpdates, setHasGitHubUpdates] = useState(false);
   const [appVersion, setAppVersion] = useState<string>('');
@@ -327,6 +329,16 @@ const description = release.body?.trim() || undefined;
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showWhatsNew]);
 
+  // Close Settings modal on Escape
+  useEffect(() => {
+    if (!showSettings) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowSettings(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showSettings]);
+
   const handleOpenWhatsNew = useCallback(() => {
     setShowWhatsNew(prev => !prev);
     setShowDevUpdates(false);
@@ -366,6 +378,7 @@ const description = release.body?.trim() || undefined;
   const showIndicator = updateState === 'available' || updateState === 'downloading' || updateState === 'downloaded' || updateState === 'error';
 
   return (
+    <>
     <header className="header">
       <div className="header-left header-drag-region">
         <div className="header-title-row">
@@ -540,6 +553,16 @@ const description = release.body?.trim() || undefined;
           </div>
         )}
 
+        {/* Settings button */}
+        <button
+          className={`settings-header-btn${showSettings ? ' settings-header-btn--active' : ''}`}
+          onClick={() => setShowSettings(prev => !prev)}
+          aria-label="Settings"
+          title="Settings"
+        >
+          <SettingsIcon size={16} />
+        </button>
+
         <button className="window-control-btn minimize-btn" onClick={handleMinimize} aria-label="Minimize">
           <Minus size={16} />
         </button>
@@ -551,6 +574,34 @@ const description = release.body?.trim() || undefined;
         </button>
       </div>
     </header>
+
+    {/* Settings Overlay Modal */}
+    {showSettings && (
+      <div
+        className="settings-overlay"
+        onClick={(e) => { if (e.target === e.currentTarget) setShowSettings(false); }}
+      >
+        <div className="settings-modal">
+          <div className="settings-modal-header">
+            <span className="settings-modal-title">
+              <SettingsIcon size={14} />
+              Settings
+            </span>
+            <button
+              className="settings-modal-close"
+              onClick={() => setShowSettings(false)}
+              aria-label="Close Settings"
+            >
+              <X size={14} />
+            </button>
+          </div>
+          <div className="settings-modal-body">
+            <SettingsPage />
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 });
 

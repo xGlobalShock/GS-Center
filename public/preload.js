@@ -63,7 +63,10 @@ contextBridge.exposeInMainWorld('electron', {
     },
   },
   gpu: {
-    getStatus: () => ipcRenderer.invoke('gpu:get-status'),
+    getStatus:   () => ipcRenderer.invoke('gpu:get-status'),
+    getHwAccel:  () => ipcRenderer.invoke('gpu:get-hw-accel'),
+    setHwAccel:  (enabled) => ipcRenderer.invoke('gpu:set-hw-accel', enabled),
+    relaunch:    () => ipcRenderer.invoke('app:relaunch'),
     onStatusChanged: (callback) => {
       const subscription = (event, data) => callback(data);
       ipcRenderer.on('gpu:status-changed', subscription);

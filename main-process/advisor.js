@@ -1,7 +1,7 @@
 const { ipcMain } = require('electron');
 
 /**
- * AI Performance Advisor — Rule-based local analysis engine.
+ * System Advisor — Rule-based local analysis engine.
  * Analyzes real-time metrics + hardware info to detect bottlenecks
  * and produce actionable recommendations.
  */
