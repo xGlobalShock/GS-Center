@@ -1,4 +1,4 @@
-# GS Control Center (BETA)
+<img width="1919" height="1031" alt="image" src="https://github.com/user-attachments/assets/3b411f6c-105e-4d5f-96cf-fc3fed253176" /># GS Control Center (BETA)
 
 **Set up your gaming or streaming PC in minutes — not hours.**
 
@@ -23,7 +23,8 @@ Download the latest installer from the newest release:
 
 ➡️ **[Download Latest Release](https://github.com/xGlobalShock/GS-Control-Center/releases/latest)**
 
-<img width="1919" height="1031" alt="image" src="https://github.com/user-attachments/assets/2b76ef15-08a5-4390-94a6-7a2ed321199e" />
+<img width="1919" height="1031" alt="image" src="https://github.com/user-attachments/assets/14f165a2-c550-476c-a353-cee1635b8c67" />
+
 
 ---
 
