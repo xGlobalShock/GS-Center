@@ -12,7 +12,7 @@ const changelog: ChangelogEntry[] = [
   {
     version: '1.6.6',
     date: '2026-04-02',
-    highlights: 'Overlay font picker, Settings restructure, Hardware Acceleration toggle with restart flow, and GPU crash fixes.',
+    highlights: 'Overlay & Hardware Acceleration updates with new features, UI improvements, and critical fixes.',
     changes: [
       // New Features
       { type: 'new', text: 'Overlay: added font style picker with 5 options — Share Tech Mono, JetBrains Mono, Orbitron, Rajdhani, and Courier Prime.' },
