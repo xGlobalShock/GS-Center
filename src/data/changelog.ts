@@ -10,12 +10,21 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.6.8',
+    date: '2026-04-02',
+    highlights: 'Performance Tweaks update with new tweaks and improvements.',
+    changes: [
+      { type: 'removed', text: 'Removed Scan HUD from the Performance page, to smooth out the user experience.' },
+      { type: 'improved', text: 'Improved the blur effect for better visual clarity on network metrics.' },
+      { type: 'improved', text: 'Colors updated for better contrast and readability.' },
+    ],
+  },
+  {
     version: '1.6.7',
     date: '2026-04-02',
     highlights: 'PC Tweaks update with new features and improvements.',
     changes: [
       { type: 'new', text: 'Added two PC tweaks and integrated them into the Performance page.' },
-      { type: 'removed', text: 'Removed Scan HUD from the Performance page, to smooth out the user experience.' },
       { type: 'improved', text: 'Clarified the TdrLevel description in the UI for clearer guidance.' },
       { type: 'improved', text: 'Updated the Memory Compression tweak to more accurately reflect its function and benefits.' },
     ],
