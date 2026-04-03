@@ -9,7 +9,7 @@ Whether you're setting up a **new gaming rig**, optimizing your **streaming setu
 **Real-time monitoring • Smart optimizations • One-click setup • No bloat**
 
 ![Status](https://img.shields.io/badge/Status-BETA-orange)
-![Version](https://img.shields.io/badge/Version-1.6.7-blue)
+![Version](https://img.shields.io/badge/Version-1.6.9-blue)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue)
 ![Electron](https://img.shields.io/badge/Electron-27-blueviolet)
 ![React](https://img.shields.io/badge/React-18-61dafb)
@@ -43,12 +43,14 @@ Monitor your system in real time with a clean, easy-to-read dashboard.
 
 Track:
 
-- CPU usage
-- RAM usage
-- GPU load
-- Disk activity
-- Network usage
-- System temperatures
+- CPU usage & per-core load
+- RAM usage, cached memory, and availability
+- GPU load, VRAM, and temperature
+- Disk activity (read/write speeds)
+- Network upload / download speeds
+- System temperatures (via LibreHardwareMonitor)
+- Latency and packet loss
+- Process count and system uptime
 
 Everything you need to understand your PC at a glance.
 
@@ -60,10 +62,48 @@ Apply performance optimizations with **one click**.
 
 Features include:
 
+- Categorized tweak groups: CPU, GPU, Memory, Network, Display, Game DVR, Hardware
 - Gaming performance tweaks
 - Windows optimization
 - Latency improvements
 - Reversible changes (rollback anytime)
+- System restore point creation before applying tweaks
+
+---
+
+## System Repair
+
+Diagnose and repair Windows integrity issues without leaving the app.
+
+- **SFC** (System File Checker) with real-time progress bar
+- **DISM** (Windows Image repair) with live fill-bar progress
+- **ChkDsk** (Disk Check) with live output
+- Unified interface — all three tools in one panel
+
+---
+
+## Overlay HUD
+
+A frameless, always-on-top gaming overlay that displays real-time system metrics without interrupting your game.
+
+Metrics:
+
+- FPS (large hero display)
+- CPU usage & temperature
+- GPU usage & temperature
+- RAM usage
+- Ping, packet loss, and live network speed (upload / download)
+
+Customization:
+
+- Accent color picker
+- Font style selector
+- Opacity slider (0%–100%)
+- Per-metric toggles organized by group (HUD · CPU · GPU · Memory · Network)
+- Toggle HUD header (brand) independently from FPS
+- Toggle background chrome (glass effect, corners, border) independently from content
+- Configurable screen position (top-left, top-right, bottom-left, bottom-right)
+- Global hotkey to show/hide
 
 ---
 
@@ -166,10 +206,12 @@ Customize the application experience.
 
 Options include:
 
-- Light / Dark themes
-- Startup behavior
-- Notification preferences
-- Automatic cleanup scheduling
+- Startup behavior (launch on Windows start)
+- **Minimize to system tray** (app lives in the notification area instead of closing)
+- Hardware Acceleration toggle (GPU or CPU rendering)
+- Overlay HUD configuration
+- Check for Updates (live version check with one-click install)
+- App version and changelog
 
 ---
 
@@ -252,6 +294,8 @@ Options include:
 - [ ] Game auto-profiles
 - [ ] Advanced process management
 - [ ] Extended thermal monitoring
+- [ ] Overlay: custom layout editor
+- [ ] Overlay: frame-time graph
 
 ---
 
