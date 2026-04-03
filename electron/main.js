@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron');
 const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -8,6 +8,56 @@ const APP_SETTINGS_FILE = path.join(app.getPath('userData'), 'gs-app-settings.js
 let _appSettings = {};
 try { _appSettings = JSON.parse(fs.readFileSync(APP_SETTINGS_FILE, 'utf8')); } catch {}
 const _hwAccelEnabled = _appSettings.hardwareAcceleration !== false;
+let _minimizeToTray = _appSettings.minimizeToTray === true;
+let _tray = null;
+
+function _saveAppSettings(patch) {
+  try {
+    let current = {};
+    try { current = JSON.parse(fs.readFileSync(APP_SETTINGS_FILE, 'utf8')); } catch {}
+    Object.assign(current, patch);
+    fs.mkdirSync(path.dirname(APP_SETTINGS_FILE), { recursive: true });
+    fs.writeFileSync(APP_SETTINGS_FILE, JSON.stringify(current, null, 2));
+  } catch {}
+}
+
+function _createTray() {
+  if (_tray && !_tray.isDestroyed()) return;
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'app-icons', 'gs-center.png')
+    : path.join(__dirname, '..', 'public', 'app-icons', 'gs-center.png');
+  try {
+    const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+    _tray = new Tray(icon);
+    _tray.setToolTip('GS Center');
+    const buildMenu = () => Menu.buildFromTemplate([
+      {
+        label: 'Show GS Center',
+        click: () => {
+          const w = windowManager.getMainWindow();
+          if (w && !w.isDestroyed()) { w.show(); w.focus(); }
+        },
+      },
+      { type: 'separator' },
+      {
+        label: 'Quit GS Center',
+        click: () => { _cleanupAndExit(); app.quit(); },
+      },
+    ]);
+    _tray.setContextMenu(buildMenu());
+    _tray.on('double-click', () => {
+      const w = windowManager.getMainWindow();
+      if (w && !w.isDestroyed()) { w.show(); w.focus(); }
+    });
+  } catch (e) {
+    console.error('[Tray] Creation failed:', e);
+  }
+}
+
+function _destroyTray() {
+  if (_tray && !_tray.isDestroyed()) _tray.destroy();
+  _tray = null;
+}
 
 // ── Rendering Pipeline — must be called before app.ready AND before requires ─
 if (!_hwAccelEnabled) {
@@ -78,11 +128,7 @@ ipcMain.handle('gpu:get-hw-accel', () => {
 
 ipcMain.handle('gpu:set-hw-accel', (_event, enabled) => {
   try {
-    let current = {};
-    try { current = JSON.parse(fs.readFileSync(APP_SETTINGS_FILE, 'utf8')); } catch {}
-    current.hardwareAcceleration = enabled;
-    fs.mkdirSync(path.dirname(APP_SETTINGS_FILE), { recursive: true });
-    fs.writeFileSync(APP_SETTINGS_FILE, JSON.stringify(current, null, 2));
+    _saveAppSettings({ hardwareAcceleration: enabled });
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e.message };
@@ -92,6 +138,20 @@ ipcMain.handle('gpu:set-hw-accel', (_event, enabled) => {
 ipcMain.handle('app:relaunch', () => {
   app.relaunch();
   app.exit(0);
+});
+
+ipcMain.handle('app:get-minimize-to-tray', () => _minimizeToTray);
+
+ipcMain.handle('app:set-minimize-to-tray', (_event, enabled) => {
+  _minimizeToTray = !!enabled;
+  _saveAppSettings({ minimizeToTray: _minimizeToTray });
+  windowManager.setMinimizeToTray(_minimizeToTray);
+  if (_minimizeToTray) {
+    _createTray();
+  } else {
+    _destroyTray();
+  }
+  return { ok: true };
 });
 
 app.on('gpu-info-update', (info) => {
@@ -373,6 +433,10 @@ app.on('ready', async () => {
   windowManager.sendSplashProgress(82);
 
   windowManager.createWindow();
+  // Sync minimize-to-tray preference with windowManager and create tray if enabled
+  windowManager.setMinimizeToTray(_minimizeToTray);
+  if (_minimizeToTray) _createTray();
+
   const appWindow = windowManager.getMainWindow();
   if (appWindow) {
     const setActive = () => hardwareMonitor._setRealtimeWindowActive(true);
@@ -514,6 +578,7 @@ app.on('ready', async () => {
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────
 function _cleanupAndExit() {
+  _destroyTray();
   hardwareMonitor._stopRealtimePush();
   hardwareMonitor.stopLHMService();
   hardwareMonitor._stopPerfCounterService();

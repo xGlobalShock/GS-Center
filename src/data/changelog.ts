@@ -10,6 +10,19 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.6.9',
+    date: '2026-04-03',
+    highlights: 'Overlay controls, performance fix, and UI polish',
+    changes: [
+      { type: 'new',      text: 'Overlay: added \'GS Header\' toggle — hides the brand label independently without affecting FPS.' },
+      { type: 'new',      text: 'Overlay: added \'Background\' toggle — hides the entire HUD chrome (background fill, border, blur, corner brackets, dot-grid) while keeping all metric values visible.' },
+      { type: 'fixed',    text: 'Fixed CPU spike (18% → 99%) when opening the Performance page — was spawning 16 concurrent PowerShell processes; now deduplicated to a single in-flight query.' },
+      { type: 'fixed',    text: 'Fixed FPS disappearing when the GS Header toggle is turned off — FPS and brand are now independent.' },
+      { type: 'fixed',    text: 'Fixed FPS value snapping to the left when the header brand is hidden.' },
+      { type: 'improved', text: 'Overlay Settings: Visible Metrics reorganized into labeled groups — HUD, CPU, GPU, Memory, Network — with section dividers for faster scanning.' },
+    ],
+  },
+  {
     version: '1.6.2 ➜ 1.6.8',
     date: '2026-03-01 ➜ 2026-04-02',
     highlights: 'Major Changes, Improvements and new features across the board',

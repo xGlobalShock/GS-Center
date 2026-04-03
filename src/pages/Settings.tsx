@@ -30,6 +30,7 @@ const Settings: React.FC = () => {
   const [hwAccelEnabled, setHwAccelEnabled] = useState(true);
   const [showHwAccelPopup, setShowHwAccelPopup] = useState(false);
   const [hwAccelBeforeChange, setHwAccelBeforeChange] = useState(true);
+  const [minimizeToTray, setMinimizeToTray] = useState(false);
   const [checkState, setCheckState] = useState<'idle' | 'checking' | 'up-to-date' | 'available'>('idle');
   const [checkVersion, setCheckVersion] = useState('');
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
@@ -42,13 +43,17 @@ const Settings: React.FC = () => {
   const [overlayOpacity, setOverlayOpacity] = useState(0.85);
   const [overlayFont, setOverlayFont] = useState('Share Tech Mono');
   const [overlaySensors, setOverlaySensors] = useState({
-    showFps:      true,
-    showCpuUsage: true,
-    showGpuUsage: true,
-    showCpuTemp:  true,
-    showGpuTemp:  true,
-    showRamUsage: true,
-    showLatency:  true,
+    showHeader:       true,
+    showBackground:   true,
+    showFps:          true,
+    showCpuUsage:     true,
+    showGpuUsage:     true,
+    showCpuTemp:      true,
+    showGpuTemp:      true,
+    showRamUsage:     true,
+    showLatency:      true,
+    showPacketLoss:   true,
+    showNetworkSpeed: true,
   });
   const ipc = (window as any).electron?.ipcRenderer;
 
@@ -88,6 +93,11 @@ const Settings: React.FC = () => {
       setHwAccelEnabled(enabled);
     }).catch(() => {});
 
+    // Fetch minimize-to-tray setting
+    ipc?.invoke('app:get-minimize-to-tray').then((enabled: boolean) => {
+      setMinimizeToTray(!!enabled);
+    }).catch(() => {});
+
     // Load overlay state
     ipc?.invoke('overlay:get-state').then((state: any) => {
       if (state) {
@@ -97,13 +107,17 @@ const Settings: React.FC = () => {
         if (state.config?.opacity != null) setOverlayOpacity(state.config.opacity);
         if (state.config?.font) setOverlayFont(state.config.font);
         setOverlaySensors(prev => ({
-          showFps:      state.config?.showFps      ?? prev.showFps,
-          showCpuUsage: state.config?.showCpuUsage ?? prev.showCpuUsage,
-          showGpuUsage: state.config?.showGpuUsage ?? prev.showGpuUsage,
-          showCpuTemp:  state.config?.showCpuTemp  ?? prev.showCpuTemp,
-          showGpuTemp:  state.config?.showGpuTemp  ?? prev.showGpuTemp,
-          showRamUsage: state.config?.showRamUsage ?? prev.showRamUsage,
-          showLatency:  state.config?.showLatency  ?? prev.showLatency,
+          showHeader:       state.config?.showHeader       ?? prev.showHeader,
+          showBackground:   state.config?.showBackground   ?? prev.showBackground,
+          showFps:          state.config?.showFps          ?? prev.showFps,
+          showCpuUsage:     state.config?.showCpuUsage     ?? prev.showCpuUsage,
+          showGpuUsage:     state.config?.showGpuUsage     ?? prev.showGpuUsage,
+          showCpuTemp:      state.config?.showCpuTemp      ?? prev.showCpuTemp,
+          showGpuTemp:      state.config?.showGpuTemp      ?? prev.showGpuTemp,
+          showRamUsage:     state.config?.showRamUsage     ?? prev.showRamUsage,
+          showLatency:      state.config?.showLatency      ?? prev.showLatency,
+          showPacketLoss:   state.config?.showPacketLoss   ?? prev.showPacketLoss,
+          showNetworkSpeed: state.config?.showNetworkSpeed ?? prev.showNetworkSpeed,
         }));
       }
     }).catch(() => {});
@@ -295,6 +309,24 @@ const Settings: React.FC = () => {
                         <span className="slider"></span>
                       </label>
                     </div>
+                    <div className="setting-row">
+                      <div className="setting-row-info">
+                        <span className="setting-row-title">Minimize to Tray</span>
+                        <span className="setting-row-desc">Minimize or close the window to the system tray instead of quitting</span>
+                      </div>
+                      <label className="toggle-switch">
+                        <input
+                          type="checkbox"
+                          checked={minimizeToTray}
+                          onChange={async (e) => {
+                            const val = e.target.checked;
+                            setMinimizeToTray(val);
+                            try { await ipc?.invoke('app:set-minimize-to-tray', val); } catch {}
+                          }}
+                        />
+                        <span className="slider"></span>
+                      </label>
+                    </div>
                   </div>
                 </>
               )}
@@ -420,12 +452,12 @@ const Settings: React.FC = () => {
                         <div className="overlay-slider-track">
                           <div
                             className="overlay-slider-fill"
-                            style={{ width: `${((overlayOpacity - 0.2) / 0.8) * 100}%`, background: overlayColor }}
+                            style={{ width: `${overlayOpacity * 100}%`, background: overlayColor }}
                           />
                           <input
                             type="range"
                             className="overlay-opacity-slider"
-                            min={0.2}
+                            min={0}
                             max={1}
                             step={0.05}
                             value={overlayOpacity}
@@ -442,27 +474,63 @@ const Settings: React.FC = () => {
                       <div className="overlay-cfg-card">
                         <span className="overlay-cfg-card-title">Visible Metrics</span>
                         <div className="overlay-toggle-list">
+
+                          <span className="overlay-toggle-group-label">HUD</span>
                           {([
-                            ['showFps',      'FPS'     ],
-                            ['showCpuUsage', 'CPU %'   ],
-                            ['showGpuUsage', 'GPU %'   ],
-                            ['showCpuTemp',  'CPU Temp'],
-                            ['showGpuTemp',  'GPU Temp'],
-                            ['showRamUsage', 'RAM'     ],
-                            ['showLatency',  'Ping'    ],
+                            ['showHeader',     'Header'    ],
+                            ['showBackground', 'Background'],
+                            ['showFps',        'FPS'       ],
                           ] as const).map(([key, label]) => (
-                            <div
-                              key={key}
-                              className="overlay-toggle-row"
-                              style={{ '--sensor-color': overlayColor } as React.CSSProperties}
-                              onClick={() => handleOverlaySensor(key)}
-                            >
+                            <div key={key} className="overlay-toggle-row" style={{ '--sensor-color': overlayColor } as React.CSSProperties} onClick={() => handleOverlaySensor(key)}>
                               <span className="overlay-toggle-label">{label}</span>
-                              <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`}>
-                                <div className="overlay-toggle-thumb" />
-                              </div>
+                              <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`}><div className="overlay-toggle-thumb" /></div>
                             </div>
                           ))}
+
+                          <span className="overlay-toggle-group-label">CPU</span>
+                          {([
+                            ['showCpuUsage', 'Usage'],
+                            ['showCpuTemp',  'Temp' ],
+                          ] as const).map(([key, label]) => (
+                            <div key={key} className="overlay-toggle-row" style={{ '--sensor-color': overlayColor } as React.CSSProperties} onClick={() => handleOverlaySensor(key)}>
+                              <span className="overlay-toggle-label">{label}</span>
+                              <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`}><div className="overlay-toggle-thumb" /></div>
+                            </div>
+                          ))}
+
+                          <span className="overlay-toggle-group-label">GPU</span>
+                          {([
+                            ['showGpuUsage', 'Usage'],
+                            ['showGpuTemp',  'Temp' ],
+                          ] as const).map(([key, label]) => (
+                            <div key={key} className="overlay-toggle-row" style={{ '--sensor-color': overlayColor } as React.CSSProperties} onClick={() => handleOverlaySensor(key)}>
+                              <span className="overlay-toggle-label">{label}</span>
+                              <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`}><div className="overlay-toggle-thumb" /></div>
+                            </div>
+                          ))}
+
+                          <span className="overlay-toggle-group-label">Memory</span>
+                          {([
+                            ['showRamUsage', 'RAM'],
+                          ] as const).map(([key, label]) => (
+                            <div key={key} className="overlay-toggle-row" style={{ '--sensor-color': overlayColor } as React.CSSProperties} onClick={() => handleOverlaySensor(key)}>
+                              <span className="overlay-toggle-label">{label}</span>
+                              <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`}><div className="overlay-toggle-thumb" /></div>
+                            </div>
+                          ))}
+
+                          <span className="overlay-toggle-group-label">Network</span>
+                          {([
+                            ['showLatency',      'Ping'        ],
+                            ['showPacketLoss',   'Packet Loss' ],
+                            ['showNetworkSpeed', 'Net Speed'   ],
+                          ] as const).map(([key, label]) => (
+                            <div key={key} className="overlay-toggle-row" style={{ '--sensor-color': overlayColor } as React.CSSProperties} onClick={() => handleOverlaySensor(key)}>
+                              <span className="overlay-toggle-label">{label}</span>
+                              <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`}><div className="overlay-toggle-thumb" /></div>
+                            </div>
+                          ))}
+
                         </div>
                       </div>
 

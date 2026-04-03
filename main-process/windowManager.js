@@ -3,6 +3,11 @@ const path = require('path');
 
 let mainWindow = null;
 let splashWindow = null;
+let _minimizeToTray = false;
+
+function setMinimizeToTray(val) {
+  _minimizeToTray = !!val;
+}
 
 // Root directory for resolving paths (set by main.js)
 let _rootDir = __dirname;
@@ -121,7 +126,13 @@ function createWindow() {
     mainWindow.setMenuBarVisibility(false);
 
     // Custom window control IPC handlers
-    ipcMain.on('window-minimize', () => mainWindow?.minimize());
+    ipcMain.on('window-minimize', () => {
+      if (_minimizeToTray && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.hide();
+      } else {
+        mainWindow?.minimize();
+      }
+    });
     ipcMain.on('window-maximize', () => {
       if (mainWindow?.isMaximized()) {
         mainWindow.unmaximize();
@@ -130,11 +141,15 @@ function createWindow() {
       }
     });
     ipcMain.on('window-close', () => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.close();
+      if (_minimizeToTray && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.hide();
+      } else {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.close();
+        }
+        // Force application shutdown so background processes are not left running.
+        app.quit();
       }
-      // Force application shutdown so background processes are not left running.
-      app.quit();
     });
     ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized());
 
@@ -183,4 +198,5 @@ module.exports = {
   sendSplashProgress,
   sendSplashDetails,
   createWindow,
+  setMinimizeToTray,
 };

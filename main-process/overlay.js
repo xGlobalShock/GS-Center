@@ -5,11 +5,15 @@ const windowManager = require('./windowManager');
 let overlayWindow = null;
 let _overlayVisible = false;
 let _overlayConfig = {
+  showHeader: true,
+  showBackground: true,
   showFps: true,
   showCpuUsage: true,
   showGpuTemp: true,
   showRamUsage: true,
   showLatency: true,
+  showPacketLoss: true,
+  showNetworkSpeed: true,
   showGpuUsage: true,
   showCpuTemp: true,
   position: 'top-right', // top-left, top-right, bottom-left, bottom-right
@@ -23,7 +27,7 @@ function getOverlayBounds() {
   const { screen } = require('electron');
   const display = screen.getPrimaryDisplay();
   const { width: sw, height: sh } = display.workAreaSize;
-  const ow = 214, oh = 210;
+  const ow = 234, oh = 248;
   const margin = 10;
 
   switch (_overlayConfig.position) {
@@ -122,6 +126,9 @@ function pushStatsToOverlay(stats) {
     gpuUsage: stats.gpuUsage,
     ramPercent: stats.ram,
     latency: stats.latencyMs,
+    packetLoss: stats.packetLoss,
+    networkUp: stats.networkUp,
+    networkDown: stats.networkDown,
   });
 }
 

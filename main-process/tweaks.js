@@ -9,6 +9,7 @@ const { execAsync, runPSScript } = require('./utils');
 let _isElevated = false;
 let _tweakCheckCache = null;
 let _tweakCheckAge = 0;
+let _tweakCheckInFlight = null; // deduplicate concurrent calls
 
 function init({ isElevated }) {
   _isElevated = isElevated;
@@ -16,7 +17,11 @@ function init({ isElevated }) {
 
 async function _runAllTweakChecks() {
   if (_tweakCheckCache && (Date.now() - _tweakCheckAge < 2000)) return _tweakCheckCache;
+  // All concurrent callers (e.g. 16 simultaneous CHECK_MAP invokes on page load)
+  // share one in-flight promise so only a single powershell process is ever spawned.
+  if (_tweakCheckInFlight) return _tweakCheckInFlight;
 
+  _tweakCheckInFlight = (async () => {
   try {
     const raw = await runPSScript(`
 $r = @{}
@@ -68,8 +73,13 @@ $r | ConvertTo-Json -Compress
     }
   } catch (e) {
     console.warn('[TweakCheck] Consolidated check error:', e.message);
+  } finally {
+    _tweakCheckInFlight = null;
   }
   return null;
+  })();
+
+  return _tweakCheckInFlight;
 }
 
 function _tweakResult(data, key, appliedValue) {
