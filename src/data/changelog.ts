@@ -10,6 +10,15 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.7.1',
+    date: '2026-04-03',
+    highlights: 'UI/UX Globally Revamped & Performance Optimizations',
+    changes: [
+      { type: 'improved', text: 'Globally revamped UI/UX with sleek cyan theme, glassmorphic cards, smooth animations, and responsive design.' },
+      { type: 'improved', text: 'Text rendering and layout optimizations for better performance and readability.' },
+    ],
+  },
+  {
     version: '1.7.0',
     date: '2026-04-03',
     highlights: 'Dashboard completely rebuilt with live charts, card flip hardware details, and app-wide visual unification',
