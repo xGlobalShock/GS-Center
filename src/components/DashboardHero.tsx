@@ -579,19 +579,19 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
             <div className="dh-info-block">
               {hw?.gpuName && (
                 <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: 'rgb(255, 174, 0)' }}>Model</span>
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Model</span>
                   <span className="dh-info-val">{hw.gpuName}</span>
                 </div>
               )}
               {hw?.gpuDriverVersion && (
                 <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: 'rgb(255, 174, 0)' }}>Driver</span>
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Driver</span>
                   <span className="dh-info-val">{hw.gpuDriverVersion}</span>
                 </div>
               )}
               {(ext?.gpuFan != null && ext.gpuFan >= 0) && (
                 <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: 'rgb(255, 174, 0)' }}>Fan Speed</span>
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Fan Speed</span>
                   <span className="dh-info-val">{ext.gpuFan}%</span>
                 </div>
               )}
@@ -676,38 +676,38 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
               {/* ── Specs ── */}
               {hw?.ramInfo && (
                 <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: 'rgb(255, 174, 0)' }}>Config</span>
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Config</span>
                   <span className="dh-info-val">{hw.ramInfo}</span>
                 </div>
               )}
               {hw?.ramPartNumber && (
                 <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: 'rgb(255, 174, 0)' }}>Part No.</span>
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Part No.</span>
                   <span className="dh-info-val">{hw.ramPartNumber}</span>
                 </div>
               )}
               {hw?.ramSticks && (
                 <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: 'rgb(255, 174, 0)' }}>Sticks</span>
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Sticks</span>
                   <span className="dh-info-val">{hw.ramSticks}{hw?.ramSlotMap ? ` · ${hw.ramSlotMap}` : ''}</span>
                 </div>
               )}
               {/* ── Usage ── */}
               {(hw?.ramPageFileTotal ?? 0) > 0 && (
                 <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: 'rgb(255, 174, 0)' }}>Page File</span>
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Page File</span>
                   <span className="dh-info-val">{hw!.ramPageFileUsed} / {hw!.ramPageFileTotal} MB</span>
                 </div>
               )}
               {(hw?.ramNonPagedPool ?? 0) > 0 && (
                 <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: 'rgb(255, 174, 0)' }}>Non-Paged Pool</span>
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Non-Paged Pool</span>
                   <span className="dh-info-val">{hw!.ramNonPagedPool} MB</span>
                 </div>
               )}
               {(hw?.ramStandby ?? 0) > 0 && (
                 <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: 'rgb(255, 174, 0)' }}>Standby</span>
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Standby</span>
                   <span className="dh-info-val">{hw!.ramStandby! > 1024 ? `${(hw!.ramStandby! / 1024).toFixed(1)} GB` : `${hw!.ramStandby} MB`}</span>
                 </div>
               )}
@@ -996,31 +996,31 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
             <div className="dh-info-block">
               {(hw?.biosVersion || hw?.biosDate) && (
                 <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: 'rgb(255, 174, 0)' }}>BIOS</span>
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>BIOS</span>
                   <span className="dh-info-val">{hw?.biosVersion ?? 'Unknown'}{hw?.biosDate ? ' · ' + hw.biosDate : ''}</span>
                 </div>
               )}
               {hw?.windowsBuild && (
                 <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: 'rgb(255, 174, 0)' }}>Build</span>
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Build</span>
                   <span className="dh-info-val">{hw.windowsBuild}</span>
                 </div>
               )}
               {hw?.windowsActivation && (
                 <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: 'rgb(255, 174, 0)' }}>Activation</span>
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Activation</span>
                   <span className="dh-info-val" style={{ color: hw.windowsActivation === 'Licensed' ? '#FFFFFF' : undefined }}>{hw.windowsActivation}</span>
                 </div>
               )}
               {hw?.secureBoot && (
                 <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: 'rgb(255, 174, 0)' }}>Secure Boot</span>
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Secure Boot</span>
                   <span className="dh-info-val" style={{ color: hw.secureBoot === 'Enabled' ? '#FFFFFF' : hw.secureBoot === 'Disabled' ? '#FF2D55' : undefined }}>{hw.secureBoot}</span>
                 </div>
               )}
               {hw?.lastWindowsUpdate && (
                 <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: 'rgb(255, 174, 0)' }}>Last Update</span>
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Last Update</span>
                   <span className="dh-info-val">{hw.lastWindowsUpdate}</span>
                 </div>
               )}
