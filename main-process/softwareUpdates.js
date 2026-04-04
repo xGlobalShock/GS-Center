@@ -402,9 +402,11 @@ function registerIPC() {
       if (output.includes('access is denied'))
         return _isElevated ? null : 'Run the app as administrator to update this package';
       if (output.includes('installer failed'))
-        return 'Installer failed \u2014 the app may need to be closed first';
+        return 'Installer failed — close the app first, then try again';
       if (output.includes('installer log is available'))
-        return 'Installer failed \u2014 try closing the app and updating again';
+        return 'Installer failed — try closing the app and updating again';
+      if (/exit code[:\s]*26\b/.test(output))
+        return 'Close Spotify before updating — the installer cannot proceed while it\'s running';
       if (output.includes('hash does not match') && output.includes('cannot be overridden'))
         return 'Hash mismatch \u2014 retrying as standard user';
       return null;
