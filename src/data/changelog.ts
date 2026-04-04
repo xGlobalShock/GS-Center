@@ -10,18 +10,9 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
-    version: '1.7.1',
+    version: '1.7.0 ➜ v1.7.2',
     date: '2026-04-03',
-    highlights: 'UI/UX Globally Revamped & Performance Optimizations',
-    changes: [
-      { type: 'improved', text: 'Globally revamped UI/UX with sleek cyan theme, glassmorphic cards, smooth animations, and responsive design.' },
-      { type: 'improved', text: 'Text rendering and layout optimizations for better performance and readability.' },
-    ],
-  },
-  {
-    version: '1.7.0',
-    date: '2026-04-03',
-    highlights: 'Dashboard completely rebuilt with live charts, card flip hardware details, and app-wide visual unification',
+    highlights: 'Dashboard completely rebuilt with live charts, Major UI overhaul with new cyan theme and glassmorphic design.',
     changes: [
       { type: 'new',      text: 'Dashboard: rebuilt as a 6-card live monitoring panel (CPU, GPU, RAM, Storage, Network, System) in a responsive 3×2 grid.' },
       { type: 'new',      text: 'Dashboard: each card has a real-time Recharts area sparkline with gradient fill and hover tooltip.' },
@@ -37,6 +28,8 @@ const changelog: ChangelogEntry[] = [
       { type: 'new',      text: 'Dashboard: Wi-Fi SSID + signal tile; battery tile for laptops; LIVE blinking badge.' },
       { type: 'new',      text: 'Dashboard: staggered Framer Motion entrance animations per card.' },
       { type: 'new',      text: 'Game Library: COMMANDS button with 3D gear design; Commands overlay with 3-column grid and search.' },
+      { type: 'improved', text: 'Globally revamped UI/UX with sleek cyan theme, glassmorphic cards, smooth animations, and responsive design.' },
+      { type: 'improved', text: 'Text rendering and layout optimizations for better performance and readability.' },
       { type: 'improved', text: 'Dashboard: glassmorphic cards with corner brackets, scanline overlay, and glowing accent bar.' },
       { type: 'improved', text: 'App-wide color migration from green (#00CC6A) to cyan (#00F2FF) across 15+ CSS files.' },
       { type: 'improved', text: 'Unified dark glassmorphic card style (background, border, shadow) across all pages.' },
