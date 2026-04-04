@@ -106,7 +106,6 @@
 /* ── Breathing pulse for high-load cards ── */
 .hud-bento-card.hud-pulse {
   animation: hudBreath 2.5s ease-in-out infinite;
-  will-change: box-shadow, border-color;
 }
 
 @keyframes hudBreath {
@@ -128,7 +127,6 @@
 
 .hud-bento-card.hud-pulse-warn {
   animation: hudBreathWarn 3s ease-in-out infinite;
-  will-change: box-shadow, border-color;
 }
 
 @keyframes hudBreathWarn {
@@ -250,9 +248,12 @@
 
 .hud-card-accent-fill {
   height: 100%;
+  width: 100%;
   background: linear-gradient(90deg, #00F2FF, #00F2FF);
   border-radius: 0 2px 2px 0;
-  transition: width 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: left center;
+  transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
   box-shadow: 0 0 12px rgba(0, 242, 255, 0.5), 0 0 4px rgba(0, 242, 255, 0.3);
 }
 
@@ -491,6 +492,8 @@
   box-shadow: 0 0 12px rgba(0, 242, 255, 0.3);
   animation: hud-skel-scan 2.4s ease-in-out infinite;
   z-index: 10;
+  will-change: top, opacity;
+  transform: translateZ(0);
 }
 
 @keyframes hud-skel-scan {
@@ -616,6 +619,7 @@
   border-radius: 999px;
   transition: width 0.9s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  transform: translateZ(0);
 }
 
 /* Glow pulse on high values */
@@ -1224,8 +1228,11 @@
 
 .hud-net-bar-fill {
   height: 100%;
+  width: 100%;
   border-radius: 999px;
-  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: left center;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
 }
 
 .hud-net-bar-fill.dn {
@@ -1413,8 +1420,11 @@
 
 .hud-usage-rt-fill {
   height: 100%;
+  width: 100%;
   border-radius: 999px;
-  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: left center;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
 }
 
 

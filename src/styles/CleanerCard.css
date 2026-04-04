@@ -27,7 +27,7 @@
   min-height: 130px;
   min-width: 220px;
   transform: translateZ(0);
-  will-change: transform, border-color, box-shadow;
+  will-change: transform;
   contain: layout style paint;
 }
 
@@ -89,16 +89,8 @@
 
 /* ——— CORNER ACCENTS ——— */
 @keyframes ccCornerBreathe {
-  0%, 100% {
-    width: 10px;
-    height: 10px;
-    filter: drop-shadow(0 0 1px rgba(0, 242, 255, 0.2));
-  }
-  50% {
-    width: 14px;
-    height: 14px;
-    filter: drop-shadow(0 0 7px rgba(0, 242, 255, 0.85));
-  }
+  0%, 100% { transform: scale(1);   opacity: 0.45; }
+  50%       { transform: scale(1.5); opacity: 1; }
 }
 
 .cc-corner {
@@ -107,12 +99,13 @@
   height: 10px;
   z-index: 2;
   pointer-events: none;
+  will-change: transform, opacity;
   animation: ccCornerBreathe 3.2s ease-in-out infinite;
 }
 
 .cc:hover .cc-corner {
   animation-play-state: paused;
-  filter: drop-shadow(0 0 9px rgba(0, 242, 255, 1));
+  opacity: 1;
 }
 
 .cc-corner--tl {
@@ -151,17 +144,18 @@
 .cc-sweep {
   position: absolute;
   top: 0;
-  left: -100%;
-  width: 200%;
+  left: 0;
+  width: 100%;
   height: 2px;
   background: linear-gradient(90deg, transparent 20%, rgba(0, 242, 255, 0.6), rgba(0, 242, 255, 0.4), transparent 80%);
   animation: ccLoadSweep 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   z-index: 10;
+  will-change: transform;
 }
 
 @keyframes ccLoadSweep {
-  0%   { left: -100%; }
-  100% { left: 100%; }
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* ——— INNER CONTENT ——— */
@@ -341,17 +335,18 @@
 .cc-btn-shine {
   position: absolute;
   top: 0;
-  left: -100%;
+  left: 0;
   width: 50%;
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.08), transparent);
-  transform: skewX(-15deg);
-  transition: left 0.6s ease;
+  transform: skewX(-15deg) translateX(-250%);
+  transition: transform 0.6s ease;
   pointer-events: none;
+  will-change: transform;
 }
 
 .cc-btn:hover:not(:disabled) .cc-btn-shine {
-  left: 130%;
+  transform: skewX(-15deg) translateX(350%);
 }
 
 /* ——— SPINNER ——— */

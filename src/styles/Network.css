@@ -179,7 +179,7 @@
   cursor: pointer;
   position: relative;
   text-align: left;
-  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: background 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   overflow: hidden;
 }
 
@@ -201,7 +201,7 @@
   align-items: center;
   justify-content: center;
   color: rgba(255, 255, 255, 0.3);
-  transition: all 0.3s;
+  transition: color 0.3s, filter 0.3s;
 }
 
 .nv-p-btn.active .nv-p-icon {
@@ -261,7 +261,7 @@
   width: 3px;
   background: var(--nv-cyan);
   opacity: 0;
-  transition: all 0.3s;
+  transition: opacity 0.3s, box-shadow 0.3s;
 }
 
 .nv-p-btn.active .nv-p-edge {
@@ -328,7 +328,7 @@
   letter-spacing: 2px;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: background 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .nv-fire-btn:hover:not(:disabled) {
@@ -504,19 +504,21 @@
   position: absolute;
   top: 0;
   bottom: 0;
+  left: 0;
   width: 40%;
   background: var(--nv-cyan);
   box-shadow: 0 0 10px var(--nv-cyan);
   animation: nvBarScan 1.5s ease-in-out infinite;
+  will-change: transform;
 }
 
 @keyframes nvBarScan {
   0% {
-    left: -40%;
+    transform: translateX(-100%);
   }
 
   100% {
-    left: 100%;
+    transform: translateX(350%);
   }
 }
 
@@ -566,7 +568,7 @@ webview {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.03);
   border-radius: 6px;
-  transition: all 0.2s;
+  transition: background 0.2s, border-color 0.2s;
 }
 
 .nv-tele-row:hover {

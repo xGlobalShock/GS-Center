@@ -385,13 +385,14 @@
 .cleaner-clearall-btn::after {
   content: '';
   position: absolute;
-  top: 0; left: -60%;
+  top: 0; left: 0;
   width: 40%;
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(0, 242, 255,0.18), transparent);
-  transform: skewX(-20deg);
-  transition: left 0.5s ease;
+  transform: skewX(-20deg) translateX(-250%);
+  transition: transform 0.5s ease;
   pointer-events: none;
+  will-change: transform;
 }
 
 .cleaner-clearall-btn:hover {
@@ -405,7 +406,7 @@
 }
 
 .cleaner-clearall-btn:hover::after {
-  left: 120%;
+  transform: skewX(-20deg) translateX(400%);
 }
 
 /* ── Right content pane ── */

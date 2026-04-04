@@ -24,7 +24,7 @@
   height: 100%;
   cursor: default;
   transform: translateZ(0);
-  will-change: transform, border-color, box-shadow;
+  will-change: transform;
   contain: layout style paint;
 }
 
@@ -89,16 +89,8 @@
 
 /* ——— CORNER ACCENTS ——— */
 @keyframes tcCornerBreathe {
-  0%, 100% {
-    width: 10px;
-    height: 10px;
-    filter: drop-shadow(0 0 1px rgba(0, 242, 255, 0.2));
-  }
-  50% {
-    width: 14px;
-    height: 14px;
-    filter: drop-shadow(0 0 7px rgba(0, 242, 255, 0.85));
-  }
+  0%, 100% { transform: scale(1);   opacity: 0.45; }
+  50%       { transform: scale(1.5); opacity: 1; }
 }
 
 .tc-corner {
@@ -107,12 +99,13 @@
   height: 10px;
   z-index: 2;
   pointer-events: none;
+  will-change: transform, opacity;
   animation: tcCornerBreathe 3.2s ease-in-out infinite;
 }
 
 .tc:hover .tc-corner {
   animation-play-state: paused;
-  filter: drop-shadow(0 0 9px rgba(0, 242, 255, 1));
+  opacity: 1;
 }
 
 .tc-corner--tl {
@@ -219,7 +212,7 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 4px;
-  transition: all 0.35s ease;
+  transition: color 0.35s ease, background 0.35s ease, border-color 0.35s ease;
 }
 
 
@@ -367,7 +360,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: background 0.3s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1), color 0.3s cubic-bezier(0.22, 1, 0.36, 1), transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .tc-btn:disabled {
@@ -424,13 +417,14 @@
 .tc-btn-shine {
   position: absolute;
   top: 0;
-  left: -100%;
+  left: 0;
   width: 50%;
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.08), transparent);
-  transform: skewX(-15deg);
-  transition: left 0.6s ease;
+  transform: skewX(-15deg) translateX(-250%);
+  transition: transform 0.6s ease;
   pointer-events: none;
+  will-change: transform;
 }
 
 .tc-btn--revert .tc-btn-shine {
@@ -438,7 +432,7 @@
 }
 
 .tc-btn:hover:not(:disabled) .tc-btn-shine {
-  left: 130%;
+  transform: skewX(-15deg) translateX(350%);
 }
 
 /* ——— STATUS INDICATOR ——— */
@@ -453,7 +447,7 @@
   text-transform: none; */
   padding: 2px 8px;
   border-radius: 4px;
-  transition: all 0.35s ease;
+  transition: color 0.35s ease, background 0.35s ease, border-color 0.35s ease;
   white-space: nowrap;
   min-width: 90px;
   justify-content: center;
@@ -475,7 +469,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  transition: all 0.35s ease;
+  transition: background 0.35s ease, box-shadow 0.35s ease;
 }
 
 .tc-status--on .tc-status-dot {
@@ -502,17 +496,18 @@
   content: '';
   position: absolute;
   top: 0;
-  left: -100%;
-  width: 200%;
+  left: 0;
+  width: 100%;
   height: 2px;
   background: linear-gradient(90deg, transparent 20%, rgba(0, 242, 255, 0.6), rgba(0, 242, 255, 0.4), transparent 80%);
   animation: tcLoadSweep 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   z-index: 10;
+  will-change: transform;
 }
 
 @keyframes tcLoadSweep {
-  0%   { left: -100%; }
-  100% { left: 100%; }
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* ——— RESPONSIVE ——— */

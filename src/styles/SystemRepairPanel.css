@@ -623,9 +623,12 @@
 
 .repair-progress-fill {
   height: 100%;
+  width: 100%;
   background: var(--repair-color, #00F2FF);
   border-radius: 99px;
-  transition: width 0.3s ease;
+  transform-origin: left center;
+  transition: transform 0.3s ease;
+  will-change: transform;
   box-shadow: 0 0 8px color-mix(in srgb, var(--repair-color, #00F2FF) 50%, transparent);
 }
 

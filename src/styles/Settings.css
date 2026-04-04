@@ -293,7 +293,7 @@
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
-  transition: all 0.25s ease;
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .slider::after {
@@ -305,8 +305,9 @@
   height: 20px;
   background: rgba(255, 255, 255, 0.5);
   border-radius: 50%;
-  transition: all 0.25s ease;
+  transition: transform 0.25s ease, background 0.25s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  will-change: transform;
 }
 
 .toggle-switch input:checked + .slider {
@@ -316,7 +317,7 @@
 }
 
 .toggle-switch input:checked + .slider::after {
-  left: 26px;
+  transform: translateX(22px);
   background: #fff;
   box-shadow: 0 0 6px rgba(0, 242, 255, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
 }
@@ -463,17 +464,18 @@
 .gpu-card-scanline {
   position: absolute;
   top: 0;
-  left: -100%;
+  left: 0;
   width: 60%;
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.015), transparent);
   animation: gpu-scan 4s ease-in-out infinite;
   pointer-events: none;
+  will-change: transform;
 }
 
 @keyframes gpu-scan {
-  0%   { left: -60%; }
-  100% { left: 160%; }
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(266%); }
 }
 
 /* Top row */

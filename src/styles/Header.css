@@ -96,7 +96,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
   position: relative;
 }
 
@@ -280,6 +280,7 @@
   -webkit-app-region: no-drag;
   app-region: no-drag;
   animation: update-popup-in 0.15s ease-out;
+  transform: translateZ(0);
 }
 
 @keyframes update-popup-in {
@@ -385,9 +386,12 @@
 
 .update-progress-fill {
   height: 100%;
+  width: 100%;
   background: linear-gradient(90deg, #22c55e, #4ade80);
   border-radius: 2px;
-  transition: width 0.3s ease;
+  transform-origin: left center;
+  transition: transform 0.3s ease;
+  will-change: transform;
 }
 
 /* ── Settings Header Button ── */
@@ -436,6 +440,7 @@
   -webkit-app-region: no-drag;
   app-region: no-drag;
   animation: settings-overlay-in 0.18s ease-out;
+  transform: translateZ(0);
 }
 
 @keyframes settings-overlay-in {
@@ -496,7 +501,7 @@
   border-radius: 6px;
   color: rgba(180, 200, 220, 0.45);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .settings-modal-close:hover {

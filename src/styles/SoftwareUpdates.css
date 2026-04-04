@@ -58,14 +58,14 @@
 }
 
 .su-btn--update-all {
-  background: linear-gradient(135deg, rgba(0, 242, 255, 0.12), rgba(0, 242, 255, 0.08));
-  border-color: rgba(0, 242, 255, 0.25);
-  color: #00F2FF;
+  background: linear-gradient(135deg, rgba(0, 200, 83, 0.12), rgba(0, 200, 83, 0.08));
+  border-color: rgba(0, 200, 83, 0.25);
+  color: #00C853;
 }
 
 .su-btn--update-all:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(0, 242, 255, 0.2), rgba(0, 242, 255, 0.14));
-  border-color: rgba(0, 242, 255, 0.45);
+  background: linear-gradient(135deg, rgba(0, 200, 83, 0.2), rgba(0, 200, 83, 0.14));
+  border-color: rgba(0, 200, 83, 0.45);
 }
 
 .su-btn--secondary {
@@ -351,6 +351,7 @@
   border-radius: 3px;
   transition: width 0.3s ease;
   position: relative;
+  transform: translateZ(0);
 }
 
 .su-progress-bar--preparing {

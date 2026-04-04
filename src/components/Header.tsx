@@ -542,7 +542,7 @@ const description = release.body?.trim() || undefined;
                       <span>Downloading...</span>
                     </div>
                     <div className="update-progress-bar">
-                      <div className="update-progress-fill" style={{ width: `${downloadPercent}%` }} />
+                      <div className="update-progress-fill" style={{ transform: `scaleX(${downloadPercent / 100})` }} />
                     </div>
                     <p className="update-popup-percent">{Math.round(downloadPercent)}%</p>
                     <button className="update-popup-btn update-popup-btn--cancel" onClick={handleCancel}>

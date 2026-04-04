@@ -87,6 +87,7 @@
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(0, 163, 255, 0.3), transparent);
   animation: loader-skel-scan 2.5s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 @keyframes loader-skel-scan {

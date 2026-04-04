@@ -418,7 +418,7 @@ const BentoCard: React.FC<{
 
     {/* Top accent line */}
     <div className="hud-card-accent-line">
-      <div className="hud-card-accent-fill" style={{ width: `${gaugeValue ?? 0}%` }} />
+      <div className="hud-card-accent-fill" style={{ transform: `scaleX(${(gaugeValue ?? 0) / 100})` }} />
     </div>
 
     <div className="hud-card-inner">
@@ -603,7 +603,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
                         {formatMiBtoGB(gpuVramUsed)}<small> / {formatMiBtoGB(gpuVramTotal)}</small>
                       </span>
                       <div className="hud-usage-rt-track">
-                        <div className="hud-usage-rt-fill" style={{ width: `${Math.min(pct, 100)}%`, background: `linear-gradient(90deg, ${c}00, ${c})`, boxShadow: `0 0 6px ${c}50` }} />
+                        <div className="hud-usage-rt-fill" style={{ transform: `scaleX(${Math.min(pct, 100) / 100})`, background: `linear-gradient(90deg, ${c}00, ${c})`, boxShadow: `0 0 6px ${c}50` }} />
                       </div>
                     </div>
                   </div>
@@ -652,7 +652,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
                     {ext.ramUsedGB.toFixed(1)}<small> / {ext.ramTotalGB.toFixed(1)} GB</small>
                   </span>
                   <div className="hud-usage-rt-track">
-                    <div className="hud-usage-rt-fill" style={{ width: `${Math.min(pct, 100)}%`, background: `linear-gradient(90deg, ${c}00, ${c})`, boxShadow: `0 0 6px ${c}50` }} />
+                    <div className="hud-usage-rt-fill" style={{ transform: `scaleX(${Math.min(pct, 100) / 100})`, background: `linear-gradient(90deg, ${c}00, ${c})`, boxShadow: `0 0 6px ${c}50` }} />
                   </div>
                 </div>
                 <div className="hud-net-rt-stat">
@@ -664,7 +664,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
                     {ext.ramAvailableGB.toFixed(1)}<small> GB</small>
                   </span>
                   <div className="hud-usage-rt-track">
-                    <div className="hud-usage-rt-fill" style={{ width: `${Math.min(availPct, 100)}%`, background: 'linear-gradient(90deg, #00F2FF00, #00F2FF)', boxShadow: '0 0 6px #00F2FF50' }} />
+                    <div className="hud-usage-rt-fill" style={{ transform: `scaleX(${Math.min(availPct, 100) / 100})`, background: 'linear-gradient(90deg, #00F2FF00, #00F2FF)', boxShadow: '0 0 6px #00F2FF50' }} />
                   </div>
                 </div>
                 {ext.ramCachedGB > 0 && (
@@ -677,7 +677,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
                       {ext.ramCachedGB.toFixed(1)}<small> GB</small>
                     </span>
                     <div className="hud-usage-rt-track">
-                      <div className="hud-usage-rt-fill" style={{ width: `${Math.min(cachedPct, 100)}%`, background: 'linear-gradient(90deg, #A78BFA00, #A78BFA)', boxShadow: '0 0 6px #A78BFA50' }} />
+                      <div className="hud-usage-rt-fill" style={{ transform: `scaleX(${Math.min(cachedPct, 100) / 100})`, background: 'linear-gradient(90deg, #A78BFA00, #A78BFA)', boxShadow: '0 0 6px #A78BFA50' }} />
                     </div>
                   </div>
                 )}
@@ -925,14 +925,14 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
                       <div className="hud-net-bar-row">
                         <ArrowDown size={9} className="hud-net-bar-icon dn" />
                         <div className="hud-net-bar-track">
-                          <div className="hud-net-bar-fill dn" style={{ width: `${scale(down)}%` }} />
+                          <div className="hud-net-bar-fill dn" style={{ transform: `scaleX(${scale(down) / 100})` }} />
                         </div>
                         <span className="hud-net-bar-val dn">{fmtMbps(down)}</span>
                       </div>
                       <div className="hud-net-bar-row">
                         <ArrowUp size={9} className="hud-net-bar-icon up" />
                         <div className="hud-net-bar-track">
-                          <div className="hud-net-bar-fill up" style={{ width: `${scale(up)}%` }} />
+                          <div className="hud-net-bar-fill up" style={{ transform: `scaleX(${scale(up) / 100})` }} />
                         </div>
                         <span className="hud-net-bar-val up">{fmtMbps(up)}</span>
                       </div>

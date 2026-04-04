@@ -562,7 +562,7 @@
 .dh-net-ic.dn     { color: #FFFFFF; }
 .dh-net-ic.up     { color: #FFFFFF; }
 .dh-net-bar-track { flex: 1; height: 3px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
-.dh-net-bar-fill  { height: 100%; border-radius: 2px; transition: width 0.8s ease; }
+.dh-net-bar-fill  { height: 100%; width: 100%; border-radius: 2px; transform-origin: left center; transition: transform 0.8s ease; will-change: transform; }
 .dh-net-bar-fill.dn { background: linear-gradient(90deg, #00F2FF00, #00F2FF); box-shadow: 0 0 6px #00F2FF55; }
 .dh-net-bar-fill.up { background: linear-gradient(90deg, #00F2FF00, #00F2FF); box-shadow: 0 0 6px #00F2FF55; }
 .dh-net-bar-val   { font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; width: 64px; text-align: right; flex-shrink: 0; }

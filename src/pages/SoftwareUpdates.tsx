@@ -78,10 +78,10 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
             for (const pkg of result.packages) {
               try {
                 const res: { id: string; size: string } = await window.electron.ipcRenderer.invoke('software:get-package-size', pkg.id);
-                if (res.size) {
-                  setPackageSizes(prev => ({ ...prev, [res.id]: res.size }));
-                }
-              } catch {}
+                setPackageSizes(prev => ({ ...prev, [res.id]: res.size }));
+              } catch {
+                setPackageSizes(prev => ({ ...prev, [pkg.id]: '' }));
+              }
             }
           })();
         }
@@ -194,29 +194,25 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
         icon={<Package size={16} />}
         title="Software Updates"
         actions={
-          <button className="su-btn su-btn--scan" onClick={checkUpdates} disabled={loading}>
-            <RefreshCw size={14} className={loading ? 'su-spin' : ''} />
-            {loading ? 'Scanning…' : 'Check for Updates'}
-          </button>
+          <>
+            {updatingAll ? (
+              <button className="su-btn su-btn--cancel" onClick={handleCancelUpdate} disabled={cancelRequested}>
+                <X size={14} />
+                {cancelRequested ? 'Cancelling…' : 'Cancel'}
+              </button>
+            ) : pendingPackages.length > 1 ? (
+              <button className="su-btn su-btn--update-all" onClick={handleUpdateAll} disabled={updatingId !== null}>
+                <Download size={14} />
+                {`Update All (${pendingPackages.length})`}
+              </button>
+            ) : null}
+            <button className="su-btn su-btn--scan" onClick={checkUpdates} disabled={loading || updatingId !== null || updatingAll}>
+              <RefreshCw size={14} className={loading ? 'su-spin' : ''} />
+              {loading ? 'Scanning…' : 'Check for Updates'}
+            </button>
+          </>
         }
       />
-
-      {(pendingPackages.length > 1 && !updatingAll) || (updatingAll || updatingId !== null) ? (
-        <div className="su-tab-actions">
-          {pendingPackages.length > 1 && !updatingAll && (
-            <button className="su-btn su-btn--update-all" onClick={handleUpdateAll} disabled={updatingAll || updatingId !== null}>
-              <Download size={14} />
-              {`Update All (${pendingPackages.length})`}
-            </button>
-          )}
-          {(updatingAll || updatingId !== null) && (
-            <button className="su-btn su-btn--cancel" onClick={handleCancelUpdate} disabled={cancelRequested}>
-              <X size={14} />
-              {cancelRequested ? 'Cancelling…' : 'Cancel Update'}
-            </button>
-          )}
-        </div>
-      ) : null}
 
       {loading && (
         <div className="su-loading">
@@ -265,16 +261,20 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
                       ) : packageSizes[pkg.id] ? (
                         <span className="su-pkg-size">{packageSizes[pkg.id]}</span>
                       ) : (
-                        <span className="su-pkg-size su-pkg-size--failed">Unknown</span>
+                        <span className="su-pkg-size">—</span>
                       )}
                     </div>
                     <div className="su-cell su-cell--source">{pkg.source}</div>
                     <div className="su-cell su-cell--action">
                       {isUpdated && !pkgProgress ? (
                         <span className="su-updated-badge"><CheckCircle size={14} /> Updated</span>
+                      ) : isUpdating && !updatingAll ? (
+                        <button className="su-btn su-btn--cancel" onClick={handleCancelUpdate} disabled={cancelRequested}>
+                          <X size={14} /> {cancelRequested ? 'Cancelling…' : 'Cancel'}
+                        </button>
                       ) : (
                         <button className="su-btn su-btn--row-update" onClick={() => handleUpdate(pkg)} disabled={isUpdating || updatingAll}>
-                          {isUpdating ? (<><Loader2 size={14} className="su-spin" /> {isBatchUpdating ? 'Updating…' : 'Updating…'}</>) : (<><Download size={14} /> Update</>)}
+                          {isUpdating ? (<><Loader2 size={14} className="su-spin" /> Updating…</>) : (<><Download size={14} /> Update</>)}
                         </button>
                       )}
                     </div>

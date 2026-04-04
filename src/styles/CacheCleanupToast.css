@@ -74,6 +74,8 @@
   pointer-events: none;
   animation: scanSweep 3s ease-in-out infinite;
   box-shadow: 0 0 10px rgba(0, 242, 255, 0.35);
+  will-change: top, opacity;
+  transform: translateZ(0);
 }
 
 @keyframes scanSweep {
@@ -366,18 +368,23 @@
 
 .purge-linebar-fill {
   height: 100%;
+  width: 100%;
   background: linear-gradient(90deg, #00F2FF, #00F2FF);
   border-radius: 3px;
-  transition: width 380ms ease;
+  transform-origin: left center;
+  transition: transform 380ms ease;
+  will-change: transform;
   box-shadow: 0 0 8px rgba(0, 242, 255, 0.45);
 }
 
 .purge-linebar-shimmer {
   position: absolute;
   top: 0; left: 0; height: 100%;
+  width: 100%;
   background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%);
   border-radius: 3px;
-  transition: width 380ms ease;
+  transform-origin: left center;
+  transition: transform 380ms ease;
   animation: shimmerFlow 1.8s linear infinite;
   background-size: 80px 100%;
 }

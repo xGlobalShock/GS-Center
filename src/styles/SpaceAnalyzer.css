@@ -108,16 +108,18 @@
   content: '';
   position: absolute;
   top: 0;
-  left: -100%;
+  left: 0;
   width: 50%;
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  transition: left 0.4s ease;
+  transition: transform 0.4s ease;
   z-index: -1;
+  will-change: transform;
+  transform: translateX(-250%);
 }
 
 .sa-btn-cyber:hover:not(:disabled)::before {
-  left: 150%;
+  transform: translateX(350%);
 }
 
 .sa-btn-cyber:hover:not(:disabled) {
@@ -665,7 +667,7 @@
   color: var(--sa-text);
   cursor: pointer;
   border-radius: 4px;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
   font-weight: 600;
   position: relative;
 }
@@ -673,7 +675,7 @@
 .sa-menu-item:hover {
   background: rgba(0, 242, 255, 0.1);
   color: #fff;
-  padding-left: 1.2rem;
+  transform: translateX(0.4rem);
 }
 
 .sa-menu-item svg {

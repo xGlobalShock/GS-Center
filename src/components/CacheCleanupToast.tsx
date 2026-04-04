@@ -450,8 +450,8 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
             {/* Linear progress bar inside stats area */}
             <div className="purge-linebar-wrap">
               <div className="purge-linebar-track">
-                <div className="purge-linebar-fill" style={{ width: `${progress}%` }} />
-                <div className="purge-linebar-shimmer" style={{ width: `${progress}%` }} />
+                <div className="purge-linebar-fill" style={{ transform: `scaleX(${progress / 100})` }} />
+                <div className="purge-linebar-shimmer" style={{ transform: `scaleX(${progress / 100})` }} />
               </div>
             </div>
           </div>
