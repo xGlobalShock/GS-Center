@@ -45,7 +45,7 @@ interface ProgressSummary {
 const MODE_CARDS: { id: Mode; label: string; icon: React.ReactNode; desc: string; color: string }[] = [
   { id: 'safe',       label: 'Safe',       icon: <Shield size={20} />,      desc: 'Low-risk services only',  color: '#00F2FF' },
   { id: 'balanced',   label: 'Balanced',   icon: <ShieldCheck size={20} />, desc: 'Low + Medium risk',       color: '#FFD600' },
-  { id: 'aggressive', label: 'Aggressive', icon: <ShieldAlert size={20} />, desc: 'Full Chris Titus config', color: '#FF2D55' },
+  { id: 'aggressive', label: 'Aggressive', icon: <ShieldAlert size={20} />, desc: 'Full optimization config', color: '#FF2D55' },
 ];
 
 function normStartType(raw: string | null): string {
@@ -76,7 +76,8 @@ const ServiceOptimizer: React.FC = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const scannedOnce = useRef(false);
 
-  const [progressPhase, setProgressPhase] = useState<'idle' | 'start' | 'working' | 'done'>('idle');
+  const [progressPhase, setProgressPhase] = useState<'idle' | 'preparing' | 'start' | 'working' | 'done'>('idle');
+  const [progressStatus, setProgressStatus] = useState('');
   const [progressTotal, setProgressTotal] = useState(0);
   const [progressCurrent, setProgressCurrent] = useState(0);
   const [progressService, setProgressService] = useState('');
@@ -108,8 +109,12 @@ const ServiceOptimizer: React.FC = () => {
     if (!window.electron?.ipcRenderer) return;
     const unsub = window.electron.ipcRenderer.on('svc:progress', (data: any) => {
       if (!data) return;
-      if (data.phase === 'start') {
+      if (data.phase === 'preparing') {
+        setProgressPhase('preparing');
+        setProgressStatus(data.msg || '');
+      } else if (data.phase === 'start') {
         setProgressPhase('start');
+        setProgressStatus('');
         setProgressTotal(data.total);
         setProgressCurrent(0);
         setProgressLog([]);
@@ -164,7 +169,8 @@ const ServiceOptimizer: React.FC = () => {
       return;
     }
     setApplying(true);
-    setProgressPhase('start');
+    setProgressPhase('preparing');
+    setProgressStatus('Creating System Restore Point…');
     setProgressLog([]);
     setProgressSummary(null);
     setProgressCurrent(0);
@@ -198,6 +204,14 @@ const ServiceOptimizer: React.FC = () => {
       return;
     }
     setRestoring(true);
+    setProgressPhase('preparing');
+    setProgressStatus('Reading backup file…');
+    setProgressLog([]);
+    setProgressSummary(null);
+    setProgressCurrent(0);
+    setProgressTotal(0);
+    setProgressService('');
+    setProgressMinimized(false);
     try {
       const result: any = await window.electron.ipcRenderer.invoke('svc:restore');
       if (result?.success) {
@@ -208,6 +222,7 @@ const ServiceOptimizer: React.FC = () => {
       }
     } catch {
       addToast('Restore failed', 'error');
+      setProgressPhase('idle');
     } finally {
       setRestoring(false);
     }
@@ -281,7 +296,7 @@ const ServiceOptimizer: React.FC = () => {
   };
 
   const progressPct = progressTotal > 0 ? Math.round((progressCurrent / progressTotal) * 100) : 0;
-  const isRunning = progressPhase === 'start' || progressPhase === 'working';
+  const isRunning = progressPhase === 'preparing' || progressPhase === 'start' || progressPhase === 'working';
   const modeColor = MODE_CARDS.find(c => c.id === mode)?.color ?? '#00F2FF';
 
   /* ═══════ RENDER ═══════ */
@@ -314,8 +329,10 @@ const ServiceOptimizer: React.FC = () => {
               onClick={() => { setMode(m.id); setSelected(new Set()); }}
             >
               <span className="svc-mode-icon">{m.icon}</span>
-              <span className="svc-mode-label">{m.label}</span>
-              <span className="svc-mode-desc">{m.desc}</span>
+              <div className="svc-mode-text">
+                <span className="svc-mode-label">{m.label}</span>
+                <span className="svc-mode-desc">{m.desc}</span>
+              </div>
             </button>
           ))}
         </div>
@@ -334,64 +351,64 @@ const ServiceOptimizer: React.FC = () => {
           )}
         </AnimatePresence>
 
-        <div className="svc-actions-bar">
-          <div className="svc-actions-left">
+        <div className="svc-toolbar">
+          <div className="svc-toolbar-left">
             <button className="svc-btn svc-btn--scan" onClick={scan} disabled={scanning}>
-              {scanning ? <Loader2 size={14} className="svc-spin" /> : <Search size={14} />}
-              {scanning ? 'Scanning\u2026' : 'Scan Services'}
+              {scanning ? <Loader2 size={13} className="svc-spin" /> : <Search size={13} />}
+              {scanning ? 'Scanning…' : 'Scan'}
             </button>
             <button
               className="svc-btn svc-btn--apply"
               onClick={handleApply}
               disabled={applying || !scannedOnce.current || allOptimized}
             >
-              {applying ? <Loader2 size={14} className="svc-spin" /> : allOptimized ? <Check size={14} /> : <Play size={14} />}
+              {applying ? <Loader2 size={13} className="svc-spin" /> : allOptimized ? <Check size={13} /> : <Play size={13} />}
               {applying
-                ? 'Applying\u2026'
+                ? 'Applying…'
                 : allOptimized
                   ? 'All Optimized'
                   : selected.size > 0
-                    ? `Apply ${selected.size} Selected`
-                    : `Apply ${MODE_CARDS.find(c => c.id === mode)!.label} Mode`}
+                    ? `Apply ${selected.size}`
+                    : `Apply ${MODE_CARDS.find(c => c.id === mode)!.label}`}
             </button>
+            <span className="svc-toolbar-sep" />
+            <button className="svc-link-btn" onClick={selectAll}>All</button>
+            <span className="svc-vdivider">|</span>
+            <button className="svc-link-btn" onClick={selectNone}>None</button>
+            {selected.size > 0 && <span className="svc-sel-count">{selected.size}</span>}
           </div>
-          <div className="svc-actions-right">
-            <button
-              className="svc-btn svc-btn--restore"
-              onClick={handleRestore}
-              disabled={restoring || !hasBackup.exists}
-              title={hasBackup.exists
-                ? `Restore ${hasBackup.count} services from backup (${new Date(hasBackup.timestamp!).toLocaleString()})`
-                : 'No backup yet — a backup is created automatically when you apply tweaks'}
-            >
-              {restoring ? <Loader2 size={14} className="svc-spin" /> : <RotateCcw size={14} />}
-              {restoring ? 'Restoring\u2026' : 'Restore Backup'}
-            </button>
-          </div>
-        </div>
-
-        <div className="svc-selection-row">
-          <button className="svc-link-btn" onClick={selectAll}>Select All</button>
-          <span className="svc-selection-sep">|</span>
-          <button className="svc-link-btn" onClick={selectNone}>Select None</button>
-          {selected.size > 0 && <span className="svc-selection-count">{selected.size} selected</span>}
           <div className="svc-search-wrap">
-            <Search size={13} className="svc-search-icon" />
+            <Search size={12} className="svc-search-icon" />
             <input
               className="svc-search"
-              placeholder="Filter services\u2026"
+              placeholder="Filter services…"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
-        </div>
-
-        {hasBackup.exists && progressPhase === 'idle' && (
-          <div className="svc-backup-info">
-            <Info size={13} />
-            <span>Backup: {hasBackup.count} services saved on {new Date(hasBackup.timestamp!).toLocaleString()}</span>
+          <div className="svc-toolbar-right">
+            {hasBackup.exists && progressPhase === 'idle' && (
+              <div
+                className="svc-backup-chip"
+                title={`Backup from ${new Date(hasBackup.timestamp!).toLocaleString()}`}
+              >
+                <Info size={11} />
+                <span>{hasBackup.count} svcs · {new Date(hasBackup.timestamp!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            )}
+            <button
+              className="svc-btn svc-btn--restore"
+              onClick={handleRestore}
+              disabled={restoring || !hasBackup.exists || isRunning}
+              title={hasBackup.exists
+                ? `Restore ${hasBackup.count} services from backup (${new Date(hasBackup.timestamp!).toLocaleString()})`
+                : 'No backup yet — a backup is created automatically when you apply tweaks'}
+            >
+              {restoring ? <Loader2 size={13} className="svc-spin" /> : <RotateCcw size={13} />}
+              {restoring ? 'Restoring…' : 'Restore'}
+            </button>
           </div>
-        )}
+        </div>
 
         <div className="svc-grid svc-grid--flat">
           {filteredServices.length === 0 && (
@@ -418,17 +435,19 @@ const ServiceOptimizer: React.FC = () => {
               ? 'svc-card-badge svc-card-badge--missing'
               : matches ? 'svc-card-badge svc-card-badge--match' : 'svc-card-badge svc-card-badge--pending';
 
+            const riskColor = svc.risk === 'high' ? '#FF2D55' : svc.risk === 'medium' ? '#FFD600' : '#00F2FF';
             return (
               <div
                 key={svc.name}
                 className={cardClass}
+                style={{ '--risk-color': riskColor } as React.CSSProperties}
                 onClick={() => exists && toggleService(svc.name)}
-                title={`${svc.description}\n${svc.category} \u00b7 ${svc.risk} risk`}
+                title={`${svc.description}\n${svc.category} · ${svc.risk} risk`}
               >
-                <div className="svc-card-cb" />
                 <span className={dotClass} />
                 <div className="svc-card-info">
                   <span className="svc-card-name">{svc.name}</span>
+                  <span className="svc-card-cat">{svc.category}</span>
                 </div>
                 <div className={badgeClass}>
                   {!exists
@@ -471,7 +490,7 @@ const ServiceOptimizer: React.FC = () => {
                       </div>
                       <div>
                         <div className="svc-modal-title">Service Optimizer</div>
-                        <div className="svc-modal-subtitle">{MODE_CARDS.find(c => c.id === mode)?.label} Mode</div>
+                        <div className="svc-modal-subtitle">{restoring ? 'Restore Backup' : `${MODE_CARDS.find(c => c.id === mode)?.label} Mode`}</div>
                       </div>
                       <div className={`svc-modal-badge ${progressPhase === 'done' ? 'svc-modal-badge--done' : 'svc-modal-badge--running'}`}>
                         {progressPhase === 'done'
@@ -508,7 +527,7 @@ const ServiceOptimizer: React.FC = () => {
                     {progressLog.length === 0 ? (
                       <div className="svc-modal-log-empty">
                         <Loader2 size={16} className="svc-spin" />
-                        <span>Preparing services\u2026</span>
+                        <span>{progressStatus || 'Preparing…'}</span>
                       </div>
                     ) : (
                       <>

@@ -273,7 +273,7 @@ function getServicesForMode(mode) {
       // Low + medium risk
       return SERVICE_DEFINITIONS.filter(s => s.risk === RISK.LOW || s.risk === RISK.MEDIUM);
     case 'aggressive':
-      // Everything — full Chris Titus
+      // Everything — full aggressive config
       return SERVICE_DEFINITIONS;
     default:
       return SERVICE_DEFINITIONS.filter(s => s.risk === RISK.LOW);
@@ -293,40 +293,47 @@ function _getBackupFile() {
 }
 
 async function _backupCurrentStates(serviceNames) {
-  // Query current startup type for each service via PowerShell
+  // Batch all service queries in a single CIM call — much faster than per-service WMI
   const namesJSON = JSON.stringify(serviceNames);
   const script = `
 $names = '${namesJSON.replace(/'/g, "''")}' | ConvertFrom-Json
-$result = @()
-foreach ($n in $names) {
+
+$cimMap = @{}
+try {
+  $nameSet = [System.Collections.Generic.HashSet[string]]$names
+  Get-CimInstance -ClassName Win32_Service -ErrorAction SilentlyContinue |
+    Where-Object { $nameSet.Contains($_.Name) } |
+    ForEach-Object { $cimMap[$_.Name] = @{ StartMode = $_.StartMode; State = $_.State } }
+} catch {}
+
+$result = [System.Collections.Generic.List[object]]::new()
+foreach ($name in $names) {
   try {
-    $svc = Get-Service -Name $n -ErrorAction SilentlyContinue
+    $svc = Get-Service -Name $name -ErrorAction SilentlyContinue
     if ($svc) {
-      $startType = (Get-WmiObject Win32_Service -Filter "Name='$n'" -ErrorAction SilentlyContinue).StartMode
-      $result += [PSCustomObject]@{
-        Name = $n
-        Status = $svc.Status.ToString()
-        StartType = $startType
-      }
+      $cim = $cimMap[$name]
+      $result.Add([PSCustomObject]@{
+        Name      = $name
+        Status    = $svc.Status.ToString()
+        StartType = if ($cim) { $cim.StartMode } else { 'Unknown' }
+      })
     }
   } catch {}
 }
 $result | ConvertTo-Json -Compress
 `;
 
-  const raw = await runPSScript(script, 30000);
+  const raw = await runPSScript(script, 45000);
   if (!raw) return [];
 
   let parsed;
   try {
     parsed = JSON.parse(raw);
-    // PowerShell returns single object (not array) if only 1 result
     if (!Array.isArray(parsed)) parsed = [parsed];
   } catch {
     return [];
   }
 
-  // Save backup
   const backupDir = _getBackupDir();
   fs.mkdirSync(backupDir, { recursive: true });
 
@@ -341,7 +348,11 @@ $result | ConvertTo-Json -Compress
 
 async function _restoreFromBackup() {
   const backupFile = _getBackupFile();
+
+  _sendProgress({ phase: 'preparing', msg: 'Reading backup file\u2026' });
+
   if (!fs.existsSync(backupFile)) {
+    _sendProgress({ phase: 'done', total: 0, current: 0, summary: { total: 0, success: 0, skipped: 0, failed: 0 }, log: [] });
     return { success: false, message: 'No backup found. Cannot restore.' };
   }
 
@@ -349,32 +360,104 @@ async function _restoreFromBackup() {
   try {
     backup = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
   } catch {
+    _sendProgress({ phase: 'done', total: 0, current: 0, summary: { total: 0, success: 0, skipped: 0, failed: 0 }, log: [] });
     return { success: false, message: 'Backup file is corrupted.' };
   }
 
   if (!backup.services || !Array.isArray(backup.services) || backup.services.length === 0) {
+    _sendProgress({ phase: 'done', total: 0, current: 0, summary: { total: 0, success: 0, skipped: 0, failed: 0 }, log: [] });
     return { success: false, message: 'Backup contains no service data.' };
   }
 
-  // Map WMI StartMode names to Set-Service StartupType names
   const modeMap = { Auto: 'Automatic', Manual: 'Manual', Disabled: 'Disabled' };
+  const services = backup.services;
+  const total = services.length;
 
-  const cmds = backup.services.map(s => {
-    const mapped = modeMap[s.StartType] || s.StartType || 'Manual';
-    const safeName = s.Name.replace(/'/g, "''");
-    return `try { Set-Service -Name '${safeName}' -StartupType '${mapped}' -ErrorAction SilentlyContinue } catch {}`;
-  }).join('\n');
+  _sendProgress({ phase: 'preparing', msg: `Backup from ${new Date(backup.timestamp).toLocaleString()} — restoring ${total} service${total !== 1 ? 's' : ''}\u2026` });
+  await new Promise(r => setTimeout(r, 300));
+
+  _sendProgress({ phase: 'start', total, current: 0, log: [] });
+
+  // Build single batched PS script
+  const serviceData = services.map(s => ({
+    n: s.Name,
+    t: modeMap[s.StartType] || s.StartType || 'Manual',
+  }));
+  const serviceJson = JSON.stringify(serviceData).replace(/\\/g, '\\\\').replace(/'/g, "''");
+
+  const batchScript = `
+$services = '${serviceJson}' | ConvertFrom-Json
+
+$cimMap = @{}
+try {
+  $nameSet = [System.Collections.Generic.HashSet[string]]($services | ForEach-Object { $_.n })
+  Get-CimInstance -ClassName Win32_Service -ErrorAction SilentlyContinue |
+    Where-Object { $nameSet.Contains($_.Name) } |
+    ForEach-Object { $cimMap[$_.Name] = $_.StartMode }
+} catch {}
+
+$results = [System.Collections.Generic.List[object]]::new()
+foreach ($item in $services) {
+  $name  = $item.n
+  $ttype = $item.t
+  $prev  = if ($cimMap.ContainsKey($name)) { $cimMap[$name] } else { 'Unknown' }
+  $r = [ordered]@{ name = $name; prev = $prev; applied = $false; error = $null }
+  try {
+    Set-Service -Name $name -StartupType $ttype -ErrorAction Stop
+    $r.applied = $true
+  } catch {
+    $r.error = $_.Exception.Message
+  }
+  $results.Add([PSCustomObject]$r)
+}
+$results | ConvertTo-Json -Compress -Depth 3
+`;
+
+  let batchResults = [];
+  let successCount = 0;
+  let failedCount = 0;
+  const logEntries = [];
 
   try {
-    await runPSScript(cmds, 60000);
-    return {
-      success: true,
-      message: `Restored ${backup.services.length} services to their original state (backup from ${backup.timestamp}).`,
-      count: backup.services.length,
-    };
+    const raw = await runPSScript(batchScript, 90000);
+    if (raw) {
+      let parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) parsed = [parsed];
+      batchResults = parsed;
+    }
   } catch (err) {
-    return { success: false, message: `Restore failed: ${err.message}` };
+    for (const s of services) {
+      failedCount++;
+      logEntries.push({ name: s.Name, status: 'failed', reason: err.message || 'Batch failed', prev: null, target: modeMap[s.StartType] || s.StartType });
+    }
+    _sendProgress({ phase: 'done', total, current: total, summary: { total, success: 0, skipped: 0, failed: failedCount }, log: logEntries });
+    return { success: false, message: `Restore failed: ${err.message}`, count: 0 };
   }
+
+  for (let i = 0; i < services.length; i++) {
+    const svc = services[i];
+    const r = batchResults[i] || { error: 'No result returned' };
+    const target = modeMap[svc.StartType] || svc.StartType || 'Manual';
+    let entry;
+    if (r.error) {
+      failedCount++;
+      entry = { name: svc.Name, status: 'failed', reason: r.error, prev: r.prev || null, target };
+    } else {
+      successCount++;
+      entry = { name: svc.Name, status: 'success', prev: r.prev, target };
+    }
+    logEntries.push(entry);
+    _sendProgress({ phase: 'working', total, current: i + 1, service: svc.Name, entry });
+  }
+
+  const summary = { total, success: successCount, skipped: 0, failed: failedCount };
+  _sendProgress({ phase: 'done', total, current: total, summary, log: logEntries });
+
+  return {
+    success: true,
+    message: `Restored ${successCount} of ${total} services to their original state (backup from ${backup.timestamp}).`,
+    count: successCount,
+  };
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -422,7 +505,7 @@ $result | ConvertTo-Json -Compress
    6. APPLY — Set services to their target startup types
    ═══════════════════════════════════════════════════════════════════════════ */
 
-// Map Chris Titus target names to Set-Service -StartupType values
+// Map target names to Set-Service -StartupType values
 const _targetMap = {
   Manual: 'Manual',
   Automatic: 'Automatic',
@@ -447,72 +530,115 @@ async function _applyServices(serviceList) {
 
   _sendProgress({ phase: 'start', total, current: 0, log: [] });
 
-  for (let i = 0; i < total; i++) {
+  // ── Immediately handle critical-protected services (no PS needed) ──────
+  const toProcess = [];
+  for (let i = 0; i < serviceList.length; i++) {
     const svc = serviceList[i];
     if (CRITICAL_NEVER_TOUCH.has(svc.name)) {
       skippedCount++;
       const entry = { name: svc.name, status: 'skipped', reason: 'Critical (protected)', prev: null, target: svc.target };
       logEntries.push(entry);
-      _sendProgress({ phase: 'working', total, current: i + 1, service: svc.name, entry });
-      continue;
+      _sendProgress({ phase: 'working', total, current: logEntries.length, service: svc.name, entry });
+    } else {
+      toProcess.push(svc);
     }
+  }
 
-    const safeName = svc.name.replace(/'/g, "''");
-    const startType = _targetMap[svc.target] || 'Manual';
+  if (toProcess.length === 0) {
+    const summary = { total, success: 0, skipped: skippedCount, failed: 0 };
+    _sendProgress({ phase: 'done', total, current: total, summary, log: logEntries });
+    return { success: true, message: `No eligible services to modify (${skippedCount} protected).`, applied: 0, summary };
+  }
 
-    _sendProgress({ phase: 'working', total, current: i + 1, service: svc.name, entry: null });
+  // ── Build single batched PS script — ONE process for all services ──────
+  // Encode the service list as JSON so no name can break the script
+  const serviceData = toProcess.map(svc => ({
+    n: svc.name,                              // name
+    t: _targetMap[svc.target] || 'Manual',    // Set-Service StartupType value
+    d: svc.target === 'AutomaticDelayedStart', // needs DelayedAutoStart registry key
+    orig: svc.target,                          // original target label for logging
+  }));
 
-    // Query current state + apply in one script
-    const script = [
-      `$result = @{ prev = $null; applied = $false; error = $null; alreadyMatch = $false }`,
-      `try {`,
-      `  $svc = Get-Service -Name '${safeName}' -ErrorAction Stop`,
-      `  $wmi = Get-WmiObject Win32_Service -Filter "Name='${safeName}'" -ErrorAction SilentlyContinue`,
-      `  $result.prev = if($wmi) { $wmi.StartMode } else { 'Unknown' }`,
-      // Check if already at target
-      `  $current = $result.prev`,
-      `  $target = '${svc.target}'`,
-      `  $match = ($current -eq '${startType}')`,
-      `  if ($target -eq 'AutomaticDelayedStart') { $match = ($current -eq 'Auto') }`,
-      `  if ($match) { $result.alreadyMatch = $true }`,
-      `  else {`,
-      `    Set-Service -Name '${safeName}' -StartupType '${startType}' -ErrorAction Stop`,
-      ...(svc.target === 'AutomaticDelayedStart' ? [
-        `    Set-ItemProperty -Path "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\${safeName}" -Name 'DelayedAutoStart' -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue`,
-      ] : []),
-      `    $result.applied = $true`,
-      `  }`,
-      `} catch {`,
-      `  $result.error = $_.Exception.Message`,
-      `}`,
-      `$result | ConvertTo-Json -Compress`,
-    ].join('\n');
+  // Escape for embedding in a PS string literal
+  const serviceJson = JSON.stringify(serviceData).replace(/\\/g, '\\\\').replace(/'/g, "''");
 
-    let entry;
-    try {
-      const raw = await runPSScript(script, 15000);
-      const parsed = raw ? JSON.parse(raw) : {};
+  const batchScript = `
+$services = '${serviceJson}' | ConvertFrom-Json
 
-      if (parsed.error) {
-        failedCount++;
-        entry = { name: svc.name, status: 'failed', reason: parsed.error, prev: parsed.prev, target: svc.target };
-      } else if (parsed.alreadyMatch) {
-        skippedCount++;
-        entry = { name: svc.name, status: 'skipped', reason: `Already ${svc.target}`, prev: parsed.prev, target: svc.target };
-      } else {
-        successCount++;
-        entry = { name: svc.name, status: 'success', prev: parsed.prev, target: svc.target };
+# Fetch all service StartModes in one CIM call, filter in PS (avoids long WQL OR chains)
+$cimMap = @{}
+try {
+  $nameSet = [System.Collections.Generic.HashSet[string]]($services | ForEach-Object { $_.n })
+  Get-CimInstance -ClassName Win32_Service -ErrorAction SilentlyContinue |
+    Where-Object { $nameSet.Contains($_.Name) } |
+    ForEach-Object { $cimMap[$_.Name] = $_.StartMode }
+} catch {}
+
+$results = [System.Collections.Generic.List[object]]::new()
+foreach ($item in $services) {
+  $name   = $item.n
+  $ttype  = $item.t
+  $delayed = [bool]$item.d
+  $prev   = if ($cimMap.ContainsKey($name)) { $cimMap[$name] } else { 'Unknown' }
+  $r = [ordered]@{ name = $name; prev = $prev; applied = $false; alreadyMatch = $false; error = $null }
+  try {
+    $svc = Get-Service -Name $name -ErrorAction Stop
+    $match = ($prev -eq $ttype)
+    if ($delayed) { $match = ($prev -eq 'Auto') }
+    if ($match) {
+      $r.alreadyMatch = $true
+    } else {
+      Set-Service -Name $name -StartupType $ttype -ErrorAction Stop
+      if ($delayed) {
+        Set-ItemProperty -Path "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\$name" -Name 'DelayedAutoStart' -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
       }
-    } catch (err) {
-      failedCount++;
-      entry = { name: svc.name, status: 'failed', reason: err.message || 'Unknown error', prev: null, target: svc.target };
+      $r.applied = $true
     }
+  } catch {
+    $r.error = $_.Exception.Message
+  }
+  $results.Add([PSCustomObject]$r)
+}
+$results | ConvertTo-Json -Compress -Depth 3
+`;
 
+  let batchResults = [];
+  try {
+    const raw = await runPSScript(batchScript, 90000);
+    if (raw) {
+      let parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) parsed = [parsed];
+      batchResults = parsed;
+    }
+  } catch (err) {
+    // Entire batch failed — mark all as failed without aborting
+    for (const svc of toProcess) {
+      failedCount++;
+      const entry = { name: svc.name, status: 'failed', reason: err.message || 'Batch script failed', prev: null, target: svc.target };
+      logEntries.push(entry);
+    }
+    const summary = { total, success: 0, skipped: skippedCount, failed: failedCount };
+    _sendProgress({ phase: 'done', total, current: total, summary, log: logEntries });
+    return { success: false, message: `Apply failed: ${err.message}`, applied: 0, summary };
+  }
+
+  // ── Emit per-service progress from the batch results (rapid-fire) ──────
+  for (let i = 0; i < toProcess.length; i++) {
+    const svc = toProcess[i];
+    const r = batchResults[i] || { error: 'No result returned from batch' };
+    let entry;
+    if (r.error) {
+      failedCount++;
+      entry = { name: svc.name, status: 'failed', reason: r.error, prev: r.prev || null, target: svc.target };
+    } else if (r.alreadyMatch) {
+      skippedCount++;
+      entry = { name: svc.name, status: 'skipped', reason: `Already ${svc.target}`, prev: r.prev, target: svc.target };
+    } else {
+      successCount++;
+      entry = { name: svc.name, status: 'success', prev: r.prev, target: svc.target };
+    }
     logEntries.push(entry);
-    _sendProgress({ phase: 'working', total, current: i + 1, service: svc.name, entry });
-
-    // Small delay for UI readability (50ms)
-    await new Promise(r => setTimeout(r, 50));
+    _sendProgress({ phase: 'working', total, current: logEntries.length, service: svc.name, entry });
   }
 
   const summary = { total, success: successCount, skipped: skippedCount, failed: failedCount };
@@ -589,6 +715,7 @@ function registerIPC() {
       }
 
       // 1. Attempt a Windows System Restore Point FIRST — REQUIRED, not best-effort
+      _sendProgress({ phase: 'preparing', msg: 'Creating System Restore Point\u2026 (this may take up to 60s)' });
       let restoreOk = false;
       let restoreError = null;
       try {
@@ -606,6 +733,7 @@ function registerIPC() {
 
       // Safety: abort immediately if restore point failed
       if (!restoreOk) {
+        _sendProgress({ phase: 'preparing', msg: `System Restore Point failed: ${restoreError || 'Unknown'}` });
         _sendProgress({ phase: 'done', total: 0, current: 0, summary: { total: 0, success: 0, skipped: 0, failed: 0 }, log: [] });
         return {
           success: false,
@@ -613,6 +741,8 @@ function registerIPC() {
           applied: 0,
         };
       }
+
+      _sendProgress({ phase: 'preparing', msg: 'System Restore Point created. Backing up current service states\u2026' });
 
       // 2. Backup current service states (JSON) — REQUIRED
       const backupNames = toApply.map(s => s.name);
@@ -630,6 +760,7 @@ function registerIPC() {
 
       // Safety: abort if backup also failed (restore point succeeded, so system is safe, but we need the JSON too)
       if (!backupOk) {
+        _sendProgress({ phase: 'preparing', msg: `Backup failed: ${backupError || 'Unknown'}` });
         _sendProgress({ phase: 'done', total: 0, current: 0, summary: { total: 0, success: 0, skipped: 0, failed: 0 }, log: [] });
         return {
           success: false,
@@ -637,6 +768,8 @@ function registerIPC() {
           applied: 0,
         };
       }
+
+      _sendProgress({ phase: 'preparing', msg: `Backup saved (${backupData.length} services). Applying tweaks\u2026` });
 
       // 3. Both safety checks passed — apply changes
       const result = await _applyServices(toApply);
