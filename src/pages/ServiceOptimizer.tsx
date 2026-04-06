@@ -259,19 +259,28 @@ const ServiceOptimizer: React.FC = () => {
     return count;
   }, [filteredServices, states]);
 
-  const allOptimized = useMemo(() => {
-    if (!scannedOnce.current || totalListCount === 0) return false;
+  // The set of services that will actually be acted on when Apply is clicked
+  const targetServices = useMemo(() => {
     if (selected.size > 0) {
-      return Array.from(selected).every(name => {
-        const def = filteredServices.find(s => s.name === name);
-        if (!def) return true;
-        const st = states[name];
-        return st?.Exists && alreadyMatches(st.StartType, def.target);
-      });
+      return filteredServices.filter(s => selected.has(s.name));
     }
-    const existing = filteredServices.filter(s => states[s.name]?.Exists);
-    return existing.length > 0 && existing.every(s => alreadyMatches(states[s.name].StartType, s.target));
-  }, [filteredServices, states, selected, totalListCount]);
+    return filteredServices;
+  }, [filteredServices, selected]);
+
+  // A service "needs change" only if it exists on the system AND doesn't already match
+  const needsChange = useCallback((svc: ServiceDef) => {
+    const st = states[svc.name];
+    if (!st?.Exists) return false; // non-existent → skip
+    return !alreadyMatches(st.StartType, svc.target);
+  }, [states]);
+
+  const canApply = useMemo(() => {
+    if (!scannedOnce.current || targetServices.length === 0) return false;
+    return targetServices.some(needsChange);
+  }, [targetServices, needsChange]);
+
+  // Used purely for the button label fallback (all services already done)
+  const allOptimized = !canApply && scannedOnce.current && targetServices.length > 0;
 
   const toggleService = (name: string) => {
     setSelected(prev => {
@@ -360,7 +369,8 @@ const ServiceOptimizer: React.FC = () => {
             <button
               className="svc-btn svc-btn--apply"
               onClick={handleApply}
-              disabled={applying || !scannedOnce.current || allOptimized}
+              disabled={applying || !scannedOnce.current || !canApply}
+              title={allOptimized ? 'All selected services are already optimized' : undefined}
             >
               {applying ? <Loader2 size={13} className="svc-spin" /> : allOptimized ? <Check size={13} /> : <Play size={13} />}
               {applying
