@@ -49,13 +49,13 @@ const LiveMetrics: React.FC<LiveMetricsProps> = React.memo(({ systemStats, hardw
 
     // Single state update instead of 7 — one re-render per cycle
     setHistories(h => ({
-      cpu:  [...h.cpu.slice(-(MAX_HISTORY - 1)),  { v: cpu }],
-      gpu:  [...h.gpu.slice(-(MAX_HISTORY - 1)),  { v: gpu }],
-      ram:  [...h.ram.slice(-(MAX_HISTORY - 1)),  { v: ram }],
-      net:  [...h.net.slice(-(300 - 1)),           { v: ping }],
-      loss: [...h.loss.slice(-(300 - 1)),          { v: loss }],
-      disk: [...h.disk.slice(-(MAX_HISTORY - 1)),  { v: disk }],
-      proc: [...h.proc.slice(-(MAX_HISTORY - 1)),  { v: proc }],
+      cpu:  [...h.cpu.slice(-(MAX_HISTORY - 1)),    { v: cpu }],
+      gpu:  [...h.gpu.slice(-(MAX_HISTORY - 1)),    { v: gpu }],
+      ram:  [...h.ram.slice(-(MAX_HISTORY - 1)),    { v: ram }],
+      net:  [...h.net.slice(-(MAX_HISTORY - 1)),    { v: ping }],
+      loss: [...h.loss.slice(-(100 - 1)),           { v: loss }],
+      disk: [...h.disk.slice(-(MAX_HISTORY - 1)),   { v: disk }],
+      proc: [...h.proc.slice(-(MAX_HISTORY - 1)),   { v: proc }],
     }));
   }, [systemStats, extendedStats]);
 
