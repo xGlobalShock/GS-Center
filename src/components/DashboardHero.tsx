@@ -185,7 +185,7 @@ const DualSparkline: React.FC<DualSparklineProps> = ({ dataA, colorA, gradIdA, l
             <stop offset="100%" stopColor={colorB} stopOpacity={0} />
           </linearGradient>
         </defs>
-        <YAxis yAxisId="a" hide domain={[(dataMin: number) => Math.max(0, Math.round(dataMin * 0.5)), 'auto']} />
+        <YAxis yAxisId="a" hide domain={[0, (dataMax: number) => Math.max(dataMax * 1.25, 10)]} />
         <YAxis yAxisId="b" hide domain={[0, 10]} orientation="right" />
         {/* Primary — ping drawn first (behind) */}
         <Area yAxisId="a" type="monotone" dataKey="a" stroke={colorA} strokeWidth={1.5}

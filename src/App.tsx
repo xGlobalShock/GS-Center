@@ -16,8 +16,9 @@ import ServiceOptimizer from './pages/ServiceOptimizer';
 import ResolutionManager from './pages/ResolutionManager';
 import AdminPanel from './pages/AdminPanel';
 import ManageSubscription from './pages/ManageSubscription';
+import LoginPage from './pages/LoginPage';
 import { ToastProvider } from './contexts/ToastContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProGuard } from './components/PaywallModal';
 import { ToastContainer } from './components/ToastContainer';
 import AutoCleanupRunner from './components/AutoCleanupRunner';
@@ -111,8 +112,9 @@ export interface ExtendedStats {
   systemUptime: string;
 }
 
-function App() {
+function AppInner() {
     const [isLoading, setIsLoading] = useState(true);
+  const { user, loading: authLoading } = useAuth();
   const [raysColor, setRaysColor] = useState<string>(() => loadSettings().raysColor ?? '#00F2FF');
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo | undefined>(undefined);
@@ -231,9 +233,7 @@ function App() {
         </div>
         {staticPages}
         <div style={pageStyle('gameLibrary')}>
-          <ProGuard pageName="Games Library">
-            <GameLibrary hardwareInfo={hardwareInfo} isActive={currentPage === 'gameLibrary'} />
-          </ProGuard>
+          <GameLibrary hardwareInfo={hardwareInfo} isActive={currentPage === 'gameLibrary'} />
         </div>
         <div style={pageStyle('softwareUpdates')}>
           <ProGuard pageName="Software Updates">
@@ -261,8 +261,9 @@ function App() {
   };
 
   return (
-    <AuthProvider>
     <ToastProvider>
+      {/* Show login page if not authenticated */}
+      {!authLoading && !user && <LoginPage />}
       {raysColor !== 'off' && (
       <LightRays
         raysColor={raysColor}
@@ -302,6 +303,13 @@ function App() {
         </div>
       )}
     </ToastProvider>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
     </AuthProvider>
   );
 }

@@ -6,6 +6,7 @@ import {
 import PageHeader from '../components/PageHeader';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/SoftwareUpdates.css';
+import { useAuth } from '../contexts/AuthContext';
 import ProPreviewBanner from '../components/ProPreviewBanner';
 import ProLockedWrapper from '../components/ProLockedWrapper';
 
@@ -32,6 +33,7 @@ interface SoftwareUpdatesProps {
 
 const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) => {
   const { addToast } = useToast();
+  const { isPro } = useAuth();
 
   const [packages, setPackages] = useState<PackageUpdate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -98,11 +100,11 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
   }, [addToast]);
 
   useEffect(() => {
-    if (isActive && !hasScanned.current) {
+    if (isActive && isPro && !hasScanned.current) {
       hasScanned.current = true;
       checkUpdates();
     }
-  }, [isActive, checkUpdates]);
+  }, [isActive, isPro, checkUpdates]);
 
   const handleCancelUpdate = async () => {
     if (!window.electron?.ipcRenderer) return;
@@ -195,7 +197,7 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
       <PageHeader
         icon={<Package size={16} />}
         title="Software Updates"
-        actions={
+        actions={isPro ? (
           <>
             {updatingAll ? (
               <button className="su-btn su-btn--cancel" onClick={handleCancelUpdate} disabled={cancelRequested}>
@@ -213,7 +215,7 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
               {loading ? 'Scanning…' : 'Check for Updates'}
             </button>
           </>
-        }
+        ) : undefined}
       />
 
       <ProPreviewBanner pageName="Software Updates" />
@@ -278,7 +280,7 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
                           <X size={14} /> {cancelRequested ? 'Cancelling…' : 'Cancel'}
                         </button>
                       ) : (
-                        <button className="su-btn su-btn--row-update" onClick={() => handleUpdate(pkg)} disabled={isUpdating || updatingAll}>
+                        <button className="su-btn su-btn--row-update" onClick={() => handleUpdate(pkg)} disabled={isUpdating || updatingAll || !isPro}>
                           {isUpdating ? (<><Loader2 size={14} className="su-spin" /> Updating…</>) : (<><Download size={14} /> Update</>)}
                         </button>
                       )}

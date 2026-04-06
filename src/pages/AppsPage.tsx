@@ -6,6 +6,7 @@ import {
   Zap,
   RefreshCw,
   LayoutGrid,
+  Crown,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import ProPreviewBanner from '../components/ProPreviewBanner';
@@ -13,6 +14,7 @@ import AppInstaller from './AppInstaller';
 import AppUninstaller from './AppUninstaller';
 import WindowsDebloat from './WindowsDebloat';
 import Startup from './Startup';
+import { useAuth } from '../contexts/AuthContext';
 import '../styles/AppsPage.css';
 
 interface AppsPageProps {
@@ -21,14 +23,15 @@ interface AppsPageProps {
 
 type Tab = 'install' | 'uninstall' | 'debloat' | 'startup';
 
-const NAV_ITEMS: { id: Tab; label: string; desc: string; icon: React.ReactNode; accent: string }[] = [
+const NAV_ITEMS: { id: Tab; label: string; desc: string; icon: React.ReactNode; accent: string; premium?: true }[] = [
   { id: 'install',   label: 'Install Apps',    desc: 'Deploy software',     icon: <Download size={16} />,  accent: '#34d399' },
   { id: 'uninstall', label: 'Uninstall Apps',  desc: 'Remove & clean up',   icon: <Trash2 size={16} />,    accent: '#f87171' },
-  { id: 'debloat',   label: 'Windows Debloat', desc: 'Remove bloatware',    icon: <PackageX size={16} />,  accent: '#38bdf8' },
+  { id: 'debloat',   label: 'Windows Debloat', desc: 'Remove bloatware',    icon: <PackageX size={16} />,  accent: '#38bdf8', premium: true },
   { id: 'startup',   label: 'Startup Manager', desc: 'Manage boot entries', icon: <Zap size={16} />,       accent: '#00F2FF' },
 ];
 
 const AppsPage: React.FC<AppsPageProps> = ({ isActive = false }) => {
+  const { isPro } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('install');
   const [installRefresh,   setInstallRefresh]   = useState(0);
   const [uninstallRefresh, setUninstallRefresh] = useState(0);
@@ -73,7 +76,12 @@ const AppsPage: React.FC<AppsPageProps> = ({ isActive = false }) => {
             >
               <span className="apps-navitem-icon">{item.icon}</span>
               <span className="apps-navitem-body">
-                <span className="apps-navitem-label">{item.label}</span>
+                <span className="apps-navitem-label">
+                  {item.label}
+                  {item.premium && !isPro && (
+                    <span className="nav-pro-pill"><Crown size={8} />PRO</span>
+                  )}
+                </span>
                 <span className="apps-navitem-desc">{item.desc}</span>
               </span>
             </button>

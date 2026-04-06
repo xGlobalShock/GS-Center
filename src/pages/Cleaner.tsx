@@ -6,7 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 import CacheCleanupToast from '../components/CacheCleanupToast';
 import PageHeader from '../components/PageHeader';
 import SystemRepairPanel from '../components/SystemRepairPanel';
-import { Monitor, Gamepad2, Wrench, Cpu, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { Monitor, Gamepad2, Wrench, Cpu, Sparkles, SlidersHorizontal, Crown } from 'lucide-react';
 import '../styles/Cleaner.css';
 import ProPreviewBanner from '../components/ProPreviewBanner';
 import ProLockedWrapper from '../components/ProLockedWrapper';
@@ -83,6 +83,7 @@ const Cleaner: React.FC = () => {
       count: utilityTabs.games.length,
       description: 'Remove game shader caches for smoother performance.',
       accent: '#00F2FF',
+      premium: true,
     },
     {
       id: 'nvidia' as const,
@@ -91,6 +92,7 @@ const Cleaner: React.FC = () => {
       count: utilityTabs.nvidia.length,
       description: 'Clear NVIDIA driver artifacts and shader cache.',
       accent: '#76B900',
+      premium: true,
     },
     {
       id: 'repair' as const,
@@ -99,6 +101,7 @@ const Cleaner: React.FC = () => {
       count: 3,
       description: 'Run ChkDsk, SFC and DISM to fix corrupted files and disk errors.',
       accent: '#FF9500',
+      premium: true,
     },
   ];
 
@@ -202,7 +205,7 @@ const Cleaner: React.FC = () => {
     >
       <PageHeader icon={<SlidersHorizontal size={16} strokeWidth={3} />} title="Utilities" />
 
-      <ProPreviewBanner pageName="Utilities" />
+      {activeCategory !== 'windows' && <ProPreviewBanner pageName="Utilities" />}
 
       {isPro && activeCategory === 'windows' && (
         <button className="cleaner-clearall-btn" onClick={handleShowClearAllToast}>
@@ -210,8 +213,6 @@ const Cleaner: React.FC = () => {
           Full Cache Cleanup
         </button>
       )}
-
-      <ProLockedWrapper featureName="Utilities" message="PRO Feature">
 
       <div className="cleaner-split">
         {/* ── LEFT: Vertical nav ── */}
@@ -225,7 +226,12 @@ const Cleaner: React.FC = () => {
             >
               <span className="cleaner-navitem-icon">{cat.icon}</span>
               <span className="cleaner-navitem-body">
-                <span className="cleaner-navitem-label">{cat.label}</span>
+                <span className="cleaner-navitem-label">
+                  {cat.label}
+                  {(cat as any).premium && !isPro && (
+                    <span className="nav-pro-pill"><Crown size={8} />PRO</span>
+                  )}
+                </span>
                 <span className="cleaner-navitem-desc">{cat.description}</span>
               </span>
               <span className="cleaner-navitem-count">{cat.count}</span>
@@ -244,11 +250,9 @@ const Cleaner: React.FC = () => {
               exit={{ opacity: 0, x: -8 }}
               transition={{ duration: 0.16 }}
             >
-              {activeCategory === 'repair' ? (
-                <SystemRepairPanel />
-              ) : (
+              {activeCategory === 'windows' ? (
                 <div className="cleaner-grid cleaner-grid--small">
-                  {utilityTabs[activeCategory as 'windows' | 'games' | 'nvidia'].map((utility, index) => (
+                  {utilityTabs.windows.map((utility, index) => (
                     <motion.div
                       key={utility.id}
                       initial={{ y: 20, opacity: 0, scale: 0.97 }}
@@ -269,12 +273,65 @@ const Cleaner: React.FC = () => {
                     </motion.div>
                   ))}
                 </div>
+              ) : activeCategory === 'repair' ? (
+                <ProLockedWrapper featureName="Utilities" message="PRO Feature">
+                  <SystemRepairPanel />
+                </ProLockedWrapper>
+              ) : activeCategory === 'games' ? (
+                <ProLockedWrapper featureName="Utilities" message="PRO Feature">
+                  <div className="cleaner-grid cleaner-grid--small">
+                    {utilityTabs.games.map((utility, index) => (
+                      <motion.div
+                        key={utility.id}
+                        initial={{ y: 20, opacity: 0, scale: 0.97 }}
+                        animate={{ y: 0, opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.05, type: 'spring', stiffness: 200, damping: 22 }}
+                      >
+                        <CleanerCard
+                          id={utility.id}
+                          title={utility.title}
+                          icon={utility.icon}
+                          cacheType={utility.cacheType}
+                          description={utility.description}
+                          buttonText={utility.buttonText}
+                          color={utility.color}
+                          onClean={handleClean}
+                          isLoading={cleaningId === utility.id}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                </ProLockedWrapper>
+              ) : (
+                <ProLockedWrapper featureName="Utilities" message="PRO Feature">
+                  <div className="cleaner-grid cleaner-grid--small">
+                    {utilityTabs[activeCategory as 'nvidia'].map((utility, index) => (
+                      <motion.div
+                        key={utility.id}
+                        initial={{ y: 20, opacity: 0, scale: 0.97 }}
+                        animate={{ y: 0, opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.05, type: 'spring', stiffness: 200, damping: 22 }}
+                      >
+                        <CleanerCard
+                          id={utility.id}
+                          title={utility.title}
+                          icon={utility.icon}
+                          cacheType={utility.cacheType}
+                          description={utility.description}
+                          buttonText={utility.buttonText}
+                          color={utility.color}
+                          onClean={handleClean}
+                          isLoading={cleaningId === utility.id}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                </ProLockedWrapper>
               )}
             </motion.div>
           </AnimatePresence>
         </div>
       </div>
-      </ProLockedWrapper>
     </motion.div>
   );
 };

@@ -96,6 +96,7 @@ function registerIPC() {
 
   // Restore Point
   ipcMain.handle('system:create-restore-point', async (event, description) => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const descBase = description || 'GS Control Center - Before Tweak Application';
       if (!_isElevated) {
@@ -153,6 +154,7 @@ function registerIPC() {
 
   // Apply tweaks
   ipcMain.handle('tweak:apply-irq-priority', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `If (-not (Test-Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\PriorityControl')) { New-Item -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\PriorityControl' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\PriorityControl' -Name 'IRQ8Priority' -Value 1 -Type DWord -Force; $val = (Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\PriorityControl' -Name 'IRQ8Priority').IRQ8Priority; Write-Host "Created: IRQ8Priority = $val"`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -164,6 +166,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:apply-network-interrupts', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `If (-not (Test-Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\NDIS\\Parameters')) { New-Item -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\NDIS\\Parameters' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\NDIS\\Parameters' -Name 'ProcessorThrottleMode' -Value 1 -Type DWord -Force; Write-Host 'Network Interrupts applied'`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -175,6 +178,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:apply-gpu-scheduling', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `If (-not (Test-Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers')) { New-Item -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers' -Name 'HwSchMode' -Value 2 -Type DWord -Force; Write-Host 'GPU Scheduling applied'`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -186,6 +190,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:apply-tdr-level', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `If (-not (Test-Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers')) { New-Item -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers' -Name 'TdrLevel' -Value 0 -Type DWord -Force; Write-Host 'TdrLevel applied'`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -196,6 +201,7 @@ function registerIPC() {
     }
   });
   ipcMain.handle('tweak:apply-gdrv-policy', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `If (-not (Test-Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\GameDVR')) { New-Item -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\GameDVR' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\GameDVR' -Name 'AllowGameDVR' -Value 0 -Type DWord -Force; $val = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\GameDVR' -Name 'AllowGameDVR' -ErrorAction Stop).AllowGameDVR; if ($val -ne 0) { throw 'AllowGameDVR value verification failed'; }`;      await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
       _tweakCheckCache = null;
@@ -206,6 +212,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:apply-appcapture-disabled', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `If (-not (Test-Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\GameDVR')) { New-Item -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\GameDVR' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\GameDVR' -Name 'AppCaptureEnabled' -Value 0 -Type DWord -Force; $val = (Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\GameDVR' -Name 'AppCaptureEnabled' -ErrorAction Stop).AppCaptureEnabled; if ($val -ne 0) { throw 'AppCaptureEnabled value verification failed'; }`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -216,6 +223,7 @@ function registerIPC() {
     }
   });
   ipcMain.handle('tweak:apply-fse-behavior-mode', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `If (-not (Test-Path 'HKCU:\\System\\GameConfigStore')) { New-Item -Path 'HKCU:\\System\\GameConfigStore' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\System\\GameConfigStore' -Name 'GameDVR_FSEBehaviorMode' -Value 2 -Type DWord -Force; $val = (Get-ItemProperty -Path 'HKCU:\\System\\GameConfigStore' -Name 'GameDVR_FSEBehaviorMode' -ErrorAction Stop).GameDVR_FSEBehaviorMode; if ($val -ne 2) { throw 'GameDVR_FSEBehaviorMode value verification failed'; }`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -227,6 +235,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:apply-overlay-test-mode', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `If (-not (Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm')) { New-Item -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm' -Name 'OverlayTestMode' -Value 5 -Type DWord -Force; $val = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm' -Name 'OverlayTestMode' -ErrorAction Stop).OverlayTestMode; if ($val -ne 5) { throw 'OverlayTestMode value verification failed'; }`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -237,6 +246,7 @@ function registerIPC() {
     }
   });
   ipcMain.handle('tweak:apply-fullscreen-optimization', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `If (-not (Test-Path 'HKCU:\\System\\GameConfigStore')) { New-Item -Path 'HKCU:\\System\\GameConfigStore' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\System\\GameConfigStore' -Name 'GameDVR_FSEBehaviorMonitorEnabled' -Value 0 -Type DWord -Force; Write-Host 'Fullscreen Optimization applied'`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -248,6 +258,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:apply-usb-suspend', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `If (-not (Test-Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\USB')) { New-Item -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\USB' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\USB' -Name 'DisableSelectiveSuspend' -Value 1 -Type DWord -Force; Write-Host 'USB Suspend applied'`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -259,6 +270,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:apply-game-dvr', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `If (-not (Test-Path 'HKCU:\\System\\GameConfigStore')) { New-Item -Path 'HKCU:\\System\\GameConfigStore' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\System\\GameConfigStore' -Name 'GameDVR_Enabled' -Value 0 -Type DWord -Force; Write-Host 'Game DVR applied'`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -270,6 +282,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:apply-win32-priority', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `If (-not (Test-Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\PriorityControl')) { New-Item -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\PriorityControl' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\PriorityControl' -Name 'Win32PrioritySeparation' -Value 38 -Type DWord -Force; Write-Host 'Win32 Priority applied'`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -281,6 +294,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:apply-games-priority', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `If (-not (Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games')) { New-Item -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games' -Name 'Priority' -Value 6 -Type DWord -Force; Write-Host 'Games Priority applied'`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -292,6 +306,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:apply-large-system-cache', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management' -Name 'LargeSystemCache' -Value 1 -Type DWord -Force; Write-Host 'LargeSystemCache applied'`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -303,6 +318,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:apply-network-throttling-index', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `If (-not (Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile')) { New-Item -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile' -Name 'NetworkThrottlingIndex' -Value ([uint32]4294967295) -Type DWord -Force; Write-Host 'NetworkThrottlingIndex applied'`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -390,6 +406,7 @@ function registerIPC() {
 
   // Reset tweaks
   ipcMain.handle('tweak:reset-games-priority', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games' -Name 'Priority' -Value 2 -Type DWord -Force`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -399,6 +416,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:reset-network-throttling-index', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Remove-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile' -Name 'NetworkThrottlingIndex' -Force -ErrorAction Stop`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -408,6 +426,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:reset-large-system-cache', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management' -Name 'LargeSystemCache' -Value 0 -Type DWord -Force`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -417,6 +436,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:reset-irq-priority', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Remove-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\PriorityControl' -Name 'IRQ8Priority' -Force -ErrorAction Stop`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -426,6 +446,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:reset-network-interrupts', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Remove-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\NDIS\\Parameters' -Name 'ProcessorThrottleMode' -Force -ErrorAction Stop`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -435,6 +456,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:reset-gpu-scheduling', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Remove-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers' -Name 'HwSchMode' -Force -ErrorAction Stop`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -444,6 +466,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:reset-tdr-level', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Remove-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers' -Name 'TdrLevel' -Force -ErrorAction Stop`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -452,6 +475,7 @@ function registerIPC() {
     } catch (error) { return { success: false, message: 'Failed to reset TdrLevel - Admin privileges required' }; }
   });
   ipcMain.handle('tweak:reset-gdrv-policy', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR' -Name 'AllowGameDVR' -Force -ErrorAction Stop; if (Test-Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR') { if (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR' -Name 'AllowGameDVR' -ErrorAction SilentlyContinue) { throw 'AllowGameDVR clearing failed'; } }`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -461,6 +485,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:reset-appcapture-disabled', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Remove-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\GameDVR' -Name 'AppCaptureEnabled' -Force -ErrorAction SilentlyContinue; if (Test-Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\GameDVR') { $prop = (Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\GameDVR' -Name 'AppCaptureEnabled' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty AppCaptureEnabled -ErrorAction SilentlyContinue); if ($null -ne $prop) { throw 'AppCaptureEnabled clearing failed'; } }`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -469,6 +494,7 @@ function registerIPC() {
     } catch (error) { return { success: false, message: `Failed to reset AppCaptureEnabled: ${error.message}` }; }
   });
   ipcMain.handle('tweak:reset-fse-behavior-mode', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Remove-ItemProperty -Path 'HKCU:\\System\\GameConfigStore' -Name 'GameDVR_FSEBehaviorMode' -Force -ErrorAction SilentlyContinue; $prop = (Get-ItemProperty -Path 'HKCU:\\System\\GameConfigStore' -Name 'GameDVR_FSEBehaviorMode' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty GameDVR_FSEBehaviorMode -ErrorAction SilentlyContinue); if ($null -ne $prop) { throw 'GameDVR_FSEBehaviorMode clearing failed'; }`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -478,6 +504,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:reset-overlay-test-mode', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Remove-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm' -Name 'OverlayTestMode' -Force -ErrorAction SilentlyContinue; $prop = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm' -Name 'OverlayTestMode' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OverlayTestMode -ErrorAction SilentlyContinue); if ($null -ne $prop) { throw 'OverlayTestMode clearing failed'; }`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -487,6 +514,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:reset-fullscreen-optimization', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Remove-ItemProperty -Path 'HKCU:\\System\\GameConfigStore' -Name 'GameDVR_FSEBehaviorMonitorEnabled' -Force -ErrorAction Stop`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -496,6 +524,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:reset-usb-suspend', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Remove-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\USB' -Name 'DisableSelectiveSuspend' -Force -ErrorAction Stop`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -505,6 +534,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:reset-game-dvr', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Remove-ItemProperty -Path 'HKCU:\\System\\GameConfigStore' -Name 'GameDVR_Enabled' -Force -ErrorAction Stop`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -514,6 +544,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:reset-win32-priority', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\PriorityControl' -Name 'Win32PrioritySeparation' -Value 2 -Type DWord -Force`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -522,6 +553,7 @@ function registerIPC() {
     } catch (error) { return { success: false, message: 'Failed to reset Win32 Priority - Admin privileges required' }; }
   });
   ipcMain.handle('tweak:apply-memory-compression', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Disable-MMAgent -mc`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
@@ -538,6 +570,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('tweak:reset-memory-compression', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
       const cmd = `Enable-MMAgent -mc`;
       await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });

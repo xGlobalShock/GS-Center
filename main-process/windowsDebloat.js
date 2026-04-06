@@ -343,6 +343,7 @@ try {
 /* ─── Remove app ────────────────────────────────────────────────────────── */
 
 async function handleRemoveApp(_event, packageId) {
+  const blocked = authSession.requirePro(); if (blocked) return blocked;
   if (!_isElevated) return { success: false, error: 'Administrator privileges required.' };
 
   // Extract the clean package Name from PackageFamilyName (strip _<hash>)
@@ -404,6 +405,7 @@ try {
  * Bulk remove multiple AppxPackages, broadcasting progress.
  */
 async function handleRemoveApps(_event, packageIds) {
+  const blocked = authSession.requirePro(); if (blocked) return blocked;
   if (!_isElevated) return { success: false, error: 'Administrator privileges required.' };
   const results = [];
   let current = 0;
@@ -422,6 +424,7 @@ async function handleRemoveApps(_event, packageIds) {
  * Falls back to winget install if provisioned package is not available.
  */
 async function handleInstallApp(_event, packageId) {
+  const blocked = authSession.requirePro(); if (blocked) return blocked;
   if (!_isElevated) return { success: false, error: 'Administrator privileges required.' };
 
   const pkgName = extractPackageName(packageId);
@@ -503,6 +506,7 @@ try {
  * Bulk install multiple AppxPackages.
  */
 async function handleInstallApps(_event, packageIds) {
+  const blocked = authSession.requirePro(); if (blocked) return blocked;
   if (!_isElevated) return { success: false, error: 'Administrator privileges required.' };
   const results = [];
   let current = 0;
@@ -556,6 +560,7 @@ $caps | ConvertTo-Json -Compress -Depth 2
 }
 
 async function handleRemoveCapability(_event, capabilityName) {
+  const blocked = authSession.requirePro(); if (blocked) return blocked;
   if (!_isElevated) return { success: false, error: 'Administrator privileges required.' };
   try {
     const script = `
@@ -578,6 +583,7 @@ try {
 }
 
 async function handleRemoveCapabilities(_event, names) {
+  const blocked = authSession.requirePro(); if (blocked) return blocked;
   if (!_isElevated) return { success: false, error: 'Administrator privileges required.' };
   const results = [];
   let i = 0;
@@ -590,6 +596,7 @@ async function handleRemoveCapabilities(_event, names) {
 }
 
 async function handleAddCapability(_event, capabilityName) {
+  const blocked = authSession.requirePro(); if (blocked) return blocked;
   if (!_isElevated) return { success: false, error: 'Administrator privileges required.' };
   try {
     const script = `
@@ -612,6 +619,7 @@ try {
 }
 
 async function handleAddCapabilities(_event, names) {
+  const blocked = authSession.requirePro(); if (blocked) return blocked;
   if (!_isElevated) return { success: false, error: 'Administrator privileges required.' };
   const results = [];
   let i = 0;
@@ -787,6 +795,7 @@ $feats = Get-WindowsOptionalFeature -Online | Select-Object FeatureName, @{Name=
 }
 
 async function handleRemoveFeature(_event, featureName) {
+  const blocked = authSession.requirePro(); if (blocked) return blocked;
   if (!_isElevated) return { success: false, error: 'Administrator privileges required.' };
   try {
     const script = `
@@ -806,6 +815,7 @@ try {
 }
 
 async function handleRemoveFeatures(_event, names) {
+  const blocked = authSession.requirePro(); if (blocked) return blocked;
   if (!_isElevated) return { success: false, error: 'Administrator privileges required.' };
   const results = [];
   let i = 0;
@@ -818,6 +828,7 @@ async function handleRemoveFeatures(_event, names) {
 }
 
 async function handleAddFeature(_event, featureName) {
+  const blocked = authSession.requirePro(); if (blocked) return blocked;
   if (!_isElevated) return { success: false, error: 'Administrator privileges required.' };
   try {
     const script = `
@@ -837,6 +848,7 @@ try {
 }
 
 async function handleAddFeatures(_event, names) {
+  const blocked = authSession.requirePro(); if (blocked) return blocked;
   if (!_isElevated) return { success: false, error: 'Administrator privileges required.' };
   const results = [];
   let i = 0;

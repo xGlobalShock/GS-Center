@@ -96,10 +96,31 @@
   color: rgba(220, 235, 245, 0.75);
   letter-spacing: 0.2px;
   transition: color 0.18s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .apps-navitem--active .apps-navitem-label {
   color: var(--nav-accent, #00F2FF);
+}
+
+.nav-pro-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px 1px 4px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.18), rgba(255, 165, 0, 0.12));
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 .apps-navitem-desc {

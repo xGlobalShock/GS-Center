@@ -24,7 +24,7 @@ interface LiveMetricsProps {
   extendedStats?: ExtendedStats;
 }
 
-const MAX_HISTORY = 60;
+const MAX_HISTORY = 40;
 
 const LiveMetrics: React.FC<LiveMetricsProps> = React.memo(({ systemStats, hardwareInfo, extendedStats }) => {
   const [openPanel, setOpenPanel] = useState<'health' | 'advisor' | null>(null);
@@ -53,7 +53,7 @@ const LiveMetrics: React.FC<LiveMetricsProps> = React.memo(({ systemStats, hardw
       gpu:  [...h.gpu.slice(-(MAX_HISTORY - 1)),    { v: gpu  }],
       ram:  [...h.ram.slice(-(MAX_HISTORY - 1)),    { v: ram  }],
       net:  [...h.net.slice(-(MAX_HISTORY - 1)),    { v: ping }],
-      loss: [...h.loss.slice(-(100 - 1)),           { v: loss }],
+      loss: [...h.loss.slice(-(MAX_HISTORY - 1)),        { v: loss }],
       disk: [...h.disk.slice(-(MAX_HISTORY - 1)),   { v: disk }],
       proc: [...h.proc.slice(-(MAX_HISTORY - 1)),   { v: proc }],
     }));

@@ -13,6 +13,7 @@ function registerIPC() {
 
 // Forza Horizon 5 Shader Cache Cleaner
 ipcMain.handle('cleaner:clear-forza-shaders', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
   try {
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
     const forzaCachePath = path.join(localAppData, 'Temp', 'Turn10Temp.scratch', 'GraphicsCache');
@@ -59,6 +60,7 @@ ipcMain.handle('cleaner:clear-forza-shaders', async () => {
 
 // NVIDIA Shader Cache Cleaner
 ipcMain.handle('cleaner:clear-nvidia-cache', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
   try {
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
     const caches = [
@@ -136,6 +138,7 @@ ipcMain.handle('cleaner:clear-nvidia-cache', async () => {
 
 // Apex Legends Shader Cache Cleaner
 ipcMain.handle('cleaner:clear-apex-shaders', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
   try {
     const userProfile = process.env.USERPROFILE || os.homedir();
     const apexCachePath = path.join(userProfile, 'Saved Games', 'Respawn', 'Apex', 'local', 'psoCache.pso');
@@ -177,6 +180,7 @@ ipcMain.handle('cleaner:clear-apex-shaders', async () => {
 
 // Call of Duty Shader Cache Cleaner
 ipcMain.handle('cleaner:clear-cod-shaders', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
   try {
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
     const codCachePaths = [
@@ -242,6 +246,7 @@ ipcMain.handle('cleaner:clear-cod-shaders', async () => {
 
 // CS2 Shader Cache Cleaner
 ipcMain.handle('cleaner:clear-cs2-shaders', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
   try {
     const userProfile = process.env.USERPROFILE || os.homedir();
     const cs2CachePaths = [
@@ -303,6 +308,7 @@ ipcMain.handle('cleaner:clear-cs2-shaders', async () => {
 
 // Fortnite Shader Cache Cleaner
 ipcMain.handle('cleaner:clear-fortnite-shaders', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
   try {
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
     const fortniteCachePath = path.join(localAppData, 'FortniteGame', 'Saved', 'ShaderCache');
@@ -354,6 +360,7 @@ ipcMain.handle('cleaner:clear-fortnite-shaders', async () => {
 
 // League of Legends Cache Cleaner
 ipcMain.handle('cleaner:clear-lol-shaders', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
   try {
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
     const lolCachePath = path.join(localAppData, 'RADS');
@@ -405,6 +412,7 @@ ipcMain.handle('cleaner:clear-lol-shaders', async () => {
 
 // Overwatch 2 Shader Cache Cleaner
 ipcMain.handle('cleaner:clear-overwatch-shaders', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
   try {
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
     const owCachePaths = [
@@ -466,6 +474,7 @@ ipcMain.handle('cleaner:clear-overwatch-shaders', async () => {
 
 // Rainbow Six Siege Shader Cache Cleaner
 ipcMain.handle('cleaner:clear-r6-shaders', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
   try {
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
     const r6CachePaths = [
@@ -527,6 +536,7 @@ ipcMain.handle('cleaner:clear-r6-shaders', async () => {
 
 // Rocket League Shader Cache Cleaner
 ipcMain.handle('cleaner:clear-rocket-league-shaders', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
   try {
     const userProfile = process.env.USERPROFILE || os.homedir();
     const rlCachePath = path.join(userProfile, 'AppData', 'Roaming', 'Rocket League');
@@ -578,6 +588,7 @@ ipcMain.handle('cleaner:clear-rocket-league-shaders', async () => {
 
 // Valorant Shader Cache Cleaner
 ipcMain.handle('cleaner:clear-valorant-shaders', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
   try {
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
     const valorantCachePath = path.join(localAppData, 'VALORANT');
@@ -631,6 +642,7 @@ ipcMain.handle('cleaner:clear-valorant-shaders', async () => {
 
 // Windows Temp Directory (%WINDIR%\Temp)
 ipcMain.handle('cleaner:clear-windows-temp', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     const winTemp = path.join(process.env.WINDIR || 'C:\\Windows', 'Temp');
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
@@ -656,6 +668,7 @@ ipcMain.handle('cleaner:clear-windows-temp', async () => {
 
 // Windows Error Reports (WER)
 ipcMain.handle('cleaner:clear-error-reports', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     const werDirs = [
       path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Microsoft', 'Windows', 'WER'),
@@ -688,6 +701,7 @@ ipcMain.handle('cleaner:clear-error-reports', async () => {
 
 // Delivery Optimization Cache
 ipcMain.handle('cleaner:clear-delivery-optimization', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     const doDir = path.join('C:\\Windows', 'SoftwareDistribution', 'DeliveryOptimization');
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
@@ -716,6 +730,7 @@ ipcMain.handle('cleaner:clear-delivery-optimization', async () => {
 
 // Recent Files list
 ipcMain.handle('cleaner:clear-recent-files', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     const recentDir = path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'Microsoft', 'Windows', 'Recent');
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
@@ -741,6 +756,7 @@ ipcMain.handle('cleaner:clear-recent-files', async () => {
 
 // Thumbnail Cache
 ipcMain.handle('cleaner:clear-thumbnail-cache', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     const explorerDir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Microsoft', 'Windows', 'Explorer');
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
@@ -766,6 +782,7 @@ ipcMain.handle('cleaner:clear-thumbnail-cache', async () => {
 
 // Windows Log Files
 ipcMain.handle('cleaner:clear-windows-logs', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     const logsDir = path.join(process.env.WINDIR || 'C:\\Windows', 'Logs');
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
@@ -796,6 +813,7 @@ ipcMain.handle('cleaner:clear-windows-logs', async () => {
 
 // Crash Dumps
 ipcMain.handle('cleaner:clear-crash-dumps', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     const dumpsDir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'CrashDumps');
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
@@ -821,6 +839,7 @@ ipcMain.handle('cleaner:clear-crash-dumps', async () => {
 
 // Font Cache
 ipcMain.handle('cleaner:clear-font-cache', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     const fontCacheDir = path.join(process.env.WINDIR || 'C:\\Windows', 'ServiceProfiles', 'LocalService', 'AppData', 'Local', 'FontCache');
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
@@ -846,6 +865,7 @@ ipcMain.handle('cleaner:clear-font-cache', async () => {
 
 // Temp Files
 ipcMain.handle('cleaner:clear-temp-files', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     const tempDir = process.env.TEMP || os.tmpdir();
     let filesDeleted = 0;
@@ -888,6 +908,7 @@ ipcMain.handle('cleaner:clear-temp-files', async () => {
 
 // Prefetch
 ipcMain.handle('cleaner:clear-prefetch', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     const prefetch = 'C:\\Windows\\Prefetch';
     let filesDeleted = 0;
@@ -931,6 +952,7 @@ ipcMain.handle('cleaner:clear-prefetch', async () => {
 
 // Memory Dumps
 ipcMain.handle('cleaner:clear-memory-dumps', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     const dumpDir = 'C:\\Windows\\Minidump';
     let filesDeleted = 0;
@@ -980,6 +1002,7 @@ ipcMain.handle('cleaner:clear-memory-dumps', async () => {
 
 // Update Cache
 ipcMain.handle('cleaner:clear-update-cache', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     const updateDir = 'C:\\Windows\\SoftwareDistribution\\Download';
 
@@ -1074,6 +1097,7 @@ ipcMain.handle('cleaner:clear-update-cache', async () => {
 
 // DNS Cache
 ipcMain.handle('cleaner:clear-dns-cache', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     let entriesBefore = 0;
     try {
@@ -1146,6 +1170,7 @@ ipcMain.handle('cleaner:clear-dns-cache', async () => {
 
 // RAM Cache
 ipcMain.handle('cleaner:clear-ram-cache', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     const tempScript = path.join(app.getPath('temp'), 'ram-purge.ps1');
     const scriptContent = `
@@ -1260,6 +1285,7 @@ Write-Output "$result|FreedMB=$freedMB"
 
 // Empty Recycle Bin
 ipcMain.handle('cleaner:empty-recycle-bin', async () => {
+    const blocked = authSession.requireAuth(); if (blocked) return blocked;
   try {
     try {
       const cmd = `[void](Clear-RecycleBin -Force -Confirm:$false -ErrorAction Stop); Write-Host 'SUCCESS'`;
