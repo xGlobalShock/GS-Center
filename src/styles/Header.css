@@ -410,6 +410,7 @@
   -webkit-app-region: no-drag;
   app-region: no-drag;
   position: relative;
+  margin-left: 6px;
 }
 
 .settings-header-btn:hover {

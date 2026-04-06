@@ -8,6 +8,7 @@ import {
   LayoutGrid,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import ProPreviewBanner from '../components/ProPreviewBanner';
 import AppInstaller from './AppInstaller';
 import AppUninstaller from './AppUninstaller';
 import WindowsDebloat from './WindowsDebloat';
@@ -57,6 +58,8 @@ const AppsPage: React.FC<AppsPageProps> = ({ isActive = false }) => {
           </button>
         }
       />
+
+      {activeTab === 'debloat' && <ProPreviewBanner pageName="Windows Debloat" />}
 
       <div className="apps-split">
         {/* ── Left: vertical nav ── */}

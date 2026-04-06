@@ -8,7 +8,7 @@ const ALLOWED_INVOKE_PREFIXES = [
   'obs:', 'gameprofile:', 'vconfig:', 'network:', 'preset:',
   'updater:', 'gpu:', 'app:', 'window-is-maximized',
   'overlay:', 'health:', 'advisor:',
-  'resolution:', 'startup:', 'svc:',
+  'resolution:', 'startup:', 'svc:', 'auth:', 'paypal:',
 ];
 const ALLOWED_SEND_PREFIXES = [
   'window-', 'app:', 'splash:',
@@ -16,7 +16,7 @@ const ALLOWED_SEND_PREFIXES = [
 const ALLOWED_ON_PREFIXES = [
   'hw-info-update', 'realtime-hw-update', 'wdebloat:', 'appinstall:',
   'appuninstall:', 'space:', 'software:', 'repair:', 'window-maximized-changed',
-  'updater:', 'gpu:', 'splash:', 'overlay:', 'svc:',
+  'updater:', 'gpu:', 'splash:', 'overlay:', 'svc:', 'auth:',
 ];
 
 function isAllowed(channel, prefixes) {

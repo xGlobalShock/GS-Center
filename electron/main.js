@@ -116,6 +116,8 @@ const resolutionManager = require('../main-process/resolutionManager');
 const repairOverlay = require('../main-process/repairOverlay');
 const startup = require('../main-process/startup');
 const serviceTweaks = require('../main-process/serviceTweaks');
+const auth = require('../main-process/auth');
+const paypal = require('../main-process/paypal');
 const { execAsync } = require('../main-process/utils');
 
 // ── GPU status tracking ─────────────────────────────────────────────────────
@@ -253,6 +255,8 @@ resolutionManager.registerIPC();
 repairOverlay.registerIPC();
 startup.registerIPC();
 serviceTweaks.registerIPC();
+auth.registerIPC();
+paypal.registerIPC();
 
 // ── Pre-warm scan caches (orchestrator) ─────────────────────────────────────
 async function _prewarmScanCaches({ updateSplash = false } = {}) {

@@ -1,0 +1,291 @@
+/* ══════════════════════════════════════════════════════════════════════
+   PRO Lock / Preview Mode Styles — GS Center
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Pro Disabled Region ──────────────────────────────────────────── */
+/*
+   Applied by ProLockedWrapper / ProLockedSection for non-PRO users.
+   Content is fully visible but visually subdued and non-interactive.
+   No overlays, no click traps — just a clean disabled state.
+*/
+.pro-disabled-region {
+  opacity: 0.5;
+  filter: grayscale(0.25);
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 0.3s, filter 0.3s;
+}
+
+/* ─── Preview banner (top of PRO pages) ──────────────────────────── */
+.pro-preview-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 16px;
+  margin: 0 0 12px 0;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.06), rgba(255, 170, 0, 0.04));
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  border-radius: 10px;
+  animation: proPreviewPulse 3s ease-in-out infinite;
+}
+
+.pro-preview-banner-icon {
+  color: #ffd700;
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.4));
+  flex-shrink: 0;
+}
+
+.pro-preview-banner-text {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.pro-preview-banner-text strong {
+  color: #ffd700;
+}
+
+.pro-preview-banner-btn {
+  padding: 4px 14px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 170, 0, 0.1));
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 6px;
+  color: #ffd700;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+
+.pro-preview-banner-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 170, 0, 0.18));
+  border-color: rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.15);
+}
+
+@keyframes proPreviewPulse {
+  0%, 100% { border-color: rgba(255, 215, 0, 0.15); }
+  50%      { border-color: rgba(255, 215, 0, 0.25); }
+}
+
+/* ─── Upgrade Modal ────────────────────────────────────────────────── */
+.upgrade-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.upgrade-modal {
+  position: relative;
+  width: 380px;
+  max-width: 92vw;
+  background: linear-gradient(165deg, #0d1117 0%, #0a0f14 100%);
+  border: 1px solid rgba(255, 215, 0, 0.12);
+  border-radius: 16px;
+  padding: 28px 24px 24px;
+  box-shadow:
+    0 0 0 1px rgba(255, 215, 0, 0.06),
+    0 20px 50px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(255, 215, 0, 0.04);
+}
+
+.upgrade-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.4);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+
+.upgrade-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.upgrade-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.upgrade-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(255, 170, 0, 0.06));
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  color: #ffd700;
+  margin-bottom: 12px;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
+}
+
+.upgrade-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 6px 0;
+}
+
+.upgrade-feature-name {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
+.upgrade-feature-name strong {
+  color: #ffd700;
+}
+
+.upgrade-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.upgrade-benefit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.upgrade-benefit:hover {
+  background: rgba(255, 215, 0, 0.04);
+  border-color: rgba(255, 215, 0, 0.1);
+}
+
+.upgrade-benefit-icon {
+  color: #ffd700;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.upgrade-benefit-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.3;
+}
+
+.upgrade-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.upgrade-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+  text-decoration: none;
+}
+
+.upgrade-btn:active {
+  transform: scale(0.98);
+}
+
+.upgrade-btn-primary {
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  color: #000;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.2);
+}
+
+.upgrade-btn-primary:hover {
+  box-shadow: 0 4px 24px rgba(255, 215, 0, 0.35);
+  background: linear-gradient(135deg, #ffe033, #ffbb00);
+}
+
+.upgrade-btn-secondary {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.upgrade-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.upgrade-btn-discord {
+  background: #5865f2;
+  color: #fff;
+}
+
+.upgrade-btn-discord:hover:not(:disabled) {
+  background: #4752c4;
+  box-shadow: 0 4px 16px rgba(88, 101, 242, 0.3);
+}
+
+.upgrade-btn-twitch {
+  background: #9146ff;
+  color: #fff;
+}
+
+.upgrade-btn-twitch:hover:not(:disabled) {
+  background: #7b2fff;
+  box-shadow: 0 4px 16px rgba(145, 70, 255, 0.3);
+}
+
+.upgrade-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.upgrade-note {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  margin: 4px 0 0 0;
+  text-align: center;
+}
+
+.upgrade-error {
+  font-size: 11px;
+  color: #f87171;
+  text-align: center;
+  margin: 0 0 6px 0;
+  padding: 6px 10px;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 6px;
+  width: 100%;
+}
+
+@keyframes upgradeSpin {
+  to { transform: rotate(360deg); }
+}
+.upgrade-spin {
+  animation: upgradeSpin 0.7s linear infinite;
+}

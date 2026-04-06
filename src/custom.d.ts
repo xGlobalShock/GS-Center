@@ -38,6 +38,8 @@ declare namespace NodeJS {
   }
 }
 
+declare const process: { env: NodeJS.ProcessEnv };
+
 interface Window {
   __WDEBLOAT_PRELOADED__?: any;
   electron: {

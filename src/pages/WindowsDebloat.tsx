@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 
 import { useToast } from '../contexts/ToastContext';
+import ProLockedWrapper from '../components/ProLockedWrapper';
 import '../styles/WindowsDebloat.css';
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
@@ -438,6 +439,7 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false, refre
       animate={{ opacity: 1 }}
       transition={{ duration: 0.18 }}
     >
+      <ProLockedWrapper featureName="Windows Debloat" message="PRO Feature">
       {/* ── Page Content ── */}
       <div className="wd-content">
         {/* ── Not-elevated warning ── */}
@@ -646,6 +648,7 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false, refre
           )}
         </AnimatePresence>
       </div>
+      </ProLockedWrapper>
     </motion.div>
   );
 };

@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+
 import { useToast } from '../contexts/ToastContext';
 import { APP_CATALOG, APP_CATEGORIES, CatalogApp } from '../data/appCatalog';
 import '../styles/AppInstaller.css';

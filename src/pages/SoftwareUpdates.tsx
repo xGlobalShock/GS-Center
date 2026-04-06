@@ -6,6 +6,8 @@ import {
 import PageHeader from '../components/PageHeader';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/SoftwareUpdates.css';
+import ProPreviewBanner from '../components/ProPreviewBanner';
+import ProLockedWrapper from '../components/ProLockedWrapper';
 
 /* ═══════════════════ Types ═══════════════════ */
 
@@ -214,6 +216,9 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
         }
       />
 
+      <ProPreviewBanner pageName="Software Updates" />
+
+      <ProLockedWrapper featureName="Software Updates" message="PRO Feature">
       {loading && (
         <div className="su-loading">
           <Loader2 size={32} className="su-spin" />
@@ -301,6 +306,7 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
           </div>
         </motion.div>
       )}
+      </ProLockedWrapper>
     </motion.div>
   );
 };

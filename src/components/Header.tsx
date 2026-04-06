@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Minus, Square, X, Copy, ArrowDownCircle, Download, RefreshCw, CheckCircle, AlertTriangle, XCircle, Sparkles, Radio, Settings as SettingsIcon } from 'lucide-react';
 import SettingsPage from '../pages/Settings';
+import ProfileDropdown from './ProfileDropdown';
 import changelog from '../data/changelog';
 import devUpdatesDefault from '../data/devUpdates';
 import type { DevUpdate } from '../data/devUpdates';
@@ -566,6 +567,9 @@ const description = release.body?.trim() || undefined;
             )}
           </div>
         )}
+
+        {/* Profile / Auth */}
+        <ProfileDropdown />
 
         {/* Settings button */}
         <button

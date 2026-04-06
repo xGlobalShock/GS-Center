@@ -9,6 +9,9 @@ import SystemRepairPanel from '../components/SystemRepairPanel';
 import { Monitor, Gamepad2, Wrench, Cpu } from 'lucide-react';
 import { Sparkle, SlidersHorizontal } from 'phosphor-react';
 import '../styles/Cleaner.css';
+import ProPreviewBanner from '../components/ProPreviewBanner';
+import ProLockedWrapper from '../components/ProLockedWrapper';
+import { useAuth } from '../contexts/AuthContext';
 
 interface CleanResult {
   success: boolean;
@@ -24,6 +27,7 @@ const Cleaner: React.FC = () => {
   const [cleaningId, setCleaningId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<'windows' | 'games' | 'nvidia' | 'repair'>('windows');
   const { addToast } = useToast();
+  const { isPro } = useAuth();
 
   const handleShowClearAllToast = () => {
     const k = Math.random().toString(36).substring(2, 11);
@@ -199,12 +203,16 @@ const Cleaner: React.FC = () => {
     >
       <PageHeader icon={<SlidersHorizontal size={16} weight="bold" />} title="Utilities" />
 
-      {activeCategory === 'windows' && (
+      <ProPreviewBanner pageName="Utilities" />
+
+      {isPro && activeCategory === 'windows' && (
         <button className="cleaner-clearall-btn" onClick={handleShowClearAllToast}>
           <Sparkle size={13} weight="fill" />
           Full Cache Cleanup
         </button>
       )}
+
+      <ProLockedWrapper featureName="Utilities" message="PRO Feature">
 
       <div className="cleaner-split">
         {/* ── LEFT: Vertical nav ── */}
@@ -267,6 +275,7 @@ const Cleaner: React.FC = () => {
           </AnimatePresence>
         </div>
       </div>
+      </ProLockedWrapper>
     </motion.div>
   );
 };

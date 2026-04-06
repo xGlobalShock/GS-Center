@@ -1,0 +1,952 @@
+/* ══════════════════════════════════════════════════════════════════════
+   Auth / Profile / Paywall Styles — GS Center
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   PROFILE DROPDOWN — redesigned
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Wrapper ─────────────────────────────────────────────── */
+.pd-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* ─── Trigger button ──────────────────────────────────────── */
+.pd-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 5px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.75);
+  transition: background 0.18s, border-color 0.18s;
+  height: 34px;
+}
+.pd-trigger:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.13);
+  color: #fff;
+}
+.pd-trigger--guest {
+  padding: 4px 12px;
+  gap: 7px;
+}
+
+/* ─── Avatar (trigger) ────────────────────────────────────── */
+.pd-trigger-avatar-wrap {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.pd-trigger-avatar-wrap--owner  { --ring: #ffd700; }
+.pd-trigger-avatar-wrap--admin  { --ring: #a855f7; }
+.pd-trigger-avatar-wrap--pro    { --ring: #00f2ff; }
+.pd-trigger-avatar-wrap--user   { --ring: rgba(255,255,255,0.15); }
+
+.pd-trigger-avatar-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ring, rgba(255,255,255,0.15));
+  opacity: 0.8;
+}
+
+.pd-trigger-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.pd-trigger-avatar--ghost {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Provider badge (bottom-right of trigger avatar) */
+.pd-trigger-provider {
+  position: absolute;
+  bottom: -3px;
+  right: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  background: #0d1117;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  line-height: 1;
+}
+
+.pd-trigger-name {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  color: inherit;
+  max-width: 88px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-chevron {
+  color: rgba(255, 255, 255, 0.3);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.pd-chevron--open {
+  transform: rotate(180deg);
+}
+
+/* ─── Role chip ───────────────────────────────────────────── */
+.pd-role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.pd-role-chip--owner {
+  background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,140,0,0.12));
+  color: #ffd700;
+  border: 1px solid rgba(255,215,0,0.3);
+  text-shadow: 0 0 8px rgba(255,215,0,0.4);
+}
+.pd-role-chip--admin {
+  background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(139,92,246,0.12));
+  color: #c084fc;
+  border: 1px solid rgba(168,85,247,0.3);
+}
+.pd-role-chip--pro {
+  background: linear-gradient(135deg, rgba(0,242,255,0.12), rgba(34,197,94,0.09));
+  color: #00f2ff;
+  border: 1px solid rgba(0,242,255,0.25);
+  text-shadow: 0 0 8px rgba(0,242,255,0.25);
+}
+.pd-role-chip--user {
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.35);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+/* ─── Panel ───────────────────────────────────────────────── */
+/* Role-based accent vars */
+.pd-panel[data-role="owner"] { --pd-accent: #ffd700; --pd-glow: rgba(255,215,0,0.055); }
+.pd-panel[data-role="admin"] { --pd-accent: #a855f7; --pd-glow: rgba(168,85,247,0.055); }
+.pd-panel[data-role="pro"]   { --pd-accent: #00f2ff; --pd-glow: rgba(0,242,255,0.055); }
+.pd-panel[data-role="user"]  { --pd-accent: rgba(255,255,255,0.08); --pd-glow: transparent; }
+
+.pd-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 272px;
+  background: #0b0e14;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  padding: 6px;
+  z-index: 9999;
+  backdrop-filter: blur(28px);
+  overflow: hidden;
+  box-shadow:
+    0 4px 6px -1px rgba(0,0,0,0.5),
+    0 24px 60px rgba(0,0,0,0.65),
+    0 0 0 1px rgba(255,255,255,0.025);
+}
+
+/* Role-tinted top accent line */
+.pd-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 5%,
+    var(--pd-accent, rgba(255,255,255,0.1)) 50%,
+    transparent 95%
+  );
+  opacity: 0.9;
+}
+
+/* ─── Guest variant: panel accent ────────────────────────── */
+.pd-panel--guest {
+  --pd-accent: rgba(255,255,255,0.12);
+  --pd-glow: transparent;
+}
+
+/* ─── Guest hero area ─────────────────────────────────────── */
+.pd-guest-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 12px 14px;
+  border-radius: 11px;
+  margin: 2px 0 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.025) 0%, transparent 70%);
+}
+
+.pd-guest-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.3);
+  flex-shrink: 0;
+}
+
+.pd-guest-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pd-guest-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.1px;
+  line-height: 1.2;
+}
+
+.pd-guest-sub {
+  font-size: 10.5px;
+  color: rgba(255,255,255,0.38);
+  line-height: 1.3;
+}
+
+.pd-guest-badge {
+  margin-top: 5px;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.3);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+/* ─── Provider buttons ────────────────────────────────────── */
+.pd-providers {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 4px 0 4px;
+}
+
+.pd-provider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  color: rgba(255,255,255,0.6);
+  text-align: left;
+}
+.pd-provider:hover {
+  background: rgba(255,255,255,0.04);
+  color: #fff;
+}
+
+/* Icon container inside provider button */
+.pd-provider-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.pd-provider-icon--discord {
+  background: rgba(88, 101, 242, 0.1);
+  color: rgba(142, 160, 248, 0.8);
+}
+.pd-provider-icon--twitch {
+  background: rgba(145, 70, 255, 0.1);
+  color: rgba(176, 126, 255, 0.8);
+}
+
+.pd-provider-label {
+  flex: 1;
+}
+
+.pd-provider-arrow {
+  font-size: 13px;
+  color: rgba(255,255,255,0.18);
+  transition: color 0.15s, transform 0.15s;
+  display: inline-block;
+}
+
+.pd-provider--discord:hover .pd-provider-icon--discord {
+  background: rgba(88, 101, 242, 0.2);
+  color: #a5b4fc;
+}
+.pd-provider--discord:hover {
+  color: #a5b4fc;
+}
+.pd-provider--discord:hover .pd-provider-arrow {
+  color: #a5b4fc;
+  transform: translateX(2px);
+}
+
+.pd-provider--twitch:hover .pd-provider-icon--twitch {
+  background: rgba(145, 70, 255, 0.2);
+  color: #c4a0ff;
+}
+.pd-provider--twitch:hover {
+  color: #c4a0ff;
+}
+.pd-provider--twitch:hover .pd-provider-arrow {
+  color: #c4a0ff;
+  transform: translateX(2px);
+}
+
+/* ─── Hero (signed-in profile area) ──────────────────────── */
+.pd-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 12px 14px;
+  border-radius: 11px;
+  margin: 2px 0 0;
+  position: relative;
+}
+
+/* Role-tinted gradient wash behind hero */
+.pd-hero--owner { background: linear-gradient(135deg, rgba(255,215,0,0.055) 0%, transparent 70%); }
+.pd-hero--admin { background: linear-gradient(135deg, rgba(168,85,247,0.055) 0%, transparent 70%); }
+.pd-hero--pro   { background: linear-gradient(135deg, rgba(0,242,255,0.05) 0%, transparent 70%); }
+.pd-hero--user  { background: transparent; }
+
+/* ─── Hero avatar ─────────────────────────────────────────── */
+.pd-hero-avatar-wrap {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+}
+
+.pd-hero-avatar-wrap--owner { --ring: #ffd700; --ring-glow: rgba(255,215,0,0.35); }
+.pd-hero-avatar-wrap--admin { --ring: #a855f7; --ring-glow: rgba(168,85,247,0.35); }
+.pd-hero-avatar-wrap--pro   { --ring: #00f2ff; --ring-glow: rgba(0,242,255,0.3); }
+.pd-hero-avatar-wrap--user  { --ring: rgba(255,255,255,0.15); --ring-glow: transparent; }
+
+.pd-hero-avatar-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -2.5px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ring);
+  box-shadow: 0 0 10px var(--ring-glow, transparent);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.pd-hero-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.pd-hero-avatar-ghost {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.3);
+}
+
+/* Provider badge overlaid on hero avatar (bottom-right) */
+.pd-hero-provider-badge {
+  position: absolute;
+  bottom: -3px;
+  right: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  background: #0b0e14;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.1);
+  line-height: 1;
+}
+
+/* ─── Hero info (name / email / role chip stacked) ────────── */
+.pd-hero-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pd-hero-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.1px;
+  line-height: 1.2;
+}
+
+.pd-hero-email {
+  font-size: 10.5px;
+  color: rgba(255,255,255,0.38);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.pd-hero-info .pd-role-chip {
+  align-self: flex-start;
+  margin-top: 5px;
+}
+
+/* ─── Divider ─────────────────────────────────────────────── */
+.pd-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 4px 4px 4px;
+}
+
+/* ─── Action items ────────────────────────────────────────── */
+.pd-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: transparent;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  color: rgba(255,255,255,0.6);
+  text-align: left;
+}
+.pd-action:hover {
+  background: rgba(255,255,255,0.04);
+  color: #fff;
+}
+
+/* Icon container inside action */
+.pd-action-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.05);
+  transition: background 0.15s, color 0.15s;
+}
+
+.pd-action--admin .pd-action-icon {
+  background: rgba(0, 242, 255, 0.08);
+  color: rgba(0, 242, 255, 0.65);
+}
+.pd-action--subscription .pd-action-icon {
+  background: rgba(168, 85, 247, 0.08);
+  color: rgba(168, 85, 247, 0.65);
+}
+.pd-action--logout .pd-action-icon {
+  background: rgba(239, 68, 68, 0.08);
+  color: rgba(239, 68, 68, 0.6);
+}
+
+.pd-action--admin:hover {
+  background: rgba(0, 242, 255, 0.05);
+  color: #00f2ff;
+}
+.pd-action--admin:hover .pd-action-icon {
+  background: rgba(0, 242, 255, 0.14);
+  color: #00f2ff;
+}
+
+.pd-action--subscription:hover {
+  background: rgba(168, 85, 247, 0.05);
+  color: #a855f7;
+}
+.pd-action--subscription:hover .pd-action-icon {
+  background: rgba(168, 85, 247, 0.14);
+  color: #a855f7;
+}
+
+.pd-action--logout:hover {
+  background: rgba(239, 68, 68, 0.05);
+  color: #f87171;
+}
+.pd-action--logout:hover .pd-action-icon {
+  background: rgba(239, 68, 68, 0.14);
+  color: #f87171;
+}
+
+/* ─── Subscription section ────────────────────────────────── */
+.pd-sub {
+  padding: 8px 10px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.pd-sub--lifetime {
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+}
+.pd-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.pd-sub-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 5px currentColor;
+}
+.pd-sub-dot--active    { background: #22c55e; color: rgba(34, 197, 94, 0.6); }
+.pd-sub-dot--cancelled { background: #f59e0b; color: rgba(245, 158, 11, 0.6); }
+.pd-sub-dot--expired   { background: #ef4444; color: rgba(239, 68, 68, 0.6); }
+.pd-sub-status {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.75);
+  flex-shrink: 0;
+}
+.pd-sub-expiry {
+  font-size: 10.5px;
+  color: rgba(255,255,255,0.35);
+  margin-left: auto;
+}
+.pd-sub-countdown {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  color: rgba(0, 242, 255, 0.7);
+  letter-spacing: 0.03em;
+  padding-left: 14px;
+}
+.pd-sub-countdown--expired {
+  color: rgba(239, 68, 68, 0.65);
+}
+.pd-sub-cancel-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10.5px;
+  color: rgba(255,255,255,0.25);
+  padding: 2px 0 0 14px;
+  transition: color 0.15s;
+}
+.pd-sub-cancel-btn:hover {
+  color: rgba(239, 68, 68, 0.75);
+}
+.pd-sub-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(239, 68, 68, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.12);
+}
+.pd-sub-confirm-text {
+  font-size: 10.5px;
+  color: rgba(255,255,255,0.5);
+}
+.pd-sub-confirm-btns {
+  display: flex;
+  gap: 6px;
+}
+.pd-sub-btn {
+  flex: 1;
+  padding: 4px 0;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+.pd-sub-btn:disabled { opacity: 0.5; cursor: default; }
+.pd-sub-btn--keep {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.65);
+}
+.pd-sub-btn--keep:hover:not(:disabled) {
+  background: rgba(255,255,255,0.1);
+}
+.pd-sub-btn--cancel {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+.pd-sub-btn--cancel:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.pd-sub-lifetime-icon {
+  color: rgba(255,255,255,0.3);
+  flex-shrink: 0;
+}
+.pd-sub-lifetime-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.4);
+}
+
+/* ─── Sidebar PRO crown badge ─────────────────────────────── */
+.ks-pro-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  color: #ffd700;
+  filter: drop-shadow(0 0 3px rgba(255,215,0,0.5));
+}
+
+/* Legacy class aliases kept for compatibility */
+.auth-login-wrapper,
+.auth-profile-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+.role-owner { background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,165,0,0.15)); color: #ffd700; border: 1px solid rgba(255,215,0,0.3); }
+.role-admin  { background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(139,92,246,0.15)); color: #a855f7; border: 1px solid rgba(168,85,247,0.3); }
+.role-pro    { background: linear-gradient(135deg, rgba(0,242,255,0.12), rgba(34,197,94,0.12)); color: #00f2ff; border: 1px solid rgba(0,242,255,0.25); }
+.role-free   { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.08); }
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   Paywall Modal
+   ══════════════════════════════════════════════════════════════════════ */
+
+.paywall-overlay {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(0, 242, 255, 0.02) 0%, transparent 70%);
+}
+
+.paywall-modal {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  background: rgba(12, 14, 20, 0.95);
+  border: 1px solid rgba(0, 242, 255, 0.1);
+  border-radius: 20px;
+  padding: 36px 32px 28px;
+  backdrop-filter: blur(24px);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.5),
+    0 0 1px rgba(0, 242, 255, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.paywall-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.paywall-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* ─── Header ─────────────────────────────────────────────────────── */
+.paywall-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.paywall-icon-wrap {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(0, 242, 255, 0.1), rgba(34, 197, 94, 0.08));
+  border: 1px solid rgba(0, 242, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00f2ff;
+}
+
+.paywall-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 8px;
+  letter-spacing: -0.3px;
+}
+
+.paywall-subtitle {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ─── Features Grid ──────────────────────────────────────────────── */
+.paywall-features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.paywall-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(0, 242, 255, 0.02);
+  border: 1px solid rgba(0, 242, 255, 0.06);
+  transition: border-color 0.2s;
+}
+.paywall-feature:hover {
+  border-color: rgba(0, 242, 255, 0.12);
+}
+
+.paywall-feature-icon {
+  color: #00f2ff;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.paywall-feature-text {
+  min-width: 0;
+}
+
+.paywall-feature-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.paywall-feature-desc {
+  display: block;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+/* ─── CTA ────────────────────────────────────────────────────────── */
+.paywall-cta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.paywall-cta-note {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.35);
+  margin: 0;
+}
+
+.paywall-error {
+  font-size: 11px;
+  color: #f87171;
+  text-align: center;
+  margin: 0 0 8px 0;
+  padding: 6px 10px;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 6px;
+  width: 100%;
+}
+
+.paywall-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.paywall-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.paywall-btn-discord {
+  background: rgba(88, 101, 242, 0.15);
+  color: #7289da;
+  border-color: rgba(88, 101, 242, 0.25);
+}
+.paywall-btn-discord:hover:not(:disabled) {
+  background: rgba(88, 101, 242, 0.25);
+  border-color: rgba(88, 101, 242, 0.5);
+}
+
+.paywall-btn-twitch {
+  background: rgba(145, 70, 255, 0.15);
+  color: #9146ff;
+  border-color: rgba(145, 70, 255, 0.25);
+}
+.paywall-btn-twitch:hover:not(:disabled) {
+  background: rgba(145, 70, 255, 0.25);
+  border-color: rgba(145, 70, 255, 0.5);
+}
+
+.paywall-btn-upgrade {
+  background: linear-gradient(135deg, rgba(0, 242, 255, 0.12), rgba(34, 197, 94, 0.12));
+  color: #00f2ff;
+  border-color: rgba(0, 242, 255, 0.25);
+  font-size: 14px;
+}
+.paywall-btn-upgrade:hover {
+  background: linear-gradient(135deg, rgba(0, 242, 255, 0.2), rgba(34, 197, 94, 0.2));
+  border-color: rgba(0, 242, 255, 0.5);
+  box-shadow: 0 0 20px rgba(0, 242, 255, 0.15);
+}
+
+/* ─── Payment success screen ─────────────────────────────────────── */
+.paywall-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0 8px;
+  text-align: center;
+}
+
+.paywall-success-icon {
+  color: #22c55e;
+  filter: drop-shadow(0 0 16px rgba(34, 197, 94, 0.5));
+  margin-bottom: 4px;
+}
+
+.paywall-success-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.paywall-success-sub {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
+.paywall-success-expiry {
+  font-size: 11px;
+  color: rgba(34, 197, 94, 0.7);
+  margin: 0;
+  padding: 4px 12px;
+  background: rgba(34, 197, 94, 0.06);
+  border: 1px solid rgba(34, 197, 94, 0.15);
+  border-radius: 20px;
+}
+
+/* Shrinking green bar that acts as a 3-second auto-close countdown */
+.paywall-success-close-bar {
+  margin-top: 16px;
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(34, 197, 94, 0.7);
+  animation: paywall-drain 3s linear forwards;
+}
+
+@keyframes paywall-drain {
+  from { width: 100%; }
+  to   { width: 0%; }
+}

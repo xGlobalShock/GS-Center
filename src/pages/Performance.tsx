@@ -8,6 +8,8 @@ import '../styles/Performance.css';
 import '../styles/Cleaner.css';
 import { Activity, Cpu, Layers, Server, Wifi, Monitor, Gamepad2, Usb } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import ProPreviewBanner from '../components/ProPreviewBanner';
+import ProLockedWrapper from '../components/ProLockedWrapper';
 
 /* ── IPC channel maps — constant, never need to be recreated ── */
 const TWEAK_MAP: Record<string, string> = {
@@ -275,6 +277,9 @@ const Performance: React.FC = () => {
         }
       />
 
+      <ProPreviewBanner pageName="PC Tweaks" />
+
+      <ProLockedWrapper featureName="PC Tweaks" message="PRO Feature">
       <div className="cleaner-split">
         {/* ── LEFT: Vertical nav ── */}
         <nav className="cleaner-sidenav">
@@ -333,9 +338,9 @@ const Performance: React.FC = () => {
           </AnimatePresence>
         </div>
       </div>
+      </ProLockedWrapper>
     </motion.div>
   );
 };
 
 export default React.memo(Performance);
-

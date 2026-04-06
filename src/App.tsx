@@ -14,7 +14,11 @@ import AppsPage from './pages/AppsPage';
 import SpaceAnalyzer from './pages/SpaceAnalyzer';
 import ServiceOptimizer from './pages/ServiceOptimizer';
 import ResolutionManager from './pages/ResolutionManager';
+import AdminPanel from './pages/AdminPanel';
+import ManageSubscription from './pages/ManageSubscription';
 import { ToastProvider } from './contexts/ToastContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProGuard } from './components/PaywallModal';
 import { ToastContainer } from './components/ToastContainer';
 import AutoCleanupRunner from './components/AutoCleanupRunner';
 import { useRealtimeHardware } from './hooks/useRealtimeHardware';
@@ -191,15 +195,24 @@ function App() {
     return () => window.removeEventListener('settings:updated', onUpdated as EventListener);
   }, []);
 
+  useEffect(() => {
+    const onNavigate = (e: Event) => {
+      const page = (e as CustomEvent<{ page: string }>).detail?.page;
+      if (page) setCurrentPage(page);
+    };
+    window.addEventListener('navigate:page', onNavigate as EventListener);
+    return () => window.removeEventListener('navigate:page', onNavigate as EventListener);
+  }, []);
+
   const show = { display: 'block' } as const;
   const hide = { display: 'none' } as const;
 
   const pageStyle = useCallback((id: string) => currentPage === id ? show : hide, [currentPage]);
   const staticPages = useMemo(() => (
     <>
-      <div style={pageStyle('performance')}><Performance /></div>
+      <div style={pageStyle('performance')}><ProGuard pageName="PC Tweaks"><Performance /></ProGuard></div>
       <div style={pageStyle('serviceOptimizer')}><ServiceOptimizer /></div>
-      <div style={pageStyle('cleaner')}><Cleaner /></div>
+      <div style={pageStyle('cleaner')}><ProGuard pageName="Utilities"><Cleaner /></ProGuard></div>
       <div style={pageStyle('network')}><Network /></div>
       <div style={pageStyle('obsPresets')}><OBSPresets /></div>
       <div style={pageStyle('resolutionManager')}><ResolutionManager /></div>
@@ -218,22 +231,37 @@ function App() {
         </div>
         {staticPages}
         <div style={pageStyle('gameLibrary')}>
-          <GameLibrary hardwareInfo={hardwareInfo} isActive={currentPage === 'gameLibrary'} />
+          <ProGuard pageName="Games Library">
+            <GameLibrary hardwareInfo={hardwareInfo} isActive={currentPage === 'gameLibrary'} />
+          </ProGuard>
         </div>
         <div style={pageStyle('softwareUpdates')}>
-          <SoftwareUpdates isActive={currentPage === 'softwareUpdates'} />
+          <ProGuard pageName="Software Updates">
+            <SoftwareUpdates isActive={currentPage === 'softwareUpdates'} />
+          </ProGuard>
         </div>
         <div style={pageStyle('apps')}>
-          <AppsPage isActive={currentPage === 'apps'} />
+          <ProGuard pageName="Apps Manager">
+            <AppsPage isActive={currentPage === 'apps'} />
+          </ProGuard>
         </div>
         <div style={pageStyle('space')}>
-          <SpaceAnalyzer isActive={currentPage === 'space'} />
+          <ProGuard pageName="Disk Analyzer">
+            <SpaceAnalyzer isActive={currentPage === 'space'} />
+          </ProGuard>
+        </div>
+        <div style={pageStyle('admin')}>
+          <AdminPanel />
+        </div>
+        <div style={pageStyle('subscription')}>
+          <ManageSubscription />
         </div>
       </>
     );
   };
 
   return (
+    <AuthProvider>
     <ToastProvider>
       {raysColor !== 'off' && (
       <LightRays
@@ -274,6 +302,7 @@ function App() {
         </div>
       )}
     </ToastProvider>
+    </AuthProvider>
   );
 }
 

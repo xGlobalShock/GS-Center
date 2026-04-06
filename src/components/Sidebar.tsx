@@ -12,8 +12,11 @@ import {
   PieChart,
   Monitor,
   Shield,
+  Crown,
 } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
+import { PRO_PAGE_IDS } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import '../styles/Sidebar.css';
 
 /* ─── Types ──────────────────────────────────────────────────────────── */
@@ -30,6 +33,7 @@ interface MenuItem {
 
 /* ─── Bottom Navigation Bar ──────────────────────────────────────────── */
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
+  const { isPro } = useAuth();
 
   const navItems: MenuItem[] = useMemo(() => [
     { id: 'dashboard',         label: 'Home',      icon: Home             },
@@ -80,6 +84,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
                 )}
                 <span className="ks-bottom-icon-wrap">
                   <Icon size={18} className="ks-bottom-icon" />
+                  {!isPro && PRO_PAGE_IDS.has(item.id) && (
+                    <Crown size={8} className="ks-pro-badge" />
+                  )}
                 </span>
                 <span className="ks-bottom-label">{item.label}</span>
               </motion.button>

@@ -6,6 +6,8 @@ import type { HardwareInfo } from '../App';
 import { GAME_REQUIREMENTS } from '../data/gameRequirements';
 import { compareHardware, quickVerdict, predictFps, type ComparisonResult, type OverallVerdict } from '../utils/hardwareCompare';
 import '../styles/GameLibrary.css';
+import ProPreviewBanner from '../components/ProPreviewBanner';
+import ProLockedWrapper from '../components/ProLockedWrapper';
 import valorantImg from '../assets/Valorant.jpg';
 import rocketLeagueImg from '../assets/Rocket League Banner.jpg';
 import overwatchImg from '../assets/Overwatch Banner.jpg';
@@ -780,6 +782,8 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
   return (
     <div className="gl-container">
       <PageHeader icon={<Gamepad2 size={16} />} title="Game Presets" />
+      <ProPreviewBanner pageName="Game Presets" />
+      <ProLockedWrapper featureName="Game Presets" message="PRO Feature">
       <AnimatePresence mode="wait">
         {!selectedGame ? (
           <motion.div
@@ -1663,6 +1667,7 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
           );
         })()}
       </AnimatePresence>
+      </ProLockedWrapper>
     </div>
   );
 };

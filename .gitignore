@@ -13,6 +13,7 @@ assets/
 scripts/
 V-Config/
 lib/
+supabase/
 public/
 scripts/
 V-Config\apex-legends/
@@ -32,6 +33,16 @@ V-Config\apex-legends/
 # ── OS ──
 .DS_Store
 Thumbs.db
+auth.js
+paypal.js
+AdminPanel.tsx
+ManageSubscription.tsx
+AuthContext.tsx
+ProPreviewBanner.tsx
+UpgradeModal.tsx
+ProLockedWrapper.tsx
+ProfileDropdown.tsx
+PaywallModal.tsx
 
 # ── Logs ──
 *.log

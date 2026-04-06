@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import '../styles/SpaceAnalyzer.css';
+import ProPreviewBanner from '../components/ProPreviewBanner';
+import ProLockedWrapper from '../components/ProLockedWrapper';
 
 const AnimatedDots: React.FC = () => (
   <span className="sa-animated-dots">
@@ -275,6 +277,8 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
   return (
     <div className="sa-page" onContextMenu={(e) => e.preventDefault()}>
       <PageHeader icon={<HardDrive size={16} />} title="Disk Space Analyzer" />
+      <ProPreviewBanner pageName="Disk Analyzer" />
+      <ProLockedWrapper featureName="Disk Analyzer" message="PRO Feature">
       
       {/* ── CONTEXT MENU ── */}
       <AnimatePresence>
@@ -529,6 +533,7 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
         </motion.div>
 
       </div>
+      </ProLockedWrapper>
     </div>
   );
 }
