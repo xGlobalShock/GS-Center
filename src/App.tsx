@@ -113,46 +113,28 @@ export interface ExtendedStats {
 
 function AppInner() {
   const [hardwareReady, setHardwareReady] = useState(false);
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, appReady } = useAuth();
   const [raysColor, setRaysColor] = useState<string>(() => loadSettings().raysColor ?? '#00F2FF');
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo | undefined>(undefined);
-  // Always stream on dashboard/performance; also stream during initial boot so
-  // the first payload arrives as soon as possible.
-  const shouldStream = !hardwareReady || currentPage === 'dashboard' || currentPage === 'performance';
-  const { systemStats, extendedStats, connected } = useRealtimeHardware({ enabled: shouldStream });
+  const shouldStream = appReady && user && (!hardwareReady || currentPage === 'dashboard' || currentPage === 'performance');
+  const { systemStats, extendedStats, connected } = useRealtimeHardware({ enabled: !!shouldStream });
 
-  // Mark hardware as ready once the first realtime payload arrives
   useEffect(() => {
     if (!hardwareReady && connected) {
       setHardwareReady(true);
     }
   }, [hardwareReady, connected]);
 
-  // Signal the main process that the renderer is fully loaded.
-  // Fire as soon as hardware is ready OR after a 3-second grace period,
-  // whichever comes first — so the splash screen doesn't hang.
   const appReadySentRef = React.useRef(false);
   useEffect(() => {
-    if (appReadySentRef.current) return;
-    if (hardwareReady) {
-      appReadySentRef.current = true;
-      try { (window as any).electron?.ipcRenderer?.send('app:ready'); } catch (_) {}
-    }
-  }, [hardwareReady]);
+    if (appReadySentRef.current || !appReady) return;
 
-  // Fallback: send app:ready after 3 s even if hardware hasn't connected
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!appReadySentRef.current) {
-        appReadySentRef.current = true;
-        try { (window as any).electron?.ipcRenderer?.send('app:ready'); } catch (_) {}
-      }
-      // In non-Electron mode, mark hardware ready so we don't wait forever
-      if (!window.electron) setHardwareReady(true);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, []);
+    appReadySentRef.current = true;
+    try { (window as any).electron?.ipcRenderer?.send('app:ready'); } catch (_) { }
+  }, [appReady]);
+
+
 
   useEffect(() => {
     const fetchHardwareInfo = async () => {
@@ -172,7 +154,7 @@ function AppInner() {
       unsub = window.electron.ipcRenderer.on('hw-info-update', (partial: Partial<HardwareInfo>) => {
         setHardwareInfo(prev => prev ? { ...prev, ...partial } : prev);
       });
-      
+
       window.electron.ipcRenderer.on('wdebloat:preloaded', (data: any) => {
         (window as any).__WDEBLOAT_PRELOADED__ = data;
       });
@@ -196,7 +178,7 @@ function AppInner() {
         if (detail.appBgColor) {
           document.documentElement.style.setProperty('--app-bg', detail.appBgColor);
         }
-      } catch {}
+      } catch { }
     };
     window.addEventListener('settings:updated', onUpdated as EventListener);
     return () => window.removeEventListener('settings:updated', onUpdated as EventListener);
@@ -267,34 +249,45 @@ function AppInner() {
 
   return (
     <ToastProvider>
-      {/* Show login page if not authenticated */}
-      {!authLoading && !user && <LoginPage />}
-      {raysColor !== 'off' && (
-      <LightRays
-        raysColor={raysColor}
-        raysSpeed={1}
-        lightSpread={1.6}
-        rayLength={1.5}
-        followMouse={false}
-        mouseInfluence={0}
-        noiseAmount={0.02}
-        distortion={0}
-        pulsating={false}
-        fadeDistance={1}
-        saturation={2.5}
-      />
+      {/* 1. App Not Ready -> Wait indefinitely (splash screen handles visuals) */}
+      {!appReady && (
+        <div style={{ width: '100vw', height: '100vh', background: 'var(--app-bg, #040610)' }} />
       )}
-      <div className="app-container">
-        <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
-        <div className="main-content">
-          <Header />
-          <div className="page-content">
-            {renderPage()}
+
+      {/* 2. App Ready but Not Authenticated -> Show Login Page ONLY */}
+      {appReady && !user && <LoginPage />}
+
+      {/* 3. App Ready & Authenticated -> Render Full Application Tree */}
+      {appReady && user && (
+        <>
+          {raysColor !== 'off' && (
+            <LightRays
+              raysColor={raysColor}
+              raysSpeed={1}
+              lightSpread={1.6}
+              rayLength={1.5}
+              followMouse={false}
+              mouseInfluence={0}
+              noiseAmount={0.02}
+              distortion={0}
+              pulsating={false}
+              fadeDistance={1}
+              saturation={2.5}
+            />
+          )}
+          <div className="app-container">
+            <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+            <div className="main-content">
+              <Header />
+              <div className="page-content">
+                {renderPage()}
+              </div>
+            </div>
+            <ToastContainer />
+            <AutoCleanupRunner ready={hardwareReady} />
           </div>
-        </div>
-        <ToastContainer />
-        <AutoCleanupRunner ready={hardwareReady} />
-      </div>
+        </>
+      )}
     </ToastProvider>
   );
 }

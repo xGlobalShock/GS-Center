@@ -34,6 +34,14 @@ const Loader: React.FC = () => (
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] }}
         >
+          <div className="loader-skel-corner tl" />
+          <div className="loader-skel-corner tr" />
+          <div className="loader-skel-corner bl" />
+          <div className="loader-skel-corner br" />
+
+          {/* Glowing top line accent */}
+          <div className="loader-skel-card-accent" />
+
           {/* Scanning line animation */}
           <div className="loader-skel-scan-line" />
 
@@ -48,14 +56,15 @@ const Loader: React.FC = () => (
               <div className="loader-skel-gauge" />
             </div>
 
-            {/* Row skeletons */}
+            {/* Core dashboard replica data blocks */}
             <div className="loader-skel-body">
-              {Array.from({ length: card.rows }).map((_, ri) => (
-                <div key={ri} className="loader-skel-row">
-                  <span className="loader-skel-row-label" />
-                  <span className="loader-skel-row-value" />
-                </div>
-              ))}
+              <div className="loader-skel-value" />
+              <div className="loader-skel-subline" />
+              <div className="loader-skel-chart" />
+              <div className="loader-skel-footer">
+                <div className="loader-skel-footer-item" />
+                <div className="loader-skel-footer-item right" />
+              </div>
             </div>
           </div>
         </motion.div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import DashboardHero, { MetricPoint } from '../components/DashboardHero';
 import Loader from '../components/Loader';
 import PageHeader from '../components/PageHeader';
@@ -27,16 +27,55 @@ interface LiveMetricsProps {
 
 const MAX_HISTORY = 40;
 
+/* ── O(1) ring buffer — zero allocation per push, avoids GC pressure ── */
+class RingBuffer {
+  private buf: MetricPoint[];
+  private head = 0;
+  private count = 0;
+  private cap: number;
+
+  constructor(capacity: number) {
+    this.cap = capacity;
+    this.buf = new Array(capacity);
+  }
+
+  push(v: number) {
+    this.buf[this.head] = { v };
+    this.head = (this.head + 1) % this.cap;
+    if (this.count < this.cap) this.count++;
+  }
+
+  toArray(): MetricPoint[] {
+    if (this.count === 0) return [];
+    const start = (this.head - this.count + this.cap) % this.cap;
+    const result = new Array(this.count);
+    for (let i = 0; i < this.count; i++) {
+      result[i] = this.buf[(start + i) % this.cap];
+    }
+    return result;
+  }
+}
+
 const LiveMetrics: React.FC<LiveMetricsProps> = React.memo(({ systemStats, hardwareInfo, extendedStats }) => {
   const [openPanel, setOpenPanel] = useState<'health' | 'advisor' | null>(null);
-  const [histories, setHistories] = useState<{
-    cpu: MetricPoint[]; gpu: MetricPoint[]; ram: MetricPoint[];
-    net: MetricPoint[]; loss: MetricPoint[]; disk: MetricPoint[]; proc: MetricPoint[];
-  }>({ cpu: [], gpu: [], ram: [], net: [], loss: [], disk: [], proc: [] });
+
+  // Ring buffers — stable refs, never cause re-renders on their own
+  const bufsRef = useRef({
+    cpu: new RingBuffer(MAX_HISTORY),
+    gpu: new RingBuffer(MAX_HISTORY),
+    ram: new RingBuffer(MAX_HISTORY),
+    net: new RingBuffer(MAX_HISTORY),
+    loss: new RingBuffer(MAX_HISTORY),
+    disk: new RingBuffer(MAX_HISTORY),
+    proc: new RingBuffer(MAX_HISTORY),
+  });
+  // Counter to trigger re-render when new data is pushed
+  const [tick, setTick] = useState(0);
   const lastWriteRef = useRef(0);
 
-  // Detect whether we've received any meaningful hardware data
-  const hasData = (systemStats?.cpu > 0 || systemStats?.ram > 0 || systemStats?.disk > 0) || !!hardwareInfo;
+  // Wait for BOTH the realtime stats AND the deep hardware probe to finish 
+  // before dropping the skeleton loader.
+  const hasData = (systemStats?.ram > 0 || systemStats?.cpu > 0) && !!hardwareInfo;
 
   useEffect(() => {
     // Only accumulate history once we have real data
@@ -46,28 +85,28 @@ const LiveMetrics: React.FC<LiveMetricsProps> = React.memo(({ systemStats, hardw
     if (now - lastWriteRef.current < 750) return;
     lastWriteRef.current = now;
 
-    const cpu = systemStats?.cpu ?? 0;
-    const gpu = Math.max(extendedStats?.gpuUsage ?? 0, 0);
-    const ram = systemStats?.ram ?? 0;
-    const ping = Math.max(extendedStats?.latencyMs ?? 0, 0);
-    const loss = Math.max(extendedStats?.packetLoss ?? 0, 0);
-    const disk = systemStats?.disk ?? 0;
-    const proc = Math.min(extendedStats?.processCount ?? 0, 500);
+    const b = bufsRef.current;
+    b.cpu.push(systemStats?.cpu ?? 0);
+    b.gpu.push(Math.max(extendedStats?.gpuUsage ?? 0, 0));
+    b.ram.push(systemStats?.ram ?? 0);
+    b.net.push(Math.max(extendedStats?.latencyMs ?? 0, 0));
+    b.loss.push(Math.max(extendedStats?.packetLoss ?? 0, 0));
+    b.disk.push(systemStats?.disk ?? 0);
+    b.proc.push(Math.min(extendedStats?.processCount ?? 0, 500));
 
-    // Single state update instead of 7 — one re-render per cycle
-    setHistories(h => ({
-      cpu:  [...h.cpu.slice(-(MAX_HISTORY - 1)),    { v: cpu  }],
-      gpu:  [...h.gpu.slice(-(MAX_HISTORY - 1)),    { v: gpu  }],
-      ram:  [...h.ram.slice(-(MAX_HISTORY - 1)),    { v: ram  }],
-      net:  [...h.net.slice(-(MAX_HISTORY - 1)),    { v: ping }],
-      loss: [...h.loss.slice(-(MAX_HISTORY - 1)),        { v: loss }],
-      disk: [...h.disk.slice(-(MAX_HISTORY - 1)),   { v: disk }],
-      proc: [...h.proc.slice(-(MAX_HISTORY - 1)),   { v: proc }],
-    }));
+    // Single tick bump → one re-render, arrays produced lazily below
+    setTick(t => t + 1);
   }, [systemStats, extendedStats, hasData]);
 
-  // Destructure for prop compatibility
-  const { cpu: cpuHistory, gpu: gpuHistory, ram: ramHistory, net: netHistory, loss: lossHistory, disk: diskHistory, proc: processHistory } = histories;
+  // Convert ring buffers to arrays only when tick changes (= on render)
+  const b = bufsRef.current;
+  const cpuHistory = useMemo(() => b.cpu.toArray(), [tick]);
+  const gpuHistory = useMemo(() => b.gpu.toArray(), [tick]);
+  const ramHistory = useMemo(() => b.ram.toArray(), [tick]);
+  const netHistory = useMemo(() => b.net.toArray(), [tick]);
+  const lossHistory = useMemo(() => b.loss.toArray(), [tick]);
+  const diskHistory = useMemo(() => b.disk.toArray(), [tick]);
+  const processHistory = useMemo(() => b.proc.toArray(), [tick]);
 
   // Show skeleton loader while waiting for hardware monitors to connect
   if (!hasData) {

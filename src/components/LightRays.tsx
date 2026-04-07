@@ -81,7 +81,46 @@ const LightRays: React.FC<LightRaysProps> = ({
   const meshRef = useRef<any>(null);
   const cleanupFunctionRef = useRef<(() => void) | null>(null);
   const [isVisible, setIsVisible] = useState(true);
+  const [windowFocused, setWindowFocused] = useState(document.hasFocus());
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const loopRef = useRef<((t: number) => void) | null>(null);
+  const pausedRef = useRef(false);
+
+  // ── Window focus/blur: pause WebGL when user switches to another app (e.g. a game) ──
+  useEffect(() => {
+    const onFocus = () => setWindowFocused(true);
+    const onBlur = () => setWindowFocused(false);
+    const onVisChange = () => {
+      if (document.hidden) setWindowFocused(false);
+      else setWindowFocused(true);
+    };
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onBlur);
+    document.addEventListener('visibilitychange', onVisChange);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('visibilitychange', onVisChange);
+    };
+  }, []);
+
+  // Pause/resume the rAF loop based on window focus
+  useEffect(() => {
+    if (!windowFocused) {
+      // Pause: cancel current frame
+      pausedRef.current = true;
+      if (animationIdRef.current) {
+        cancelAnimationFrame(animationIdRef.current);
+        animationIdRef.current = null;
+      }
+    } else {
+      // Resume: restart the loop if we have a renderer
+      if (pausedRef.current && rendererRef.current && loopRef.current) {
+        pausedRef.current = false;
+        animationIdRef.current = requestAnimationFrame(loopRef.current);
+      }
+    }
+  }, [windowFocused]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -289,6 +328,8 @@ void main() {
         if (!rendererRef.current || !uniformsRef.current || !meshRef.current) {
           return;
         }
+        // Don't render if paused (window unfocused)
+        if (pausedRef.current) return;
 
         uniforms.iTime.value = t * 0.001;
 
@@ -309,9 +350,12 @@ void main() {
           return;
         }
       };
+      // Store loop ref so pause/resume can restart it
+      loopRef.current = loop;
 
       window.addEventListener('resize', updatePlacement);
       updatePlacement();
+      pausedRef.current = false;
       animationIdRef.current = requestAnimationFrame(loop);
 
       cleanupFunctionRef.current = () => {

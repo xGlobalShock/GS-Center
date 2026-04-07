@@ -54,30 +54,61 @@
 .loader-skel-card {
   position: relative;
   background: rgba(6, 8, 16, 0.55);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
   border: 1px solid rgba(0, 242, 255, 0.07);
-  border-radius: 14px;
-  padding: 18px 16px;
-  min-height: 140px;
+  border-radius: 16px;
+  padding: 16px 16px 12px;
+  min-height: 236px;
   overflow: hidden;
+  box-shadow:
+    0 2px 20px rgba(0, 0, 0, 0.45),
+    0 0 1px rgba(0, 242, 255, 0.06),
+    inset 0 1px 0 rgba(0, 242, 255, 0.04),
+    inset 0 0 40px rgba(0, 242, 255, 0.008);
 }
 
-/* Corner accents */
-.loader-skel-card::before,
-.loader-skel-card::after {
+.loader-skel-card::before {
   content: '';
   position: absolute;
-  width: 8px;
-  height: 8px;
-  border-color: rgba(0, 163, 255, 0.15);
+  inset: 0;
+  background: linear-gradient(
+    150deg,
+    rgba(255, 255, 255, 0.025) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+/* Corner accents (matching .dh-corner) */
+.loader-skel-corner {
+  position: absolute;
+  width: 10px;
+  height: 10px;
   border-style: solid;
+  border-color: rgba(0, 163, 255, 0.15);
+  pointer-events: none;
+  z-index: 2;
+  animation: loader-skel-shimmer 2.5s ease-in-out infinite;
 }
-.loader-skel-card::before {
-  top: 6px; left: 6px;
-  border-width: 1px 0 0 1px;
-}
-.loader-skel-card::after {
-  bottom: 6px; right: 6px;
-  border-width: 0 1px 1px 0;
+.loader-skel-corner.tl { top: 7px; left: 7px; border-width: 1.5px 0 0 1.5px; border-top-left-radius: 3px; }
+.loader-skel-corner.tr { top: 7px; right: 7px; border-width: 1.5px 1.5px 0 0; border-top-right-radius: 3px; }
+.loader-skel-corner.bl { bottom: 7px; left: 7px; border-width: 0 0 1.5px 1.5px; border-bottom-left-radius: 3px; }
+.loader-skel-corner.br { bottom: 7px; right: 7px; border-width: 0 1.5px 1.5px 0; border-bottom-right-radius: 3px; }
+
+/* ── Card glowing accent bar ── */
+.loader-skel-card-accent {
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.4), transparent);
+  border-radius: 0 0 4px 4px;
+  z-index: 2;
+  animation: loader-skel-shimmer 2.5s ease-in-out infinite;
 }
 
 /* Scanning line */
@@ -94,7 +125,7 @@
   0%   { transform: translateY(0); opacity: 0; }
   10%  { opacity: 1; }
   90%  { opacity: 1; }
-  100% { transform: translateY(140px); opacity: 0; }
+  100% { transform: translateY(236px); opacity: 0; }
 }
 
 /* ── Inner content ── */
@@ -106,13 +137,21 @@
 .loader-skel-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .loader-skel-icon {
-  color: rgba(0, 163, 255, 0.3);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(0, 242, 255, 0.08);
+  border: 1px solid rgba(0, 242, 255, 0.15);
+  color: rgba(0, 242, 255, 0.3);
 }
 
 .loader-skel-title-group {
@@ -121,10 +160,10 @@
 }
 
 .loader-skel-title {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 1.2px;
-  text-transform: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
   color: rgba(255, 255, 255, 0.25);
 }
 
@@ -138,8 +177,8 @@
 }
 
 .loader-skel-gauge {
-  width: 36px;
-  height: 36px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   border: 3px solid rgba(255, 255, 255, 0.04);
   border-top-color: rgba(0, 163, 255, 0.12);
@@ -151,38 +190,59 @@
   to { transform: rotate(360deg); }
 }
 
-/* ── Row skeletons ── */
+/* ── Dashboad Hero Replica Skeletons ── */
 .loader-skel-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
-.loader-skel-row {
+.loader-skel-value {
+  height: 36px;
+  width: 35%;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  animation: loader-skel-shimmer 1.8s ease-in-out infinite;
+  margin-bottom: 4px;
+}
+
+.loader-skel-subline {
+  height: 16px;
+  width: 60%;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  animation: loader-skel-shimmer 1.8s ease-in-out infinite 0.2s;
+  margin-bottom: 6px;
+}
+
+.loader-skel-chart {
+  height: 56px;
+  border-radius: 6px;
+  margin: 0 -16px;
+  background: rgba(255, 255, 255, 0.015);
+  animation: loader-skel-shimmer 1.8s ease-in-out infinite 0.4s;
+}
+
+.loader-skel-footer {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 4px;
 }
 
-.loader-skel-row-label {
-  height: 8px;
-  width: 40%;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.04);
-  animation: loader-skel-shimmer 1.8s ease-in-out infinite;
-}
-
-.loader-skel-row-value {
-  height: 8px;
+.loader-skel-footer-item {
+  height: 10px;
   width: 25%;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.04);
-  animation: loader-skel-shimmer 1.8s ease-in-out infinite 0.3s;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.02);
+  animation: loader-skel-shimmer 1.8s ease-in-out infinite 0.6s;
+}
+.loader-skel-footer-item.right {
+  width: 30%;
 }
 
 @keyframes loader-skel-shimmer {
-  0%, 100% { opacity: 0.4; }
+  0%, 100% { opacity: 0.3; }
   50%      { opacity: 1; }
 }
 

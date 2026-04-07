@@ -128,9 +128,15 @@ export function useRealtimeHardware(options: UseRealtimeHardwareOptions = {}) {
   const rafRef = useRef<number | null>(null);
 
   // Rendered state — updated at most once per animation frame
-  const [systemStats, setSystemStats] = useState<RealtimeSystemStats>(EMPTY_STATS);
-  const [extendedStats, setExtendedStats] = useState<RealtimeExtendedStats>(EMPTY_EXT);
-  const [connected, setConnected] = useState(false);
+  // Combined into a SINGLE state object so only one setState + one re-render per flush
+  const [state, setState] = useState<{
+    systemStats: RealtimeSystemStats;
+    extendedStats: RealtimeExtendedStats;
+    connected: boolean;
+  }>({ systemStats: EMPTY_STATS, extendedStats: EMPTY_EXT, connected: false });
+
+  // Expose stable references (derived from combined state)
+  const { systemStats, extendedStats, connected } = state;
 
   // Flush latest ref → state (batched via rAF)
   const scheduleFlush = useCallback(() => {
@@ -140,53 +146,53 @@ export function useRealtimeHardware(options: UseRealtimeHardwareOptions = {}) {
       const p = latestRef.current;
       if (!p) return;
 
-      setSystemStats({
-        cpu: p.cpu,
-        ram: p.ram,
-        disk: p.disk,
-        temperature: p.temperature,
-        tempSource: p.tempSource,
-        lhmReady: p.lhmReady,
-        gpuTemp: p.gpuTemp,
-        gpuUsage: p.gpuUsage,
-        gpuVramUsed: p.gpuVramUsed,
-        gpuVramTotal: p.gpuVramTotal,
+      setState({
+        systemStats: {
+          cpu: p.cpu,
+          ram: p.ram,
+          disk: p.disk,
+          temperature: p.temperature,
+          tempSource: p.tempSource,
+          lhmReady: p.lhmReady,
+          gpuTemp: p.gpuTemp,
+          gpuUsage: p.gpuUsage,
+          gpuVramUsed: p.gpuVramUsed,
+          gpuVramTotal: p.gpuVramTotal,
+        },
+        extendedStats: {
+          cpuClock: p.cpuClock,
+          perCoreCpu: p.perCoreCpu,
+          gpuUsage: p.gpuUsage,
+          gpuTemp: p.gpuTemp,
+          gpuVramUsed: p.gpuVramUsed,
+          gpuVramTotal: p.gpuVramTotal,
+          gpuClock: p.gpuClock,
+          gpuFan: p.gpuFan,
+          gpuFanRpm: p.gpuFanRpm,
+          networkUp: p.networkUp,
+          networkDown: p.networkDown,
+          ssid: p.ssid,
+          wifiSignal: p.wifiSignal,
+          activeAdapterName: p.activeAdapterName,
+          activeLinkSpeed: p.activeLinkSpeed,
+          activeLocalIP: p.activeLocalIP,
+          activeMac: p.activeMac,
+          activeGateway: p.activeGateway,
+          latencyMs: p.latencyMs,
+          packetLoss: p.packetLoss,
+          ramUsedGB: p.ramUsedGB,
+          ramTotalGB: p.ramTotalGB,
+          ramAvailableGB: p.ramAvailableGB,
+          ramCachedGB: p.ramCachedGB,
+          diskReadSpeed: p.diskReadSpeed,
+          diskWriteSpeed: p.diskWriteSpeed,
+          processCount: p.processCount,
+          systemUptime: p.systemUptime,
+        },
+        connected: true,
       });
-
-      setExtendedStats({
-        cpuClock: p.cpuClock,
-        perCoreCpu: p.perCoreCpu,
-        gpuUsage: p.gpuUsage,
-        gpuTemp: p.gpuTemp,
-        gpuVramUsed: p.gpuVramUsed,
-        gpuVramTotal: p.gpuVramTotal,
-        gpuClock: p.gpuClock,
-        gpuFan: p.gpuFan,
-        gpuFanRpm: p.gpuFanRpm,
-        networkUp: p.networkUp,
-        networkDown: p.networkDown,
-        ssid: p.ssid,
-        wifiSignal: p.wifiSignal,
-        activeAdapterName: p.activeAdapterName,
-        activeLinkSpeed: p.activeLinkSpeed,
-        activeLocalIP: p.activeLocalIP,
-        activeMac: p.activeMac,
-        activeGateway: p.activeGateway,
-        latencyMs: p.latencyMs,
-        packetLoss: p.packetLoss,
-        ramUsedGB: p.ramUsedGB,
-        ramTotalGB: p.ramTotalGB,
-        ramAvailableGB: p.ramAvailableGB,
-        ramCachedGB: p.ramCachedGB,
-        diskReadSpeed: p.diskReadSpeed,
-        diskWriteSpeed: p.diskWriteSpeed,
-        processCount: p.processCount,
-        systemUptime: p.systemUptime,
-      });
-
-      if (!connected) setConnected(true);
     });
-  }, [connected]);
+  }, []);
 
   useEffect(() => {
     if (!window.electron?.ipcRenderer) return;

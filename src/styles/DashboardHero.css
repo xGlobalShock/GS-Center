@@ -793,6 +793,38 @@
   text-align: right;
 }
 
+/* ══════════════════════════════════════════
+   Performance Mode — disable expensive effects
+   Applied via .perf-mode on a parent element
+══════════════════════════════════════════ */
+.perf-mode .dh-card {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(6, 8, 16, 0.85);
+}
 
+.perf-mode .dh-card::after {
+  display: none;
+}
 
+.perf-mode .dh-scanline {
+  display: none;
+}
 
+.perf-mode .dh-corner {
+  animation: none;
+}
+
+.perf-mode .dh-chip-dot {
+  animation: none;
+}
+
+.perf-mode .dh-live-dot {
+  animation: none;
+}
+
+/* cornerBreathe keyframes — promoted to GPU via transform+opacity only */
+@keyframes cornerBreathe {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}

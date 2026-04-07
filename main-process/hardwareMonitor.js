@@ -66,9 +66,11 @@ let _rtLastGateway = '';
 let _rtPrimed = false;
 let _rtLastTempSource = '';
 
-// ── Node.js process count fallback ──
+// ── Node.js process count fallback (lazy — no dedicated PowerShell) ──
 let _nodeProcessCount = 0;
-(async function _pollProcessCount() {
+let _nodeProcessCountTimer = null;
+function _startProcessCountPoll() {
+  if (_nodeProcessCountTimer) return;
   const update = async () => {
     try {
       const { stdout } = await execAsync(
@@ -79,9 +81,38 @@ let _nodeProcessCount = 0;
       if (n > 0) _nodeProcessCount = n;
     } catch { }
   };
-  await update();
-  setInterval(update, 5000);
-})();
+  _processCountUpdateFn = update;
+  update();
+  _nodeProcessCountTimer = setInterval(update, _rtWindowActive ? 5000 : 30000);
+}
+function _stopProcessCountPoll() {
+  if (_nodeProcessCountTimer) { clearInterval(_nodeProcessCountTimer); _nodeProcessCountTimer = null; }
+}
+
+// ── Two-tier interval constants (active vs idle/unfocused) ──
+const INTERVALS_ACTIVE = {
+  realtimePush: 1000,
+  latencyPing: 1000,
+  wifiPoll: 5000,
+  nvGpuPoll: 3000,
+  ramCache: 5000,
+  processCount: 5000,
+  diskRefresh: 10000,
+};
+const INTERVALS_IDLE = {
+  realtimePush: 5000,
+  latencyPing: 30000,
+  wifiPoll: 30000,
+  nvGpuPoll: 15000,
+  ramCache: 15000,
+  processCount: 30000,
+  diskRefresh: 30000,
+};
+
+// Cached CPU/RAM data for idle mode (avoids expensive si calls)
+let _cachedCpuLoad = null;
+let _cachedMem = null;
+let _lastFullPollTime = 0;
 
 // ── nvidia-smi GPU fallback ──
 let _nvGpuUsage = -1;
@@ -427,11 +458,11 @@ function startLHMService() {
   });
 
   const _lhmLogPath = path.join(os.tmpdir(), 'gs_lhm_diag.log');
-  try { fs.writeFileSync(_lhmLogPath, `LHM service started at ${new Date().toISOString()}\n`, 'utf8'); } catch {}
+  try { fs.writeFileSync(_lhmLogPath, `LHM service started at ${new Date().toISOString()}\n`, 'utf8'); } catch { }
   _lhmProcess.stderr.on('data', (data) => {
     const msg = data.toString().trim();
     if (!msg) return;
-    try { fs.appendFileSync(_lhmLogPath, `${msg}\n`, 'utf8'); } catch {}
+    try { fs.appendFileSync(_lhmLogPath, `${msg}\n`, 'utf8'); } catch { }
   });
 
   _lhmProcess.on('exit', (code) => {
@@ -531,8 +562,9 @@ function _startDiskRefresh() {
       if (!isNaN(v) && v >= 0 && v <= 100) _cachedDiskPct = Math.round(v * 10) / 10;
     }).catch(() => { });
   };
+  _diskRefreshFn = refresh;
   refresh();
-  _diskRefreshTimer = setInterval(refresh, 10000);
+  _diskRefreshTimer = setInterval(refresh, _rtWindowActive ? INTERVALS_ACTIVE.diskRefresh : INTERVALS_IDLE.diskRefresh);
 }
 
 function _startRamCacheRefresh() {
@@ -548,8 +580,9 @@ function _startRamCacheRefresh() {
       if (!isNaN(v) && v >= 0) _cachedRamCachedGB = Math.round(v * 10) / 10;
     }).catch(() => { });
   };
+  _ramCacheRefreshFn = refresh;
   refresh();
-  _ramCacheTimer = setInterval(refresh, 5000);
+  _ramCacheTimer = setInterval(refresh, _rtWindowActive ? INTERVALS_ACTIVE.ramCache : INTERVALS_IDLE.ramCache);
 }
 
 function _getStatsImpl() {
@@ -597,19 +630,14 @@ function _formatUptimeSeconds(seconds) {
 }
 
 const isWinPing = process.platform === 'win32';
-// Low-end friendly behavior: single ping with low timeout, adaptive polling interval
-const pingArgs1 = isWinPing ? ['-n', '1', '-w', '2000'] : ['-c', '1', '-W', '2'];
-const pingArgsFast = pingArgs1; // keep single packet for smaller overhead
-const LATENCY_POLL_INTERVAL_ACTIVE_MS = 1000; // 1s for active view
-const LATENCY_POLL_INTERVAL_IDLE_MS = 10000; // 10s for inactive/minimized
-
-// Rolling window for packet-loss calculation (100 samples = 1% granularity at 1s polling)
+const PING_TARGET = 'aws.amazon.com';
+const pingArgs1 = isWinPing ? ['-n', '1', '-w', '1000'] : ['-c', '1', '-W', '2'];
+const pingArgsFast = pingArgs1;
 const PING_WINDOW_SIZE = 100;
-const MIN_SAMPLES_FOR_LOSS = 5; // show packet loss only once we have enough data
-let _pingWindow = []; // 1 = received, 0 = dropped
+const MIN_SAMPLES_FOR_LOSS = 5;
+let _pingWindow = [];
 
 let _rtWindowActive = true;
-let _rtLatencyPollingIntervalMs = LATENCY_POLL_INTERVAL_ACTIVE_MS;
 let _rtPingInFlight = false;
 
 function _parsePingLatency(stdout) {
@@ -638,17 +666,11 @@ function _recordPingResult(success) {
   return Math.round((dropped / _pingWindow.length) * 100);
 }
 
-function _updateLatencyPollInterval() {
-  if (!_realtimeLatencyTimer) return;
-  clearInterval(_realtimeLatencyTimer);
-  _realtimeLatencyTimer = setInterval(_doPing, _rtLatencyPollingIntervalMs);
-}
-
 async function _doPing() {
   if (_rtPingInFlight) return;
   _rtPingInFlight = true;
   try {
-    const res = await _pingHost('8.8.8.8', pingArgsFast);
+    const res = await _pingHost(PING_TARGET, pingArgsFast);
     if (res.success) {
       _rtLastLatency = res.time ?? 0;
     } else {
@@ -661,21 +683,80 @@ async function _doPing() {
   }
 }
 
-function _setRealtimeWindowActive(active) {
-  _rtWindowActive = !!active;
-  _rtLatencyPollingIntervalMs = _rtWindowActive ? LATENCY_POLL_INTERVAL_ACTIVE_MS : LATENCY_POLL_INTERVAL_IDLE_MS;
+/**
+ * Apply idle/active intervals to ALL running timers.
+ * Called whenever window focus changes.
+ */
+function _applyAdaptiveIntervals() {
+  const intervals = _rtWindowActive ? INTERVALS_ACTIVE : INTERVALS_IDLE;
+
+  // Latency ping
   if (_realtimeLatencyTimer) {
-    _updateLatencyPollInterval();
+    clearInterval(_realtimeLatencyTimer);
+    _realtimeLatencyTimer = setInterval(_doPing, intervals.latencyPing);
+  }
+
+  // WiFi poll
+  if (_realtimeWifiTimer) {
+    clearInterval(_realtimeWifiTimer);
+    const fetchAdapter = _wifiFetchFn;
+    if (fetchAdapter) _realtimeWifiTimer = setInterval(fetchAdapter, intervals.wifiPoll);
+  }
+
+  // NV GPU poll
+  if (_realtimeNvGpuTimer) {
+    clearInterval(_realtimeNvGpuTimer);
+    if (_nvGpuPollFn) _realtimeNvGpuTimer = setInterval(_nvGpuPollFn, intervals.nvGpuPoll);
+  }
+
+  // RAM cache
+  if (_ramCacheTimer) {
+    clearInterval(_ramCacheTimer);
+    _ramCacheTimer = setInterval(_ramCacheRefreshFn, intervals.ramCache);
+  }
+
+  // Process count
+  if (_nodeProcessCountTimer) {
+    clearInterval(_nodeProcessCountTimer);
+    _nodeProcessCountTimer = setInterval(_processCountUpdateFn, intervals.processCount);
+  }
+
+  // Disk refresh
+  if (_diskRefreshTimer) {
+    clearInterval(_diskRefreshTimer);
+    _diskRefreshTimer = setInterval(_diskRefreshFn, intervals.diskRefresh);
+  }
+
+  // Realtime push (the main 1s tick)
+  if (_realtimeTimer) {
+    clearInterval(_realtimeTimer);
+    _realtimeTimer = setInterval(_realtimePushTick, intervals.realtimePush);
   }
 }
+
+function _setRealtimeWindowActive(active) {
+  const wasActive = _rtWindowActive;
+  _rtWindowActive = !!active;
+  if (wasActive !== _rtWindowActive) {
+    _applyAdaptiveIntervals();
+  }
+}
+
+// Function references for adaptive interval restarts
+let _wifiFetchFn = null;
+let _nvGpuPollFn = null;
+let _ramCacheRefreshFn = null;
+let _processCountUpdateFn = null;
+let _diskRefreshFn = null;
+let _realtimePushTick = null;
 
 function _startLatencyPoll() {
   if (_realtimeLatencyTimer) return;
 
-  _rtLatencyPollingIntervalMs = _rtWindowActive ? LATENCY_POLL_INTERVAL_ACTIVE_MS : LATENCY_POLL_INTERVAL_IDLE_MS;
+  const intervalMs = _rtWindowActive ? INTERVALS_ACTIVE.latencyPing : INTERVALS_IDLE.latencyPing;
 
   (async () => {
-    const res = await _pingHost('8.8.8.8', pingArgs1);
+    const res = await _pingHost(PING_TARGET, pingArgs1);
     if (res.success && typeof res.time === 'number') {
       _rtLastLatency = res.time;
       _rtLastPacketLoss = _recordPingResult(true);
@@ -685,7 +766,7 @@ function _startLatencyPoll() {
   })();
 
   _doPing();
-  _realtimeLatencyTimer = setInterval(_doPing, _rtLatencyPollingIntervalMs);
+  _realtimeLatencyTimer = setInterval(_doPing, intervalMs);
 }
 
 function _startWifiPoll() {
@@ -735,8 +816,9 @@ function _startWifiPoll() {
       _rtLastWifiSignal = -1;
     }
   };
+  _wifiFetchFn = fetchAdapter;
   fetchAdapter();
-  _realtimeWifiTimer = setInterval(fetchAdapter, 5000);
+  _realtimeWifiTimer = setInterval(fetchAdapter, _rtWindowActive ? INTERVALS_ACTIVE.wifiPoll : INTERVALS_IDLE.wifiPoll);
 }
 
 function _startNvGpuPoll() {
@@ -790,8 +872,9 @@ function _startNvGpuPoll() {
     if (useWddm) return pollWddm();
     return pollNvidia();
   };
+  _nvGpuPollFn = poll;
   poll();
-  _realtimeNvGpuTimer = setInterval(poll, 3000);
+  _realtimeNvGpuTimer = setInterval(poll, _rtWindowActive ? INTERVALS_ACTIVE.nvGpuPoll : INTERVALS_IDLE.nvGpuPoll);
 }
 
 async function _startRealtimePush() {
@@ -800,25 +883,43 @@ async function _startRealtimePush() {
   if (!_rtPrimed) {
     _rtPrimed = true;
     // Prime si.currentLoad() so the first real reading isn't cumulative-since-boot (80-100%)
-    try { await si.currentLoad(); } catch {}
+    try { await si.currentLoad(); } catch { }
   }
 
   _startLatencyPoll();
   _startWifiPoll();
   _startNvGpuPoll();
+  _startProcessCountPoll();
 
-  _realtimeTimer = setInterval(async () => {
+  // ── Main realtime push tick ──
+  // When window is ACTIVE: full si.mem() + si.currentLoad() every 1s
+  // When window is IDLE: skip expensive si calls, use OS/cached values, every 5s
+  _realtimePushTick = async () => {
     const mainWindow = windowManager.getMainWindow();
     if (!mainWindow || mainWindow.isDestroyed()) return;
 
     try {
-      const [memData, cpuData] = await Promise.allSettled([
-        si.mem(),
-        si.currentLoad(),
-      ]);
+      const now = Date.now();
+      const doFullPoll = _rtWindowActive || (now - _lastFullPollTime > 10000);
 
-      const mem = memData.status === 'fulfilled' ? memData.value : null;
-      const cpuLoad = cpuData.status === 'fulfilled' ? cpuData.value : null;
+      let mem = _cachedMem;
+      let cpuLoad = _cachedCpuLoad;
+
+      if (doFullPoll) {
+        // Full polling — expensive but accurate
+        const [memData, cpuData] = await Promise.allSettled([
+          si.mem(),
+          si.currentLoad(),
+        ]);
+        mem = memData.status === 'fulfilled' ? memData.value : _cachedMem;
+        cpuLoad = cpuData.status === 'fulfilled' ? cpuData.value : _cachedCpuLoad;
+        // Cache for idle mode
+        _cachedMem = mem;
+        _cachedCpuLoad = cpuLoad;
+        _lastFullPollTime = now;
+      }
+      // else: reuse _cachedMem and _cachedCpuLoad — zero si overhead
+
       const baseClock = os.cpus()[0]?.speed || 0;
       let resolvedClock = 0;
       if (_lhmCpuClock > 0) {
@@ -836,8 +937,8 @@ async function _startRealtimePush() {
         resolvedTemp = _lhmTemp;
         tempSource = 'lhm';
       } else {
-        const baseClock = os.cpus()[0]?.speed || 3700;
-        const boostRatio = (_lhmCpuClock > 0) ? Math.min(_lhmCpuClock / baseClock, 1.5) : 1.0;
+        const baseClk = os.cpus()[0]?.speed || 3700;
+        const boostRatio = (_lhmCpuClock > 0) ? Math.min(_lhmCpuClock / baseClk, 1.5) : 1.0;
         const targetTemp = 35 + (resolvedCpu * 0.45) + ((boostRatio - 1.0) * 20) + (resolvedCpu > 80 ? (resolvedCpu - 80) * 0.3 : 0);
         const alpha = 0.15;
         _estimatedTemp += (targetTemp - _estimatedTemp) * alpha;
@@ -853,13 +954,13 @@ async function _startRealtimePush() {
       }
 
       // ── Update network stats from systeminformation (if LHM not available) ──
+      // Only do the expensive si.networkStats() call when window is active
       let netRx = _lhmNetRx;
       let netTx = _lhmNetTx;
-      if ((netRx <= 0 || netTx <= 0) && si.networkStats) {
+      if ((netRx <= 0 || netTx <= 0) && si.networkStats && doFullPoll) {
         try {
           const stats = await si.networkStats();
           if (stats && Array.isArray(stats) && stats.length > 0) {
-            const now = Date.now();
             const stat = stats[0]; // Use first interface
             if (_lastNetStats && now !== _lastNetStatsTime) {
               const timeDeltaMs = now - _lastNetStatsTime;
@@ -876,8 +977,17 @@ async function _startRealtimePush() {
             _siNetRx = netRx;
             _siNetTx = netTx;
           }
-        } catch (err) {}
+        } catch (err) { }
+      } else if (netRx <= 0 || netTx <= 0) {
+        // Idle mode — use last known si values
+        netRx = _siNetRx || netRx;
+        netTx = _siNetTx || netTx;
       }
+
+      // ── RAM: use os module for basic stats when idle (zero overhead) ──
+      const totalMem = os.totalmem();
+      const freeMem = os.freemem();
+      const ramPctOs = totalMem > 0 ? Math.round(((totalMem - freeMem) / totalMem) * 1000) / 10 : 0;
 
       const payload = {
         cpu: resolvedCpu,
@@ -893,10 +1003,10 @@ async function _startRealtimePush() {
         gpuClock: _lhmGpuClock >= 0 ? _lhmGpuClock : -1,
         gpuFan: _lhmGpuFan >= 0 ? _lhmGpuFan : -1,
         gpuFanRpm: _lhmGpuFanRpm >= 0 ? _lhmGpuFanRpm : -1,
-        ram: mem ? Math.round((mem.active / mem.total) * 1000) / 10 : 0,
-        ramUsedGB: mem ? Math.round(mem.active / (1024 * 1024 * 1024) * 10) / 10 : 0,
-        ramTotalGB: mem ? Math.round(mem.total / (1024 * 1024 * 1024) * 10) / 10 : 0,
-        ramAvailableGB: mem ? Math.round(mem.available / (1024 * 1024 * 1024) * 10) / 10 : 0,
+        ram: mem ? Math.round((mem.active / mem.total) * 1000) / 10 : ramPctOs,
+        ramUsedGB: mem ? Math.round(mem.active / (1024 * 1024 * 1024) * 10) / 10 : Math.round((totalMem - freeMem) / (1024 * 1024 * 1024) * 10) / 10,
+        ramTotalGB: mem ? Math.round(mem.total / (1024 * 1024 * 1024) * 10) / 10 : Math.round(totalMem / (1024 * 1024 * 1024) * 10) / 10,
+        ramAvailableGB: mem ? Math.round(mem.available / (1024 * 1024 * 1024) * 10) / 10 : Math.round(freeMem / (1024 * 1024 * 1024) * 10) / 10,
         ramCachedGB: _cachedRamCachedGB > 0
           ? _cachedRamCachedGB
           : (mem && mem.buffcache > 0 ? Math.round(mem.buffcache / (1024 * 1024 * 1024) * 10) / 10 : 0),
@@ -921,16 +1031,18 @@ async function _startRealtimePush() {
 
       try {
         mainWindow.webContents.send('realtime-hw-update', payload);
-      } catch (_) {}
+      } catch (_) { }
 
       // Push stats to overlay — isolated so renderer navigation never blocks it
       try {
         const overlay = require('./overlay');
         if (overlay.isVisible()) overlay.pushStatsToOverlay(payload);
-      } catch (_) {}
+      } catch (_) { }
     } catch (err) {
     }
-  }, 1000);
+  };
+
+  _realtimeTimer = setInterval(_realtimePushTick, _rtWindowActive ? INTERVALS_ACTIVE.realtimePush : INTERVALS_IDLE.realtimePush);
 }
 
 function _stopRealtimePush() {
@@ -938,6 +1050,7 @@ function _stopRealtimePush() {
   if (_realtimeLatencyTimer) { clearInterval(_realtimeLatencyTimer); _realtimeLatencyTimer = null; }
   if (_realtimeWifiTimer) { clearInterval(_realtimeWifiTimer); _realtimeWifiTimer = null; }
   if (_realtimeNvGpuTimer) { clearInterval(_realtimeNvGpuTimer); _realtimeNvGpuTimer = null; }
+  _stopProcessCountPoll();
 }
 
 function getDiskRefreshTimer() { return _diskRefreshTimer; }
@@ -958,7 +1071,7 @@ function registerIPC() {
     try {
       const overlay = require('./overlay');
       if (overlay.isVisible()) return { success: true, skipped: 'overlay-active' };
-    } catch (_) {}
+    } catch (_) { }
     _stopRealtimePush();
     return { success: true };
   });

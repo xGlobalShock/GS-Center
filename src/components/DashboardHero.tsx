@@ -125,7 +125,7 @@ const cpuTempColor = (temp: number, cpuName?: string): string => {
 /* ══════════════════════════════════════════
    Sparkline Chart
 ══════════════════════════════════════════ */
-const Sparkline: React.FC<{ data: MetricPoint[]; color: string; gradId: string }> = ({ data, color, gradId }) => {
+const Sparkline: React.FC<{ data: MetricPoint[]; color: string; gradId: string }> = React.memo(({ data, color, gradId }) => {
   const chartData = useMemo(() => {
     const pts = data.length >= 2 ? data : [{ v: 0 }, { v: 0 }, { v: 0 }];
     return pts.map((d, i) => ({ i, v: d.v }));
@@ -153,7 +153,7 @@ const Sparkline: React.FC<{ data: MetricPoint[]; color: string; gradId: string }
       </AreaChart>
     </ResponsiveContainer>
   );
-};
+});
 
 /* ══════════════════════════════════════════
    Dual Sparkline (two overlaid series)
@@ -162,7 +162,7 @@ interface DualSparklineProps {
   dataA: MetricPoint[]; colorA: string; gradIdA: string; labelA: string;
   dataB: MetricPoint[]; colorB: string; gradIdB: string; labelB: string;
 }
-const DualSparkline: React.FC<DualSparklineProps> = ({ dataA, colorA, gradIdA, labelA, dataB, colorB, gradIdB, labelB }) => {
+const DualSparkline: React.FC<DualSparklineProps> = React.memo(({ dataA, colorA, gradIdA, labelA, dataB, colorB, gradIdB, labelB }) => {
   const chartData = useMemo(() => {
     const len = Math.max(dataA.length, dataB.length, 3);
     const padA = dataA.length < len ? [...Array(len - dataA.length).fill({ v: 0 }), ...dataA] : dataA;
@@ -211,17 +211,17 @@ const DualSparkline: React.FC<DualSparklineProps> = ({ dataA, colorA, gradIdA, l
       </AreaChart>
     </ResponsiveContainer>
   );
-};
+});
 
 /* ══════════════════════════════════════════
    DetailRow
 ══════════════════════════════════════════ */
-const DetailRow: React.FC<{ label: string; value?: React.ReactNode; accent?: string }> = ({ label, value, accent }) => (
+const DetailRow: React.FC<{ label: string; value?: React.ReactNode; accent?: string }> = React.memo(({ label, value, accent }) => (
   <div className="dh-row">
     <span className="dh-row-label">{label}</span>
     <span className="dh-row-value" style={accent ? { color: accent } : undefined}>{value ?? '—'}</span>
   </div>
-);
+));
 
 /* ══════════════════════════════════════════
    DetailBar
@@ -232,7 +232,7 @@ const DetailRow: React.FC<{ label: string; value?: React.ReactNode; accent?: str
   BEFORE: transition: width → layout recalc per frame (CPU-bound).
   AFTER:  transition: transform → GPU compositor only, zero layout/paint per frame.
 */
-const DetailBar: React.FC<{ pct: number; label: string; display: string; color: string }> = ({ pct, label, display, color }) => (
+const DetailBar: React.FC<{ pct: number; label: string; display: string; color: string }> = React.memo(({ pct, label, display, color }) => (
   <div className="dh-bar-wrap">
     <div className="dh-bar-head">
       <span className="dh-bar-label">{label}</span>
@@ -246,12 +246,12 @@ const DetailBar: React.FC<{ pct: number; label: string; display: string; color: 
       } as React.CSSProperties} />
     </div>
   </div>
-);
+));
 
 /* ══════════════════════════════════════════
    CoreStrip
 ══════════════════════════════════════════ */
-const CoreStrip: React.FC<{ cores: number[]; coreCount?: number; threadCount?: number; loading?: boolean }> = ({
+const CoreStrip: React.FC<{ cores: number[]; coreCount?: number; threadCount?: number; loading?: boolean }> = React.memo(({
   cores, coreCount, threadCount, loading,
 }) => {
   const gc = (p: number) => p < 25 ? '#00F2FF' : p < 60 ? '#00F2FF' : p < 85 ? '#FFD600' : '#FF2D55';
@@ -284,12 +284,12 @@ const CoreStrip: React.FC<{ cores: number[]; coreCount?: number; threadCount?: n
       </div>
     </div>
   );
-};
+});
 
 /* ══════════════════════════════════════════
    VolumeStrip
 ══════════════════════════════════════════ */
-const VolumeStrip: React.FC<{ drives: { letter: string; totalGB: number; freeGB: number; label: string }[] }> = ({ drives }) => {
+const VolumeStrip: React.FC<{ drives: { letter: string; totalGB: number; freeGB: number; label: string }[] }> = React.memo(({ drives }) => {
   const SEGS = 12;
   return (
     <div className="dh-vols">
@@ -315,7 +315,7 @@ const VolumeStrip: React.FC<{ drives: { letter: string; totalGB: number; freeGB:
           })}
     </div>
   );
-};
+});
 
 /* ══════════════════════════════════════════
    LiveBadge
@@ -324,12 +324,12 @@ const VolumeStrip: React.FC<{ drives: { letter: string; totalGB: number; freeGB:
   LiveBadge — stateless: CSS @keyframes dhLivePulse handles the pulse animation.
   Eliminated setInterval+setState which caused a React re-render every 1 second.
 */
-const LiveBadge: React.FC = () => (
+const LiveBadge: React.FC = React.memo(() => (
   <div className="dh-live-badge">
     <span className="dh-live-dot" />
     LIVE
   </div>
-);
+));
 
 /* ══════════════════════════════════════════
    HeroCard
@@ -356,7 +356,7 @@ interface HeroCardProps {
   backContent?: React.ReactNode;
 }
 
-const HeroCard: React.FC<HeroCardProps> = ({
+const HeroCard: React.FC<HeroCardProps> = React.memo(({
   icon, cardLabel, subtitle, mainValue, mainSuffix,
   statusPct, chipLabel, accentColor,
   history, gradId, history2, gradId2, color2, label2,
@@ -488,7 +488,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
         <div className="dh-scanline" />
     </motion.div>
   );
-};
+});
 
 /* ══════════════════════════════════════════
    DashboardHero
