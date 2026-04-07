@@ -670,6 +670,7 @@
 /* Front face — normal flow, sets card height */
 .dh-face-front {
   position: relative;
+  transition: opacity 0s 0.275s;
 }
 
 /* Back face — absolute fill, always matches card dimensions */
@@ -679,15 +680,25 @@
   background: rgba(6, 8, 18, 0.97);
   overflow-y: auto;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0s 0.275s;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 242, 255, 0.15) transparent;
 }
+.dh-face-back::-webkit-scrollbar { width: 4px; }
+.dh-face-back::-webkit-scrollbar-track { background: transparent; }
+.dh-face-back::-webkit-scrollbar-thumb { background: rgba(0, 242, 255, 0.15); border-radius: 4px; }
+.dh-face-back::-webkit-scrollbar-thumb:hover { background: rgba(0, 242, 255, 0.3); }
 
-/* Pointer-events swap on flip */
+/* Pointer-events + opacity swap on flip */
 .dh-card.is-flipped .dh-face-front {
   pointer-events: none;
+  opacity: 0;
 }
 
 .dh-card.is-flipped .dh-face-back {
   pointer-events: auto;
+  opacity: 1;
 }
 
 /* ── [i] info toggle button in card header ── */
@@ -827,4 +838,110 @@
 @keyframes cornerBreathe {
   0%, 100% { opacity: 0.55; transform: scale(1); }
   50%      { opacity: 1;    transform: scale(1.15); }
+}
+
+
+/* ══════════════════════════════════════════
+   GPU Fan Control (back panel)
+══════════════════════════════════════════ */
+.dh-fan-ctrl {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(0, 242, 255, 0.04);
+  border: 1px solid rgba(0, 242, 255, 0.12);
+  border-radius: 6px;
+}
+
+.dh-fan-ctrl-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.dh-fan-ctrl-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: #00F2FF;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.dh-fan-ctrl-modes {
+  display: flex;
+  gap: 4px;
+}
+
+.dh-fan-ctrl-btn {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dh-fan-ctrl-btn:hover {
+  background: rgba(0, 242, 255, 0.08);
+  border-color: rgba(0, 242, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.dh-fan-ctrl-btn.active {
+  background: rgba(0, 242, 255, 0.15);
+  border-color: rgba(0, 242, 255, 0.4);
+  color: #00F2FF;
+  box-shadow: 0 0 6px rgba(0, 242, 255, 0.15);
+}
+
+.dh-fan-ctrl-slider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.dh-fan-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #00F2FF var(--fan-pct, 50%), rgba(255,255,255,0.08) var(--fan-pct, 50%));
+  outline: none;
+  cursor: pointer;
+}
+
+.dh-fan-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #00F2FF;
+  box-shadow: 0 0 6px rgba(0, 242, 255, 0.5);
+  cursor: pointer;
+  border: 2px solid rgba(6, 8, 18, 0.9);
+}
+
+.dh-fan-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #00F2FF;
+  box-shadow: 0 0 6px rgba(0, 242, 255, 0.5);
+  cursor: pointer;
+  border: 2px solid rgba(6, 8, 18, 0.9);
+}
+
+.dh-fan-ctrl-val {
+  font-size: 11px;
+  font-weight: 700;
+  color: #00F2FF;
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  text-align: right;
 }

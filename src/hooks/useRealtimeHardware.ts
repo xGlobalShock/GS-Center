@@ -18,6 +18,16 @@ export interface RealtimeHWPayload {
   gpuClock: number;           // MHz
   gpuFan: number;             // %
   gpuFanRpm: number;          // RPM
+  gpuPower: number;           // W
+  gpuMemClock: number;        // MHz
+  gpuHotSpot: number;         // °C
+  gpuMemTemp: number;         // °C
+  gpuVoltage: number;         // V
+  gpuFanControllable: boolean;
+
+  // CPU extended
+  cpuPower: number;           // W
+  cpuVoltage: number;         // V
 
   // Memory
   ram: number;                // usage %
@@ -30,6 +40,8 @@ export interface RealtimeHWPayload {
   disk: number;               // usage %
   diskReadSpeed: number;      // bytes/sec
   diskWriteSpeed: number;     // bytes/sec
+  diskTemp: number;           // °C
+  diskLife: number;           // %
 
   // Network
   networkUp: number;          // bytes/sec
@@ -67,6 +79,8 @@ export interface RealtimeSystemStats {
 
 export interface RealtimeExtendedStats {
   cpuClock: number;
+  cpuPower: number;
+  cpuVoltage: number;
   perCoreCpu: number[];
   gpuUsage: number;
   gpuTemp: number;
@@ -75,6 +89,12 @@ export interface RealtimeExtendedStats {
   gpuClock?: number;
   gpuFan?: number;
   gpuFanRpm?: number;
+  gpuPower: number;
+  gpuMemClock: number;
+  gpuHotSpot: number;
+  gpuMemTemp: number;
+  gpuVoltage: number;
+  gpuFanControllable: boolean;
   networkUp: number;
   networkDown: number;
   ssid?: string;
@@ -92,6 +112,8 @@ export interface RealtimeExtendedStats {
   ramCachedGB: number;
   diskReadSpeed: number;
   diskWriteSpeed: number;
+  diskTemp: number;
+  diskLife: number;
   processCount: number;
   systemUptime: string;
 }
@@ -101,10 +123,14 @@ const EMPTY_STATS: RealtimeSystemStats = {
 };
 
 const EMPTY_EXT: RealtimeExtendedStats = {
-  cpuClock: 0, perCoreCpu: [], gpuUsage: -1, gpuTemp: -1,
-  gpuVramUsed: -1, gpuVramTotal: -1, networkUp: 0, networkDown: 0,
-  wifiSignal: -1, ramUsedGB: 0, ramTotalGB: 0, ramAvailableGB: 0, ramCachedGB: 0, diskReadSpeed: 0,
-  diskWriteSpeed: 0, processCount: 0, systemUptime: '', latencyMs: 0, packetLoss: -1,
+  cpuClock: 0, cpuPower: -1, cpuVoltage: -1, perCoreCpu: [],
+  gpuUsage: -1, gpuTemp: -1, gpuVramUsed: -1, gpuVramTotal: -1,
+  gpuPower: -1, gpuMemClock: -1, gpuHotSpot: -1, gpuMemTemp: -1, gpuVoltage: -1,
+  gpuFanControllable: false,
+  networkUp: 0, networkDown: 0,
+  wifiSignal: -1, ramUsedGB: 0, ramTotalGB: 0, ramAvailableGB: 0, ramCachedGB: 0,
+  diskReadSpeed: 0, diskWriteSpeed: 0, diskTemp: -1, diskLife: -1,
+  processCount: 0, systemUptime: '', latencyMs: 0, packetLoss: -1,
 };
 
 interface UseRealtimeHardwareOptions {
@@ -161,6 +187,8 @@ export function useRealtimeHardware(options: UseRealtimeHardwareOptions = {}) {
         },
         extendedStats: {
           cpuClock: p.cpuClock,
+          cpuPower: p.cpuPower,
+          cpuVoltage: p.cpuVoltage,
           perCoreCpu: p.perCoreCpu,
           gpuUsage: p.gpuUsage,
           gpuTemp: p.gpuTemp,
@@ -169,6 +197,12 @@ export function useRealtimeHardware(options: UseRealtimeHardwareOptions = {}) {
           gpuClock: p.gpuClock,
           gpuFan: p.gpuFan,
           gpuFanRpm: p.gpuFanRpm,
+          gpuPower: p.gpuPower,
+          gpuMemClock: p.gpuMemClock,
+          gpuHotSpot: p.gpuHotSpot,
+          gpuMemTemp: p.gpuMemTemp,
+          gpuVoltage: p.gpuVoltage,
+          gpuFanControllable: p.gpuFanControllable,
           networkUp: p.networkUp,
           networkDown: p.networkDown,
           ssid: p.ssid,
@@ -186,6 +220,8 @@ export function useRealtimeHardware(options: UseRealtimeHardwareOptions = {}) {
           ramCachedGB: p.ramCachedGB,
           diskReadSpeed: p.diskReadSpeed,
           diskWriteSpeed: p.diskWriteSpeed,
+          diskTemp: p.diskTemp,
+          diskLife: p.diskLife,
           processCount: p.processCount,
           systemUptime: p.systemUptime,
         },

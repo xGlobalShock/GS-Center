@@ -445,16 +445,6 @@ const HeroCard: React.FC<HeroCardProps> = React.memo(({
             transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
             style={{ backfaceVisibility: 'hidden' }}
           >
-            <div className="dh-card-accent" style={{
-              background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
-              boxShadow: `0 0 12px ${accentColor}55`,
-            }} />
-            <div className="dh-corner dh-tl" style={{ borderColor: `${accentColor}CC` }} />
-            <div className="dh-corner dh-tr" style={{ borderColor: `${accentColor}CC` }} />
-            <div className="dh-corner dh-bl" style={{ borderColor: `${accentColor}77` }} />
-            <div className="dh-corner dh-br" style={{ borderColor: `${accentColor}77` }} />
-            <div className="dh-scanline" />
-
             <div className="dh-inner">
               <div className="dh-head">
                 <div className="dh-icon" style={{ color: accentColor, background: `${accentColor}14` }}>{icon}</div>
@@ -487,6 +477,99 @@ const HeroCard: React.FC<HeroCardProps> = React.memo(({
         <div className="dh-corner dh-br" style={{ borderColor: `${accentColor}77` }} />
         <div className="dh-scanline" />
     </motion.div>
+  );
+});
+
+/* ══════════════════════════════════════════
+   GPU Back Panel (info + fan control)
+══════════════════════════════════════════ */
+const GpuBackPanel: React.FC<{ hw?: HardwareInfo; ext?: ExtendedStats }> = React.memo(({ hw, ext }) => {
+  const [fanMode, setFanMode] = useState<'auto' | 'manual'>('auto');
+  const [fanSpeed, setFanSpeed] = useState(50);
+  const controllable = ext?.gpuFanControllable ?? false;
+
+  const handleFanModeChange = useCallback((mode: 'auto' | 'manual') => {
+    setFanMode(mode);
+    if (mode === 'auto') {
+      window.electron?.ipcRenderer?.invoke('system:set-gpu-fan', 0).catch(() => {});
+    } else {
+      window.electron?.ipcRenderer?.invoke('system:set-gpu-fan', fanSpeed).catch(() => {});
+    }
+  }, [fanSpeed]);
+
+  const handleFanSpeedChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = parseInt(e.target.value, 10);
+    setFanSpeed(v);
+    if (fanMode === 'manual') {
+      window.electron?.ipcRenderer?.invoke('system:set-gpu-fan', v).catch(() => {});
+    }
+  }, [fanMode]);
+
+  return (
+    <div className="dh-info-block">
+      {hw?.gpuName && (
+        <div className="dh-info-row">
+          <span className="dh-info-key" style={{ color: '#00F2FF' }}>Model</span>
+          <span className="dh-info-val">{hw.gpuName}</span>
+        </div>
+      )}
+      {hw?.gpuDriverVersion && (
+        <div className="dh-info-row">
+          <span className="dh-info-key" style={{ color: '#00F2FF' }}>Driver</span>
+          <span className="dh-info-val">{hw.gpuDriverVersion}</span>
+        </div>
+      )}
+      {(ext?.gpuFan != null && ext.gpuFan >= 0) && (
+        <div className="dh-info-row">
+          <span className="dh-info-key" style={{ color: '#00F2FF' }}>Fan Speed</span>
+          <span className="dh-info-val">
+            {ext.gpuFanRpm != null && ext.gpuFanRpm >= 0 ? `${ext.gpuFanRpm} RPM` : `${ext.gpuFan}%`}
+          </span>
+        </div>
+      )}
+      {(ext?.gpuMemTemp != null && ext.gpuMemTemp >= 0) && (
+        <div className="dh-info-row">
+          <span className="dh-info-key" style={{ color: '#00F2FF' }}>Mem Temp</span>
+          <span className="dh-info-val" style={{ color: ext.gpuMemTemp >= 100 ? '#FF2D55' : ext.gpuMemTemp >= 85 ? '#FFD600' : undefined }}>{Math.trunc(ext.gpuMemTemp)}°C</span>
+        </div>
+      )}
+      {(ext?.gpuVoltage != null && ext.gpuVoltage >= 0) && (
+        <div className="dh-info-row">
+          <span className="dh-info-key" style={{ color: '#00F2FF' }}>Voltage</span>
+          <span className="dh-info-val">{ext.gpuVoltage} V</span>
+        </div>
+      )}
+
+      {/* ── Fan Control ── */}
+      {controllable && (
+        <div className="dh-fan-ctrl">
+          <div className="dh-fan-ctrl-head">
+            <span className="dh-fan-ctrl-title">Fan Control</span>
+            <div className="dh-fan-ctrl-modes">
+              <button
+                className={`dh-fan-ctrl-btn${fanMode === 'auto' ? ' active' : ''}`}
+                onClick={() => handleFanModeChange('auto')}
+              >Auto</button>
+              <button
+                className={`dh-fan-ctrl-btn${fanMode === 'manual' ? ' active' : ''}`}
+                onClick={() => handleFanModeChange('manual')}
+              >Manual</button>
+            </div>
+          </div>
+          {fanMode === 'manual' && (
+            <div className="dh-fan-ctrl-slider">
+              <input
+                type="range" min={20} max={100} step={1} value={fanSpeed}
+                onChange={handleFanSpeedChange}
+                className="dh-fan-slider"
+                style={{ '--fan-pct': `${((fanSpeed - 20) / 80) * 100}%` } as React.CSSProperties}
+              />
+              <span className="dh-fan-ctrl-val">{fanSpeed}%</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 });
 
@@ -539,8 +622,36 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
           accentColor="#00F2FF"
           history={cpuHistory} gradId="dhGradCpu"
           delay={0}
+          backContent={(hw?.cpuSocket || hw?.cpuL2Cache || hw?.cpuL3Cache || hw?.cpuArch) ? (
+            <div className="dh-info-block">
+              {hw?.cpuArch && (
+                <div className="dh-info-row">
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Architecture</span>
+                  <span className="dh-info-val">{hw.cpuArch}</span>
+                </div>
+              )}
+              {hw?.cpuSocket && (
+                <div className="dh-info-row">
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Socket</span>
+                  <span className="dh-info-val">{hw.cpuSocket}</span>
+                </div>
+              )}
+              {hw?.cpuL2Cache && (
+                <div className="dh-info-row">
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>L2 Cache</span>
+                  <span className="dh-info-val">{hw.cpuL2Cache}</span>
+                </div>
+              )}
+              {hw?.cpuL3Cache && (
+                <div className="dh-info-row">
+                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>L3 Cache</span>
+                  <span className="dh-info-val">{hw.cpuL3Cache}</span>
+                </div>
+              )}
+            </div>
+          ) : undefined}
         >
-          {/* Stat tiles: Temp · Cores · Max Clock */}
+          {/* Stat tiles: Temp · Cores · Max Clock · Power · Voltage */}
           <div className="dh-stat-tiles">
             {hasAnyTemp && (() => {
               const tc = cpuTempColor(s.temperature, hw?.cpuName);
@@ -572,11 +683,29 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
                 <span className="dh-stat-tile-val" style={{ color: '#FFFFFF' }}>{hw.cpuMaxClock}</span>
               </div>
             )}
+            {(ext?.cpuPower != null && ext.cpuPower >= 0) && (
+              <div className="dh-stat-tile">
+                <div className="dh-stat-tile-top">
+                  <span className="dh-stat-tile-dot" style={{ background: '#00F2FF', opacity: 0.6 }} />
+                  <span className="dh-stat-tile-label">POWER</span>
+                </div>
+                <span className="dh-stat-tile-val" style={{ color: '#FFFFFF' }}>{ext.cpuPower}<small> W</small></span>
+              </div>
+            )}
+            {(ext?.cpuVoltage != null && ext.cpuVoltage >= 0) && (
+              <div className="dh-stat-tile">
+                <div className="dh-stat-tile-top">
+                  <span className="dh-stat-tile-dot" style={{ background: '#00F2FF', opacity: 0.6 }} />
+                  <span className="dh-stat-tile-label">VOLTAGE</span>
+                </div>
+                <span className="dh-stat-tile-val" style={{ color: '#FFFFFF' }}>{ext.cpuVoltage}<small> V</small></span>
+              </div>
+            )}
           </div>
           {ext && ext.cpuClock > 0 && (
             <DetailBar
               pct={Math.min((ext.cpuClock / (parseFloat(hw?.cpuMaxClock || '5') * 1000)) * 100, 100)}
-              label="Current Clock" display={`${(ext.cpuClock / 1000).toFixed(2)} GHz`} color="#00F2FF"
+              label="CPU Speed" display={`${(ext.cpuClock / 1000).toFixed(2)} GHz`} color="#00F2FF"
             />
           )}
           {ext?.perCoreCpu && ext.perCoreCpu.length > 0 ? (
@@ -596,29 +725,10 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
           history={gpuHistory} gradId="dhGradGpu"
           delay={0.07}
           backContent={(hw?.gpuName || hw?.gpuDriverVersion || (ext?.gpuFan != null && ext.gpuFan >= 0)) ? (
-            <div className="dh-info-block">
-              {hw?.gpuName && (
-                <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Model</span>
-                  <span className="dh-info-val">{hw.gpuName}</span>
-                </div>
-              )}
-              {hw?.gpuDriverVersion && (
-                <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Driver</span>
-                  <span className="dh-info-val">{hw.gpuDriverVersion}</span>
-                </div>
-              )}
-              {(ext?.gpuFan != null && ext.gpuFan >= 0) && (
-                <div className="dh-info-row">
-                  <span className="dh-info-key" style={{ color: '#00F2FF' }}>Fan Speed</span>
-                  <span className="dh-info-val">{ext.gpuFan}%</span>
-                </div>
-              )}
-            </div>
+            <GpuBackPanel hw={hw} ext={ext} />
           ) : undefined}
         >
-          {/* GPU stat tiles: Temp · FAN · TOTAL (VRAM) — FAN and TOTAL swapped per request */}
+          {/* GPU stat tiles: Temp · FAN · TOTAL (VRAM) · POWER · HOT SPOT · MEM CLK */}
           {(gpuTemp >= 0 || gpuVramT > 0 || (ext?.gpuFan != null && ext.gpuFan >= 0)) && (
             <div className="dh-stat-tiles">
               {gpuTemp >= 0 && (() => {
@@ -635,7 +745,6 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
               })()}
 
               {(ext?.gpuFan != null && ext.gpuFan >= 0) && (() => {
-                const fc = ext.gpuFan > 80 ? '#FF2D55' : ext.gpuFan > 60 ? '#FFD600' : '#00F2FF';
                 const hasRpm = ext?.gpuFanRpm != null && ext.gpuFanRpm >= 0;
                 return (
                   <div className="dh-stat-tile">
@@ -659,6 +768,39 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
                     <span className="dh-stat-tile-label">TOTAL</span>
                   </div>
                   <span className="dh-stat-tile-val" style={{ color: '#FFFFFF' }}>{fmtMiB(gpuVramT)}</span>
+                </div>
+              )}
+
+              {(ext?.gpuPower != null && ext.gpuPower >= 0) && (
+                <div className="dh-stat-tile">
+                  <div className="dh-stat-tile-top">
+                    <span className="dh-stat-tile-dot" style={{ background: '#00F2FF', opacity: 0.6 }} />
+                    <span className="dh-stat-tile-label">POWER</span>
+                  </div>
+                  <span className="dh-stat-tile-val" style={{ color: '#FFFFFF' }}>{ext.gpuPower}<small> W</small></span>
+                </div>
+              )}
+
+              {(ext?.gpuHotSpot != null && ext.gpuHotSpot >= 0) && (() => {
+                const hc = ext.gpuHotSpot >= 95 ? '#FF2D55' : ext.gpuHotSpot >= 80 ? '#FFD600' : '#FFFFFF';
+                return (
+                  <div className="dh-stat-tile">
+                    <div className="dh-stat-tile-top">
+                      <span className="dh-stat-tile-dot" style={{ background: '#00F2FF', opacity: 0.6 }} />
+                      <span className="dh-stat-tile-label">HOT SPOT</span>
+                    </div>
+                    <span className="dh-stat-tile-val" style={{ color: hc }}>{Math.trunc(ext.gpuHotSpot)}<small>°C</small></span>
+                  </div>
+                );
+              })()}
+
+              {(ext?.gpuMemClock != null && ext.gpuMemClock > 0) && (
+                <div className="dh-stat-tile">
+                  <div className="dh-stat-tile-top">
+                    <span className="dh-stat-tile-dot" style={{ background: '#00F2FF', opacity: 0.6 }} />
+                    <span className="dh-stat-tile-label">MEM CLK</span>
+                  </div>
+                  <span className="dh-stat-tile-val" style={{ color: '#FFFFFF' }}>{ext.gpuMemClock}<small> MHz</small></span>
                 </div>
               )}
             </div>
@@ -832,7 +974,7 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
             </div>
           ) : undefined}
         >
-          {(hw?.diskType || hw?.diskHealth) && (
+          {(hw?.diskType || hw?.diskHealth || (ext?.diskTemp != null && ext.diskTemp >= 0) || (ext?.diskLife != null && ext.diskLife >= 0)) && (
             <div className="dh-stat-tiles">
               {hw?.diskType && (
                 <div className="dh-stat-tile">
@@ -853,6 +995,30 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
                       <span className="dh-stat-tile-label">HEALTH</span>
                     </div>
                     <span className="dh-stat-tile-val" style={{ color: c }}>{hw.diskHealth}</span>
+                  </div>
+                );
+              })()}
+              {(ext?.diskTemp != null && ext.diskTemp >= 0) && (() => {
+                const tc = ext.diskTemp >= 60 ? '#FF2D55' : ext.diskTemp >= 45 ? '#FFD600' : '#FFFFFF';
+                return (
+                  <div className="dh-stat-tile">
+                    <div className="dh-stat-tile-top">
+                      <span className="dh-stat-tile-dot" style={{ background: '#00F2FF', opacity: 0.6 }} />
+                      <span className="dh-stat-tile-label">TEMP</span>
+                    </div>
+                    <span className="dh-stat-tile-val" style={{ color: tc }}>{Math.trunc(ext.diskTemp)}<small>°C</small></span>
+                  </div>
+                );
+              })()}
+              {(ext?.diskLife != null && ext.diskLife >= 0) && (() => {
+                const lc = ext.diskLife <= 20 ? '#FF2D55' : ext.diskLife <= 50 ? '#FFD600' : '#FFFFFF';
+                return (
+                  <div className="dh-stat-tile">
+                    <div className="dh-stat-tile-top">
+                      <span className="dh-stat-tile-dot" style={{ background: '#00F2FF', opacity: 0.6 }} />
+                      <span className="dh-stat-tile-label">LIFE</span>
+                    </div>
+                    <span className="dh-stat-tile-val" style={{ color: lc }}>{Math.trunc(ext.diskLife)}<small>%</small></span>
                   </div>
                 );
               })()}

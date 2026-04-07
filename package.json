@@ -1,6 +1,6 @@
 {
   "name": "gs-center",
-  "version": "1.8.9",
+  "version": "1.9.0",
   "description": "GS Center - Advanced System Optimization Tool",
   "author": "GS Center Team",
   "main": "electron/main.js",
@@ -16,6 +16,7 @@
     "postelectron-build": "node scripts/rename-output.js",
     "start": "npm run electron-dev",
     "build": "npm run electron-build",
+    "build:monitor": "dotnet publish native-monitor/GCMonitor.csproj -c Release -r win-x64 --self-contained",
     "dev": "npm run electron-dev",
     "client": "node electron/dev-launcher.js"
   },
@@ -84,6 +85,13 @@
         "filter": [
           "**/*.dll",
           "**/*.exe"
+        ]
+      },
+      {
+        "from": "native-monitor/bin/Release/net8.0-windows/win-x64/publish",
+        "to": "bin",
+        "filter": [
+          "GCMonitor.exe"
         ]
       },
       {

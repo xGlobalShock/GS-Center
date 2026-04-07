@@ -34,6 +34,10 @@ export interface HardwareInfo {
   cpuCores: number;
   cpuThreads: number;
   cpuMaxClock: string;
+  cpuSocket?: string;
+  cpuL2Cache?: string;
+  cpuL3Cache?: string;
+  cpuArch?: string;
   gpuVramTotal: string;
   gpuDriverVersion: string;
   ramTotalGB: number;
@@ -82,6 +86,8 @@ export interface HardwareInfo {
 
 export interface ExtendedStats {
   cpuClock: number;
+  cpuPower: number;
+  cpuVoltage: number;
   perCoreCpu: number[];
   gpuUsage: number;
   gpuTemp: number;
@@ -90,6 +96,12 @@ export interface ExtendedStats {
   gpuClock?: number;
   gpuFan?: number;
   gpuFanRpm?: number;
+  gpuPower: number;
+  gpuMemClock: number;
+  gpuHotSpot: number;
+  gpuMemTemp: number;
+  gpuVoltage: number;
+  gpuFanControllable: boolean;
   networkUp: number;
   networkDown: number;
   ssid?: string;
@@ -107,6 +119,8 @@ export interface ExtendedStats {
   ramCachedGB: number;
   diskReadSpeed: number;
   diskWriteSpeed: number;
+  diskTemp: number;
+  diskLife: number;
   processCount: number;
   systemUptime: string;
 }
