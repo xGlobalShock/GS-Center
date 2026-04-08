@@ -8,7 +8,6 @@
   height: 50px;
   position: relative;
   -webkit-app-region: drag;
-  app-region: drag;
 }
 
 .header::before {
@@ -153,16 +152,23 @@
 
 .header-drag-region {
   -webkit-app-region: drag;
-  app-region: drag;
   flex: 1;
 }
 
 .window-controls {
   display: flex;
   align-items: stretch;
+  gap: 4px;
   height: 100%;
   -webkit-app-region: no-drag;
-  app-region: no-drag;
+}
+
+/* Subtle separator between header actions and window close/minimize */
+.window-controls-separator {
+  width: 1px;
+  margin: 10px 2px;
+  background: rgba(255, 255, 255, 0.08);
+  align-self: stretch;
 }
 
 .window-control-btn {
@@ -177,7 +183,6 @@
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
   -webkit-app-region: no-drag;
-  app-region: no-drag;
 }
 
 .window-control-btn:hover {
@@ -198,7 +203,6 @@
   align-items: stretch;
   height: 100%;
   -webkit-app-region: no-drag;
-  app-region: no-drag;
 }
 
 .update-btn {
@@ -278,7 +282,6 @@
   z-index: 9999;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 12px rgba(34, 197, 94, 0.1);
   -webkit-app-region: no-drag;
-  app-region: no-drag;
   animation: update-popup-in 0.15s ease-out;
   transform: translateZ(0);
 }
@@ -408,7 +411,6 @@
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
   -webkit-app-region: no-drag;
-  app-region: no-drag;
   position: relative;
   margin-left: 6px;
 }
@@ -439,7 +441,6 @@
   align-items: center;
   justify-content: center;
   -webkit-app-region: no-drag;
-  app-region: no-drag;
   animation: settings-overlay-in 0.18s ease-out;
   transform: translateZ(0);
 }

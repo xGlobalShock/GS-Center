@@ -559,6 +559,8 @@ const description = release.body?.trim() || undefined;
         {/* Profile / Auth */}
         <ProfileDropdown />
 
+        <div className="window-controls-separator" />
+
         <button className="window-control-btn minimize-btn" onClick={handleMinimize} aria-label="Minimize">
           <Minus size={16} />
         </button>
