@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   AreaChart, Area, ResponsiveContainer, Tooltip as RechartsTip, YAxis,
@@ -487,6 +487,18 @@ const GpuBackPanel: React.FC<{ hw?: HardwareInfo; ext?: ExtendedStats }> = React
   const [fanMode, setFanMode] = useState<'auto' | 'manual'>('auto');
   const [fanSpeed, setFanSpeed] = useState(50);
   const controllable = ext?.gpuFanControllable ?? false;
+
+  // Load persisted fan setting on mount
+  useEffect(() => {
+    window.electron?.ipcRenderer?.invoke('system:get-gpu-fan-setting')
+      .then((s: { mode: string; speed: number }) => {
+        if (s?.mode === 'manual' && s.speed > 0) {
+          setFanMode('manual');
+          setFanSpeed(s.speed);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleFanModeChange = useCallback((mode: 'auto' | 'manual') => {
     setFanMode(mode);

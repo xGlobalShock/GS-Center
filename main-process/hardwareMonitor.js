@@ -60,6 +60,38 @@ function _loadSidecarCache() {
 
 let _cacheTimer = null;
 
+// ── GPU Fan persistence ──
+function _getFanSettingPath() {
+  try { return path.join(app.getPath('userData'), 'gs_fan_setting.json'); }
+  catch { return path.join(os.tmpdir(), 'gs_fan_setting.json'); }
+}
+
+function _saveFanSetting(speed) {
+  try {
+    const mode = speed === 0 ? 'auto' : 'manual';
+    fs.writeFileSync(_getFanSettingPath(), JSON.stringify({ mode, speed }), 'utf8');
+  } catch { }
+}
+
+function _loadFanSetting() {
+  try {
+    const raw = fs.readFileSync(_getFanSettingPath(), 'utf8');
+    return JSON.parse(raw); // { mode: 'auto'|'manual', speed: 0-100 }
+  } catch { }
+  return { mode: 'auto', speed: 0 };
+}
+
+function _restoreFanSetting() {
+  const setting = _loadFanSetting();
+  if (setting.mode === 'manual' && setting.speed > 0) {
+    if (_sidecarProcess && _sidecarProcess.stdin && !_sidecarProcess.stdin.destroyed) {
+      try {
+        _sidecarProcess.stdin.write(JSON.stringify({ type: 'set-fan', speed: setting.speed }) + '\n');
+      } catch { }
+    }
+  }
+}
+
 // ── WiFi / adapter state (JS-side periodic poll) ──
 let _rtLastSsid = '';
 let _rtLastWifiSignal = -1;
@@ -82,7 +114,7 @@ let _realtimePushTick = null;
 
 // ── Adaptive intervals ──
 const INTERVALS_ACTIVE = {
-  realtimePush: 1000,
+  realtimePush: 500,
   wifiPoll: 5000,
 };
 const INTERVALS_IDLE = {
@@ -105,10 +137,12 @@ function _getSidecarExePath() {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, 'bin', 'GCMonitor.exe');
   }
-  // Development: try published output first, then debug build
+  // Development: try published output first, then debug build, then public fallback
   const rootDir = windowManager.getRootDir();
   const publishPath = path.join(rootDir, 'native-monitor', 'bin', 'Release', 'net8.0-windows', 'win-x64', 'publish', 'GCMonitor.exe');
   if (fs.existsSync(publishPath)) return publishPath;
+  const publicPath = path.join(rootDir, 'public', 'native-monitor', 'GCMonitor.exe');
+  if (fs.existsSync(publicPath)) return publicPath;
   const debugPath = path.join(rootDir, 'native-monitor', 'bin', 'Debug', 'net8.0-windows', 'win-x64', 'GCMonitor.exe');
   if (fs.existsSync(debugPath)) return debugPath;
   return publishPath; // Will fail with clear error
@@ -172,7 +206,11 @@ function _spawnSidecar(exePath) {
           }
         } else if (obj.type === 'data') {
           _sidecarData = obj;
-          _sidecarReady = true;
+          if (!_sidecarReady) {
+            _sidecarReady = true;
+            // First data tick — sidecar has discovered fan control handle, restore user's setting
+            _restoreFanSetting();
+          }
         } else if (obj.type === 'hwinfo') {
           _hwInfoFromSidecar = obj;
           if (_hwInfoSidecarResolve) {
@@ -547,6 +585,8 @@ function registerIPC() {
   // GPU fan control: speed = 0 for auto, 1-100 for manual %
   ipcMain.handle('system:set-gpu-fan', (_event, speed) => {
     const s = Math.max(0, Math.min(100, Math.round(Number(speed) || 0)));
+    // Persist fan setting so it survives app restart
+    _saveFanSetting(s);
     if (_sidecarProcess && _sidecarProcess.stdin && !_sidecarProcess.stdin.destroyed) {
       try {
         _sidecarProcess.stdin.write(JSON.stringify({ type: 'set-fan', speed: s }) + '\n');
@@ -556,6 +596,11 @@ function registerIPC() {
       }
     }
     return { success: false, error: 'sidecar not running' };
+  });
+
+  // Let the renderer read the saved fan setting on mount
+  ipcMain.handle('system:get-gpu-fan-setting', () => {
+    return _loadFanSetting();
   });
 }
 

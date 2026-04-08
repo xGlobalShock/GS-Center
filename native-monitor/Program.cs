@@ -90,33 +90,15 @@ public static class Program
     // One-time diagnostics flag (logs all CPU temp sensor names on first tick)
     private static bool _cpuTempDiagLogged = false;
 
+    // Persist last valid disk temp so transient LHM null reads don't blank the UI
+    private static double _lastDiskTemp = -1;
+
     // Ping state (written by background thread, read by main loop)
     private static double _latencyMs;
     private static double _packetLoss = -1;
     private static readonly object _pingLock = new();
-    private static readonly Queue<bool> _pingResults = new(100);
-    private const int PingWindowSize = 100;
-    private const int MinSamplesForLoss = 5;
-
-    // Game-representative ping targets — real data centers, NOT anycast CDN.
-    // Anycast (1.1.1.1, 8.8.8.8) gives 1-5ms because edge nodes are in every city.
-    // Game servers run in specific DCs. These Akamai/Linode speedtest servers are in
-    // the same data centers where game servers actually host (AWS, Azure, Vultr, etc.).
-    // We round-robin ping all targets, track per-target rolling average, and report
-    // the BEST (lowest) — which is what a game matchmaker would connect you to.
-    private static readonly string[] PingTargets = {
-        "speedtest.newark.linode.com",       // US East  (New Jersey)
-        "speedtest.dallas.linode.com",       // US Central (Texas)
-        "speedtest.fremont.linode.com",      // US West  (California)
-        "speedtest.london.linode.com",       // EU West  (London)
-        "speedtest.frankfurt.linode.com",    // EU Central (Frankfurt)
-        "speedtest.singapore.linode.com",   // Asia (Singapore)
-    };
-    private static readonly double[] _targetAvg = new double[6];   // rolling avg per target
-    private static readonly int[] _targetHits = new int[6];        // samples per target
-
-    // PDH CPU clock fallback (lightweight perf counters, no admin needed)
-    // base_freq × (% Processor Performance / 100) = actual boosted speed (like Task Manager)
+    private static readonly Queue<bool> _lossQueue = new(30);
+    private const int LossWindow = 30;
     private static PerformanceCounter? _cpuFreqCounter;
     private static PerformanceCounter? _cpuPerfCounter;
     private static bool _cpuFreqCounterFailed;
@@ -280,8 +262,7 @@ public static class Program
                 Thread.Sleep(100);
         }
 
-        // Reset GPU fan to auto before shutting down
-        try { _gpuFanControl?.SetDefault(); } catch { /* best-effort */ }
+        // Keep fan at user's chosen speed — don't reset to auto on shutdown
         try { computer?.Close(); } catch { /* best-effort cleanup */ }
         Log("SHUTDOWN");
     }
@@ -421,7 +402,10 @@ public static class Program
                             else if (s.SensorType == SensorType.Temperature && diskTemp < 0)
                             {
                                 if (s.Value.Value > 0 && s.Value.Value < 120)
+                                {
                                     diskTemp = Math.Round(s.Value.Value, 1);
+                                    _lastDiskTemp = diskTemp;
+                                }
                             }
                             else if (s.SensorType == SensorType.Level && s.Name.Contains("Remaining") && diskLife < 0)
                             {
@@ -432,6 +416,9 @@ public static class Program
                 }
             }
         }
+
+        // Use last valid disk temp if LHM returned null this tick
+        if (diskTemp < 0 && _lastDiskTemp > 0) diskTemp = _lastDiskTemp;
 
         // Fallback chain for CPU temperature
         if (cpuTemp < 0 && mbCpuTemp > 0) cpuTemp = mbCpuTemp;
@@ -783,87 +770,40 @@ public static class Program
     private static void PingLoop()
     {
         using var pinger = new Ping();
-        int targetIdx = 0;
 
-        // Initial burst: ping every target once quickly to seed averages
-        for (int i = 0; i < PingTargets.Length && _running; i++)
-        {
-            try
-            {
-                var reply = pinger.Send(PingTargets[i], 3000);
-                if (reply.Status == IPStatus.Success && reply.RoundtripTime > 0)
-                {
-                    _targetAvg[i] = reply.RoundtripTime;
-                    _targetHits[i] = 1;
-                    Log($"PING_SEED:{PingTargets[i]}={reply.RoundtripTime}ms");
-                }
-            }
-            catch { /* target unreachable — skip */ }
-        }
-
-        // Set initial latency to the best seeded target
-        lock (_pingLock)
-        {
-            double best = double.MaxValue;
-            for (int i = 0; i < PingTargets.Length; i++)
-                if (_targetHits[i] > 0 && _targetAvg[i] < best)
-                    best = _targetAvg[i];
-            if (best < double.MaxValue)
-                _latencyMs = Math.Round(best);
-        }
-
-        // Steady-state: round-robin one target per cycle
         while (_running)
         {
-            var target = PingTargets[targetIdx];
             bool success = false;
-            double rtt = 0;
+            long rtt = 0;
 
             try
             {
-                var reply = pinger.Send(target, 2000);
+                var reply = pinger.Send("8.8.8.8", 2000);
                 success = reply.Status == IPStatus.Success;
-                rtt = success ? reply.RoundtripTime : 0;
+                if (success) rtt = reply.RoundtripTime;
             }
             catch { /* timeout or network error */ }
 
             lock (_pingLock)
             {
-                // Packet loss tracking (combined across all targets)
-                if (_pingResults.Count >= PingWindowSize)
-                    _pingResults.Dequeue();
-                _pingResults.Enqueue(success);
+                if (_lossQueue.Count >= LossWindow)
+                    _lossQueue.Dequeue();
+                _lossQueue.Enqueue(success);
 
-                if (_pingResults.Count >= MinSamplesForLoss)
-                {
-                    int sc = 0;
-                    foreach (var r in _pingResults) { if (r) sc++; }
-                    _packetLoss = Math.Round((1.0 - (double)sc / _pingResults.Count) * 100, 1);
-                }
-
-                // Update per-target exponential moving average (α=0.3 for smooth but responsive)
+                // Update latency (raw, no smoothing)
                 if (success && rtt > 0)
-                {
-                    if (_targetHits[targetIdx] == 0)
-                        _targetAvg[targetIdx] = rtt;
-                    else
-                        _targetAvg[targetIdx] = _targetAvg[targetIdx] * 0.7 + rtt * 0.3;
-                    _targetHits[targetIdx]++;
-                }
+                    _latencyMs = rtt;
 
-                // Report the BEST (lowest) target average — simulates matchmaker picking closest server
-                double best = double.MaxValue;
-                for (int i = 0; i < PingTargets.Length; i++)
-                    if (_targetHits[i] > 0 && _targetAvg[i] < best)
-                        best = _targetAvg[i];
-                if (best < double.MaxValue)
-                    _latencyMs = Math.Round(best);
+                // Update packet loss
+                if (_lossQueue.Count >= 3)
+                {
+                    int ok = 0;
+                    foreach (var r in _lossQueue) { if (r) ok++; }
+                    _packetLoss = Math.Round((1.0 - (double)ok / _lossQueue.Count) * 100, 1);
+                }
             }
 
-            // Advance to next target (round-robin)
-            targetIdx = (targetIdx + 1) % PingTargets.Length;
-
-            // 1-second ping interval, but check _running for quick shutdown
+            // 1-second interval, check _running every 100ms for quick shutdown
             for (int i = 0; i < 10 && _running; i++)
                 Thread.Sleep(100);
         }
