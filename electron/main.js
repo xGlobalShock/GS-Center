@@ -485,8 +485,9 @@ app.on('ready', async () => {
   // ── Splash → Main Window Transition ────────────────────────────────────────
   // Strategy: wait for the page to finish loading (did-finish-load) which is
   // deterministic — it depends only on file I/O, not on auth or network state.
-  // Then show the window behind the (alwaysOnTop) splash so the renderer paints,
-  // give React a brief grace period, and fade out the splash.
+  // The main window has backgroundThrottling:false so the renderer paints to its
+  // back buffer even while hidden. We complete the splash to 100%, fade it out,
+  // then show the already-painted main window.
 
   // Kick off heavy background work (non-blocking).
   _prewarmScanCaches({ updateSplash: false }).catch(() => { });
@@ -517,23 +518,15 @@ app.on('ready', async () => {
 
   clearInterval(uiTicker);
 
-  // Show main window behind splash to activate the renderer and force paint.
-  // The splash is alwaysOnTop so it still covers the main window visually.
-  const mainWin = windowManager.getMainWindow();
-  if (mainWin && !mainWin.isDestroyed()) {
-    mainWin.showInactive();
-  }
-
-  // Grace period for React to mount and paint its first frame
-  await new Promise(r => setTimeout(r, 500));
-
-  // Snap to 100% and begin fade
+  // Snap to 100% and hold briefly so the user sees completion
   windowManager.sendSplashStatus('Welcome');
   windowManager.sendSplashProgress(100);
-  await new Promise(r => setTimeout(r, 300));
+  await new Promise(r => setTimeout(r, 400));
 
   // Trigger smooth fade-out via splash:done IPC
   const splashWin = windowManager.getSplashWindow();
+  const mainWin = windowManager.getMainWindow();
+
   if (splashWin && !splashWin.isDestroyed()) {
     const fadePromise = new Promise((resolve) => {
       const handler = () => {
@@ -553,7 +546,7 @@ app.on('ready', async () => {
     }
   }
 
-  // Focus main window now that splash is gone
+  // Show main window only after splash is fully gone
   if (mainWin && !mainWin.isDestroyed()) {
     mainWin.show();
     mainWin.focus();
