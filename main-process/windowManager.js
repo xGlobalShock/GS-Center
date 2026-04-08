@@ -4,6 +4,7 @@ const path = require('path');
 let mainWindow = null;
 let splashWindow = null;
 let _minimizeToTray = false;
+let _mainWindowLoadPromise = null;
 
 function setMinimizeToTray(val) {
   _minimizeToTray = !!val;
@@ -174,6 +175,12 @@ function createWindow() {
     });
 
 
+    // Track page-load completion BEFORE loadURL — avoids race where
+    // did-finish-load fires before the listener is attached.
+    _mainWindowLoadPromise = new Promise((resolve) => {
+      mainWindow.webContents.once('did-finish-load', resolve);
+    });
+
     // Load the main page (index.html in production, localhost:3000 in development)
     const startUrl = isDev
       ? 'http://localhost:3000'
@@ -192,6 +199,10 @@ function createWindow() {
   }
 }
 
+function getMainWindowLoadPromise() {
+  return _mainWindowLoadPromise;
+}
+
 module.exports = {
   setRootDir,
   getRootDir,
@@ -203,4 +214,5 @@ module.exports = {
   sendSplashDetails,
   createWindow,
   setMinimizeToTray,
+  getMainWindowLoadPromise,
 };

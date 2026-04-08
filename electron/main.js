@@ -482,66 +482,55 @@ app.on('ready', async () => {
 
   autoUpdater.initAutoUpdater();
 
-  // ── Splash → Main Window Handshake ────────────────────────────────────────
-  const mainWindow = windowManager.getMainWindow();
+  // ── Splash → Main Window Transition ────────────────────────────────────────
+  // Strategy: wait for the page to finish loading (did-finish-load) which is
+  // deterministic — it depends only on file I/O, not on auth or network state.
+  // Then show the window behind the (alwaysOnTop) splash so the renderer paints,
+  // give React a brief grace period, and fade out the splash.
 
-  const readyToShowPromise = new Promise((resolve) => {
-    if (!mainWindow) return resolve();
-    mainWindow.once('ready-to-show', resolve);
-  });
-
-  const appReadyPromise = new Promise((resolve) => {
-    const handler = (event) => {
-      if (mainWindow && event.sender && event.sender.id === mainWindow.webContents.id) {
-        ipcMain.removeListener('app:ready', handler);
-        resolve();
-      }
-    };
-    ipcMain.on('app:ready', handler);
-  });
-
-  // Kick off heavy background work while we wait.
+  // Kick off heavy background work (non-blocking).
   _prewarmScanCaches({ updateSplash: false }).catch(() => { });
   softwareUpdatesPromise.catch(() => { });
 
   windowManager.sendSplashStatus('Loading interface...');
-  windowManager.sendSplashProgress(90);
+  windowManager.sendSplashProgress(88);
 
   hardwareMonitor._startRealtimePush();
 
-  // Smooth ticker 90→99 while waiting for main window readiness
+  // Smooth ticker 88→98 while waiting for page load
   windowManager.sendSplashStatus('Completing initialization...');
-  let uiTickerPct = 90;
+  let uiTickerPct = 88;
   const uiTicker = setInterval(() => {
-    if (uiTickerPct < 99) {
-      uiTickerPct = Math.min(99, uiTickerPct + 0.8);
+    if (uiTickerPct < 98) {
+      uiTickerPct = Math.min(98, uiTickerPct + 0.5);
       windowManager.sendSplashProgress(Math.round(uiTickerPct));
     }
-  }, 80);
+  }, 100);
 
-  // Block until the main window is fully painted AND React reports ready.
-  // Safety: 20 s cap prevents the splash from getting stuck forever
-  // (e.g. if React auth/profile fetch hangs after an auto-update restart).
-  const bootTimeout = new Promise(r => setTimeout(r, 20000));
-  await Promise.race([
-    Promise.all([readyToShowPromise, appReadyPromise]),
-    bootTimeout,
-  ]);
-
-  // Also wait for full hardware info to finish (max 3s so we don't block forever)
-  const hwInfoPromise = hardwareInfo.getHwInfoPromise();
-  if (hwInfoPromise) {
-    await Promise.race([hwInfoPromise, new Promise(r => setTimeout(r, 3000))]);
+  // Wait for main window HTML + JS to finish loading.
+  // In production (file://) this takes <1s. In dev (localhost) 2-5s.
+  // Safety cap: 12s — if the page hasn't loaded by then, proceed anyway.
+  const pageLoadPromise = windowManager.getMainWindowLoadPromise();
+  if (pageLoadPromise) {
+    await Promise.race([pageLoadPromise, new Promise(r => setTimeout(r, 12000))]);
   }
 
   clearInterval(uiTicker);
 
-  // Snap to 100% and fade out immediately
-  windowManager.sendSplashStatus('Initialization complete');
-  windowManager.sendSplashProgress(100);
+  // Show main window behind splash to activate the renderer and force paint.
+  // The splash is alwaysOnTop so it still covers the main window visually.
+  const mainWin = windowManager.getMainWindow();
+  if (mainWin && !mainWin.isDestroyed()) {
+    mainWin.showInactive();
+  }
 
-  // Brief pause at 100% so user sees it
-  await new Promise(r => setTimeout(r, 250));
+  // Grace period for React to mount and paint its first frame
+  await new Promise(r => setTimeout(r, 500));
+
+  // Snap to 100% and begin fade
+  windowManager.sendSplashStatus('Welcome');
+  windowManager.sendSplashProgress(100);
+  await new Promise(r => setTimeout(r, 300));
 
   // Trigger smooth fade-out via splash:done IPC
   const splashWin = windowManager.getSplashWindow();
@@ -564,11 +553,10 @@ app.on('ready', async () => {
     }
   }
 
-  // Show main window immediately after splash fades out
-  const win = windowManager.getMainWindow();
-  if (win && !win.isDestroyed()) {
-    win.show();
-    win.focus();
+  // Focus main window now that splash is gone
+  if (mainWin && !mainWin.isDestroyed()) {
+    mainWin.show();
+    mainWin.focus();
   }
 
   // ── Privacy & Silent Ad-Blocking (Suppress Terminal Noise) ──────────────────
