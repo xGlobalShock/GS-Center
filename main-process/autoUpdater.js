@@ -8,6 +8,20 @@ let _downloadCancellationToken = null;
 let _updateDownloadedAt = null;
 let _updateLogPath = null;
 
+/**
+ * Write a small marker to userData so the NEXT launch (immediately after NSIS
+ * installs and relaunches) knows to use a wider app:ready timeout and a slower
+ * progress trickle. Consumed and deleted on first read.
+ */
+function _writePostUpdateMarker() {
+  try {
+    fs.writeFileSync(
+      path.join(app.getPath('userData'), 'gs-post-update.json'),
+      JSON.stringify({ timestamp: Date.now() }),
+    );
+  } catch { /* best-effort */ }
+}
+
 function logUpdateEvent(line) {
   try {
     if (!_updateLogPath) return;
@@ -88,6 +102,7 @@ function initAutoUpdater() {
     // Auto-install immediately — app will quit, NSIS runs silently, then relaunches.
     setTimeout(() => {
       try {
+        _writePostUpdateMarker();
         autoUpdater.quitAndInstall(true, true);
       } catch (e) {
         const msg = e?.message || 'Unknown error';
@@ -266,6 +281,7 @@ async function checkForUpdateEarly() {
 
         setTimeout(() => {
           try {
+            _writePostUpdateMarker();
             autoUpdater.quitAndInstall(true, true);
           } catch (e) {
             console.error('[AutoUpdater-Early] quitAndInstall failed:', e?.message);

@@ -46,15 +46,31 @@ function _checkExpired(profile: UserProfile | null): boolean {
   return new Date(profile.pro_expires_at).getTime() < Date.now();
 }
 
+// Hard timeout on the profile DB query.
+// On a post-update first launch the system is busy (NSIS extraction, Defender
+// scans, Chromium V8 bytecode recompile, token refresh) and a cold Supabase
+// request can take 10-30s — far exceeding the splash app:ready safety cap.
+// If the fetch doesn't complete in time appReady fires with profile=null and
+// the background retry effect re-fetches it once the system settles.
+const PROFILE_FETCH_TIMEOUT_MS = 5_000;
+const PROFILE_RETRY_DELAYS     = [2_000, 5_000, 10_000];
+
 async function _fetchProfile(userId: string): Promise<UserProfile | null> {
   if (!isSupabaseConfigured) return null;
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
-  if (error || !data) return null;
-  return data as UserProfile;
+  try {
+    const timeoutPromise = new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), PROFILE_FETCH_TIMEOUT_MS),
+    );
+    const fetchPromise = supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+      .then(({ data, error }) => (error || !data ? null : (data as UserProfile)));
+    return await Promise.race([fetchPromise, timeoutPromise]);
+  } catch {
+    return null;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -91,16 +107,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     let mounted = true;
 
-    // Restore existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!mounted) return;
-      if (session?.user) {
-        setUser(session.user);
-        await loadProfile(session.user);
+    // Restore existing session.
+    // Use try/finally so setAppReady(true) is GUARANTEED even if getSession()
+    // rejects or loadProfile() throws — the splash screen depends on this.
+    const init = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        if (session?.user) {
+          setUser(session.user);
+          await loadProfile(session.user);
+        }
+      } catch (_) {
+        // swallow — partial state is fine; appReady must still fire
+      } finally {
+        if (mounted) {
+          setLoading(false);
+          setAppReady(true);
+        }
       }
-      setLoading(false);
-      setAppReady(true);
-    });
+    };
+    init();
 
     // Live auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -121,6 +148,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe();
     };
   }, [loadProfile]);
+
+  /* ── Background profile retry ─────────────────────────────────────── */
+  // If _fetchProfile timed out during init (post-update first launch), this
+  // retries with escalating delays once the app is visible so the user's
+  // plan/role info appears shortly after the blank-screen window is revealed.
+  useEffect(() => {
+    if (!user || profile || !appReady) return;
+    let cancelled = false;
+    (async () => {
+      for (const delay of PROFILE_RETRY_DELAYS) {
+        await new Promise(r => setTimeout(r, delay));
+        if (cancelled) return;
+        const p = await _fetchProfile(user.id);
+        if (p) { if (!cancelled) setProfile(p); return; }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, profile, appReady]);
 
   /* ── Listen for tokens sent by Electron after OAuth popup ───────── */
   useEffect(() => {
