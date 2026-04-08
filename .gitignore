@@ -43,6 +43,7 @@ UpgradeModal.tsx
 ProLockedWrapper.tsx
 ProfileDropdown.tsx
 PaywallModal.tsx
+GC Center.sln
 
 # ── Logs ──
 *.log
