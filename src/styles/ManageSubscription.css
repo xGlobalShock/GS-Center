@@ -1,398 +1,521 @@
 /* ============================================================
-   MANAGE SUBSCRIPTION PAGE
+   MANAGE SUBSCRIPTION  —  FUTURISTIC REDESIGN
 ============================================================ */
 
+/* ── Page shell ───────────────────────────────────────────── */
 .ms-page {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  padding-bottom: 24px;
+  min-height: 100%;
 }
 
-.ms-body {
+.ms-center-zone {
+  flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 0 24px;
-  max-width: 680px;
-}
-
-/* ── Empty state ────────────────────────────────────────────── */
-.ms-empty {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 64px 0;
-  color: rgba(255,255,255,0.25);
-  text-align: center;
-}
-.ms-empty-icon {
-  opacity: 0.25;
-  color: #00f2ff;
-}
-.ms-empty-title {
-  font-size: 17px;
-  font-weight: 700;
-  color: rgba(255,255,255,0.5);
-  margin: 0;
-}
-.ms-empty-sub {
-  font-size: 12.5px;
-  color: rgba(255,255,255,0.3);
-  margin: 0;
+  justify-content: center;
+  padding: 20px 24px 36px;
 }
 
-/* ── Upgrade card (free users) ──────────────────────────────── */
-.ms-upgrade-card {
+/* ── Panel ────────────────────────────────────────────────── */
+.ms-panel {
+  position: relative;
+  width: 100%;
+  max-width: 620px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: linear-gradient(140deg, rgba(8,14,28,0.93) 0%, rgba(5,9,18,0.90) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  overflow: hidden;
+  padding: 26px 26px 22px;
   display: flex;
   flex-direction: column;
+  gap: 0;
+  box-shadow: 0 8px 48px rgba(0,0,0,0.55);
+}
+
+.ms-panel--active {
+  border-color: rgba(0,242,255,0.14);
+  box-shadow: 0 8px 48px rgba(0,0,0,0.55), 0 0 80px rgba(0,242,255,0.04);
+}
+.ms-panel--cancelled {
+  border-color: rgba(245,158,11,0.14);
+  box-shadow: 0 8px 48px rgba(0,0,0,0.55), 0 0 80px rgba(245,158,11,0.03);
+}
+.ms-panel--expired {
+  border-color: rgba(239,68,68,0.14);
+  box-shadow: 0 8px 48px rgba(0,0,0,0.55);
+}
+.ms-panel--lifetime {
+  border-color: rgba(168,85,247,0.18);
+  box-shadow: 0 8px 48px rgba(0,0,0,0.55), 0 0 100px rgba(168,85,247,0.06);
   align-items: center;
-  gap: 12px;
-  padding: 32px 28px;
-  border-radius: 16px;
-  border: 1px solid rgba(0, 242, 255, 0.14);
-  background: linear-gradient(135deg, rgba(0, 242, 255, 0.04) 0%, rgba(34, 197, 94, 0.03) 100%);
   text-align: center;
+  gap: 14px;
+  padding: 44px 32px 36px;
+}
+.ms-panel--upgrade {
+  border-color: rgba(0,242,255,0.12);
+  box-shadow: 0 8px 48px rgba(0,0,0,0.55), 0 0 80px rgba(0,242,255,0.04);
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 36px 32px 28px;
 }
 
-.ms-upgrade-icon {
-  color: #00f2ff;
-  filter: drop-shadow(0 0 12px rgba(0, 242, 255, 0.4));
+/* ── Accent top bar ───────────────────────────────────────── */
+.ms-accent-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
 }
+.ms-accent-bar--active   { background: linear-gradient(90deg, transparent, #00f2ff 40%, #22c55e 100%); }
+.ms-accent-bar--cancelled{ background: linear-gradient(90deg, transparent, #f59e0b 40%, #fbbf24 100%); }
+.ms-accent-bar--expired  { background: linear-gradient(90deg, transparent, #ef4444 50%, #f87171 100%); }
 
-.ms-upgrade-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: #fff;
-  margin: 0;
-  letter-spacing: -0.3px;
+/* ── Corner brackets ──────────────────────────────────────── */
+.ms-panel-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  z-index: 2;
 }
+.ms-panel-corner--tl { top: 7px;    left: 7px;   border-top: 1.5px solid; border-left: 1.5px solid;   border-radius: 3px 0 0 0; }
+.ms-panel-corner--tr { top: 7px;    right: 7px;  border-top: 1.5px solid; border-right: 1.5px solid;  border-radius: 0 3px 0 0; }
+.ms-panel-corner--bl { bottom: 7px; left: 7px;   border-bottom: 1.5px solid; border-left: 1.5px solid; border-radius: 0 0 0 3px; }
+.ms-panel-corner--br { bottom: 7px; right: 7px;  border-bottom: 1.5px solid; border-right: 1.5px solid; border-radius: 0 0 3px 0; }
 
-.ms-upgrade-sub {
-  font-size: 12.5px;
-  color: rgba(255,255,255,0.4);
-  margin: 0;
-}
+.ms-panel--active   .ms-panel-corner { border-color: rgba(0,242,255,0.35); }
+.ms-panel--cancelled .ms-panel-corner{ border-color: rgba(245,158,11,0.35); }
+.ms-panel--expired  .ms-panel-corner { border-color: rgba(239,68,68,0.35); }
+.ms-panel--lifetime .ms-panel-corner { border-color: rgba(168,85,247,0.45); }
+.ms-panel--upgrade  .ms-panel-corner { border-color: rgba(0,242,255,0.3); }
 
-.ms-upgrade-features {
-  list-style: none;
-  padding: 0;
-  margin: 4px 0 8px;
+/* ── Header row ───────────────────────────────────────────── */
+.ms-hdr {
   display: flex;
-  flex-direction: column;
-  gap: 7px;
-  align-self: stretch;
-  text-align: left;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
 }
-.ms-upgrade-features li {
+
+/* ── Status chip ──────────────────────────────────────────── */
+.ms-status-chip-wrap {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
-  color: rgba(255,255,255,0.55);
-}
-.ms-upgrade-features li svg {
-  color: #00f2ff;
-  flex-shrink: 0;
 }
 
-.ms-upgrade-error {
+.ms-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
+}
+.ms-pulse::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  opacity: 0;
+  animation: ms-pulse-ring 2.2s ease-out infinite;
+}
+.ms-pulse--active    { background: #22c55e; box-shadow: 0 0 7px rgba(34,197,94,0.7); }
+.ms-pulse--active::before  { background: rgba(34,197,94,0.3); }
+.ms-pulse--cancelled { background: #f59e0b; box-shadow: 0 0 7px rgba(245,158,11,0.6); }
+.ms-pulse--cancelled::before { background: rgba(245,158,11,0.3); }
+.ms-pulse--expired   { background: #ef4444; box-shadow: 0 0 7px rgba(239,68,68,0.6); }
+.ms-pulse--expired::before   { background: rgba(239,68,68,0.3); }
+
+@keyframes ms-pulse-ring {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  100% { transform: scale(2.6); opacity: 0;   }
+}
+
+.ms-status-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 3px 9px;
+  border-radius: 4px;
+}
+.ms-status-badge--active   { background: rgba(34,197,94,0.11);  color: #4ade80; border: 1px solid rgba(34,197,94,0.24); }
+.ms-status-badge--cancelled{ background: rgba(245,158,11,0.1);  color: #fbbf24; border: 1px solid rgba(245,158,11,0.24); }
+.ms-status-badge--expired  { background: rgba(239,68,68,0.1);   color: #f87171; border: 1px solid rgba(239,68,68,0.24); }
+
+/* ── Plan banner ──────────────────────────────────────────── */
+.ms-plan-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ms-plan-icon-wrap {
+  color: #00f2ff;
+  filter: drop-shadow(0 0 5px rgba(0,242,255,0.55));
+  display: flex;
+  align-items: center;
+}
+.ms-plan-name-text {
+  font-size: 14px;
+  font-weight: 800;
+  color: #00f2ff;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 12px rgba(0,242,255,0.4);
+}
+.ms-plan-price-text {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.28);
+  letter-spacing: 0.03em;
+}
+
+/* ── Countdown zone ───────────────────────────────────────── */
+.ms-countdown-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 16px 0 20px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.ms-countdown-label-text {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.22);
+  text-transform: uppercase;
+}
+.ms-big-countdown {
+  font-size: 46px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: -1px;
+  color: #00f2ff;
+  line-height: 1;
+  animation: ms-clock-glow 4s ease-in-out infinite;
+}
+.ms-big-countdown--red {
+  color: #f87171;
+  animation: ms-clock-glow-red 4s ease-in-out infinite;
+}
+
+@keyframes ms-clock-glow {
+  0%, 100% { text-shadow: 0 0 28px rgba(0,242,255,0.38), 0 0 55px rgba(0,242,255,0.12); }
+  50%       { text-shadow: 0 0 40px rgba(0,242,255,0.6),  0 0 80px rgba(0,242,255,0.22); }
+}
+@keyframes ms-clock-glow-red {
+  0%, 100% { text-shadow: 0 0 20px rgba(248,113,113,0.3); }
+  50%       { text-shadow: 0 0 32px rgba(248,113,113,0.5); }
+}
+
+/* ── Rule / separator ─────────────────────────────────────── */
+.ms-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 25%, rgba(255,255,255,0.07) 75%, transparent);
+  margin: 2px 0 0;
+}
+
+/* ── Data strip ───────────────────────────────────────────── */
+.ms-data-strip {
+  display: flex;
+  align-items: stretch;
+  padding: 18px 0;
+}
+.ms-data-block {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 18px;
+}
+.ms-data-block:first-child { padding-left: 0; }
+.ms-data-block:last-child  { padding-right: 0; }
+.ms-data-sep {
+  width: 1px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,0.08) 35%, rgba(255,255,255,0.08) 65%, transparent);
+}
+.ms-data-label-txt {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.22);
+}
+.ms-data-val {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.62);
+}
+.ms-data-val--cyan { color: #00f2ff; }
+.ms-data-val--red  { color: #f87171; }
+
+/* ── Action zone ──────────────────────────────────────────── */
+.ms-action-zone {
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Buttons ──────────────────────────────────────────────── */
+.ms-btn-ghost-red {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid rgba(239,68,68,0.22);
+  color: rgba(239,68,68,0.65);
+  transition: all 0.15s;
+  align-self: flex-start;
+}
+.ms-btn-ghost-red:hover:not(:disabled) {
+  background: rgba(239,68,68,0.07);
+  border-color: rgba(239,68,68,0.4);
+  color: #f87171;
+}
+
+.ms-confirm-box {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 13px 15px;
+  border-radius: 10px;
+  background: rgba(239,68,68,0.04);
+  border: 1px solid rgba(239,68,68,0.14);
+}
+.ms-confirm-warn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: rgba(255,255,255,0.42);
+}
+.ms-warn-icon { color: #f59e0b; flex-shrink: 0; }
+
+.ms-confirm-row { display: flex; gap: 8px; }
+
+.ms-btn-neutral {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.58);
+  transition: all 0.15s;
+}
+.ms-btn-neutral:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: #fff; }
+.ms-btn-neutral:disabled { opacity: 0.45; cursor: default; }
+
+.ms-btn-red {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.28);
+  color: #f87171;
+  transition: all 0.15s;
+}
+.ms-btn-red:hover:not(:disabled) { background: rgba(239,68,68,0.18); border-color: rgba(239,68,68,0.5); }
+.ms-btn-red:disabled { opacity: 0.45; cursor: default; }
+
+/* ── Notice bar ───────────────────────────────────────────── */
+.ms-notice-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 13px 15px;
+  border-radius: 10px;
+  margin-top: 16px;
+}
+.ms-notice-bar--green {
+  background: rgba(34,197,94,0.04);
+  border: 1px solid rgba(34,197,94,0.15);
+}
+.ms-notice-bar--green svg { color: #22c55e; flex-shrink: 0; margin-top: 1px; }
+.ms-notice-ttl {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.68);
+}
+.ms-notice-sub {
+  display: block;
+  font-size: 11px;
+  color: rgba(255,255,255,0.33);
+  margin-top: 2px;
+}
+
+/* ── UPGRADE card ─────────────────────────────────────────── */
+.ms-upgrade-icon-wrap {
+  color: #00f2ff;
+  filter: drop-shadow(0 0 16px rgba(0,242,255,0.5));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  background: rgba(0,242,255,0.06);
+  border: 1px solid rgba(0,242,255,0.15);
+}
+.ms-upgrade-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #00f2ff;
+  opacity: 0.55;
+  text-transform: uppercase;
+}
+.ms-upgrade-heading {
+  font-size: 30px;
+  font-weight: 900;
+  color: #fff;
+  margin: 0;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+.ms-upgrade-tagline {
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.32);
+  margin: 0;
+}
+.ms-features-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 20px;
+  align-self: stretch;
+  text-align: left;
+  margin: 4px 0;
+}
+.ms-feature {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: rgba(255,255,255,0.48);
+}
+.ms-feature svg { color: #00f2ff; flex-shrink: 0; }
+
+.ms-error-bar {
   font-size: 11.5px;
   color: #f87171;
-  background: rgba(248, 113, 113, 0.08);
-  border: 1px solid rgba(248, 113, 113, 0.2);
+  background: rgba(248,113,113,0.07);
+  border: 1px solid rgba(248,113,113,0.18);
   border-radius: 8px;
-  padding: 6px 12px;
-  margin: 0;
+  padding: 8px 12px;
   align-self: stretch;
   text-align: center;
 }
+.ms-btn-upgrade {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  background: linear-gradient(135deg, rgba(0,242,255,0.11), rgba(34,197,94,0.09));
+  border: 1px solid rgba(0,242,255,0.28);
+  color: #00f2ff;
+  transition: all 0.18s;
+  letter-spacing: 0.01em;
+}
+.ms-btn-upgrade:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(0,242,255,0.2), rgba(34,197,94,0.17));
+  border-color: rgba(0,242,255,0.5);
+  box-shadow: 0 0 24px rgba(0,242,255,0.13);
+}
+.ms-btn-upgrade:disabled { opacity: 0.5; cursor: default; }
 
-.ms-upgrade-note {
+.ms-spin { animation: ms-rotate 0.8s linear infinite; }
+@keyframes ms-rotate { to { transform: rotate(360deg); } }
+
+.ms-secure-note {
   display: flex;
   align-items: center;
   gap: 5px;
   font-size: 10.5px;
-  color: rgba(255,255,255,0.25);
-  margin: 0;
+  color: rgba(255,255,255,0.18);
 }
 
-.ms-spin {
-  animation: ms-rotate 0.8s linear infinite;
-}
-@keyframes ms-rotate {
-  to { transform: rotate(360deg); }
-}
-
-/* ── Cards ──────────────────────────────────────────────────── */
-.ms-card {
-  border-radius: 14px;
-  padding: 18px 20px;
-  border: 1px solid rgba(255,255,255,0.07);
-  background: rgba(255,255,255,0.02);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.ms-card--active {
-  border-color: rgba(0, 242, 255, 0.15);
-  background: rgba(0, 242, 255, 0.03);
-}
-.ms-card--cancelled {
-  border-color: rgba(245, 158, 11, 0.15);
-  background: rgba(245, 158, 11, 0.025);
-}
-.ms-card--expired {
-  border-color: rgba(239, 68, 68, 0.15);
-  background: rgba(239, 68, 68, 0.025);
-}
-.ms-card--lifetime {
-  border-color: rgba(168, 85, 247, 0.18);
-  background: rgba(168, 85, 247, 0.04);
-}
-.ms-card--free {
-  border-color: rgba(255,255,255,0.07);
-}
-
-/* ── Card header row ────────────────────────────────────────── */
-.ms-card-header {
+/* ── LIFETIME card ────────────────────────────────────────── */
+.ms-lifetime-orb {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(168,85,247,0.14) 0%, rgba(168,85,247,0.03) 70%);
+  border: 1px solid rgba(168,85,247,0.24);
   display: flex;
   align-items: center;
-  gap: 9px;
+  justify-content: center;
+  color: #c084fc;
+  filter: drop-shadow(0 0 20px rgba(168,85,247,0.4));
+  animation: ms-orb-breathe 3.5s ease-in-out infinite;
+}
+@keyframes ms-orb-breathe {
+  0%, 100% { box-shadow: 0 0 0  0 rgba(168,85,247,0);    }
+  50%       { box-shadow: 0 0 28px 8px rgba(168,85,247,0.07); }
 }
 
-.ms-status-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex-shrink: 0;
+.ms-lifetime-badge-text {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #c084fc;
+  opacity: 0.65;
 }
-.ms-status-dot--active   { background: #22c55e; box-shadow: 0 0 7px rgba(34,197,94,0.6); }
-.ms-status-dot--cancelled{ background: #f59e0b; box-shadow: 0 0 7px rgba(245,158,11,0.5); }
-.ms-status-dot--expired  { background: #ef4444; box-shadow: 0 0 7px rgba(239,68,68,0.5); }
-.ms-status-dot--lifetime { background: #a855f7; box-shadow: 0 0 7px rgba(168,85,247,0.5); }
-.ms-status-dot--free     { background: rgba(255,255,255,0.2); }
-
-.ms-status-label {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.7);
-}
-
-.ms-lifetime-icon {
-  color: rgba(168, 85, 247, 0.55);
-  margin-left: 2px;
-}
-
-.ms-card-note {
-  font-size: 12px;
-  color: rgba(255,255,255,0.35);
+.ms-lifetime-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: #fff;
   margin: 0;
-  line-height: 1.55;
+  letter-spacing: -0.4px;
+  text-shadow: 0 0 40px rgba(168,85,247,0.22);
 }
-
-/* ── Detail grid ────────────────────────────────────────────── */
-.ms-detail-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 20px;
-}
-
-.ms-detail-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.ms-detail-item--full {
-  grid-column: 1 / -1;
-}
-
-.ms-detail-label {
-  font-size: 10.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.ms-lifetime-sub {
+  font-size: 12px;
   color: rgba(255,255,255,0.3);
+  margin: 0;
+  max-width: 310px;
+  line-height: 1.6;
 }
-
-.ms-detail-value {
+.ms-lifetime-features {
+  display: flex;
+  gap: 22px;
+  margin-top: 4px;
+}
+.ms-lf-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: rgba(255,255,255,0.7);
+  font-size: 11px;
+  color: rgba(168,85,247,0.62);
 }
-.ms-detail-value--pro {
-  color: #00f2ff;
-}
-.ms-detail-value--expired {
-  color: #f87171;
-}
-
-/* ── Countdown ──────────────────────────────────────────────── */
-.ms-countdown {
-  font-size: 22px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
-  letter-spacing: -0.5px;
-  color: #00f2ff;
-  line-height: 1;
-}
-.ms-countdown--expired {
-  color: #f87171;
-}
-
-/* ── Sections ───────────────────────────────────────────────── */
-.ms-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 18px 20px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.06);
-  background: rgba(255,255,255,0.015);
-}
-
-.ms-section-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(255,255,255,0.7);
-  margin: 0;
-}
-
-.ms-section-desc {
-  font-size: 12px;
-  color: rgba(255,255,255,0.38);
-  margin: 0;
-  line-height: 1.55;
-}
-.ms-section-desc strong {
-  color: rgba(255,255,255,0.55);
-  font-weight: 600;
-}
-
-/* ── Buttons ────────────────────────────────────────────────── */
-.ms-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 16px;
-  border-radius: 9px;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
-}
-.ms-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.ms-btn--ghost {
-  background: rgba(255,255,255,0.05);
-  border-color: rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.6);
-}
-.ms-btn--ghost:hover:not(:disabled) {
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-}
-
-.ms-btn--danger-ghost {
-  background: transparent;
-  border-color: rgba(239, 68, 68, 0.25);
-  color: rgba(239, 68, 68, 0.7);
-}
-.ms-btn--danger-ghost:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.06);
-  border-color: rgba(239, 68, 68, 0.45);
-  color: #f87171;
-}
-
-.ms-btn--danger {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #f87171;
-}
-.ms-btn--danger:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.5);
-}
-
-.ms-btn--upgrade {
-  width: 100%;
-  justify-content: center;
-  padding: 11px 20px;
-  font-size: 13.5px;
-  background: linear-gradient(135deg, rgba(0, 242, 255, 0.12), rgba(34, 197, 94, 0.12));
-  border-color: rgba(0, 242, 255, 0.28);
-  color: #00f2ff;
-}
-.ms-btn--upgrade:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(0, 242, 255, 0.2), rgba(34, 197, 94, 0.2));
-  border-color: rgba(0, 242, 255, 0.5);
-  box-shadow: 0 0 20px rgba(0, 242, 255, 0.12);
-}
-
-/* ── Confirm box ────────────────────────────────────────────── */
-.ms-confirm {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 10px;
-  background: rgba(239, 68, 68, 0.05);
-  border: 1px solid rgba(239, 68, 68, 0.15);
-}
-
-.ms-confirm-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: rgba(255,255,255,0.5);
-}
-.ms-confirm-icon {
-  color: #f59e0b;
-  flex-shrink: 0;
-}
-
-.ms-confirm-btns {
-  display: flex;
-  gap: 8px;
-}
-
-/* ── Cancelled notice ───────────────────────────────────────── */
-.ms-cancelled-notice {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 14px 16px;
-  border-radius: 10px;
-  background: rgba(34, 197, 94, 0.04);
-  border: 1px solid rgba(34, 197, 94, 0.15);
-}
-
-.ms-cancelled-icon {
-  color: #22c55e;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.ms-cancelled-title {
-  display: block;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.7);
-}
-.ms-cancelled-sub {
-  display: block;
-  font-size: 11.5px;
-  color: rgba(255,255,255,0.35);
-  margin-top: 2px;
-}
+.ms-lf-item svg { color: #c084fc; }
