@@ -66,10 +66,9 @@ const Cleaner: React.FC = () => {
   // Categorize utilities by category
   const utilityTabs = {
     windows: cleanerUtilities.filter(u => ['windows-temp', 'thumbnail-cache', 'windows-logs', 'crash-dumps', 'error-reports', 'delivery-optimization', 'recent-files', 'temp-files', 'update-cache', 'dns-cache', 'ram-cache', 'recycle-bin'].includes(u.id)),
-    essential: cleanerUtilities.filter(u => ['revert-startmenu'].includes(u.id) || u.id.startsWith('ct-tweak:')),
+    essential: cleanerUtilities.filter(u => u.id.startsWith('ct-tweak:') || (u.id === 'revert-startmenu' || !['windows-temp', 'thumbnail-cache', 'windows-logs', 'crash-dumps', 'error-reports', 'delivery-optimization', 'recent-files', 'temp-files', 'update-cache', 'dns-cache', 'ram-cache', 'recycle-bin', 'forza-shaders', 'apex-shaders', 'cod-shaders', 'cs2-shaders', 'fortnite-shaders', 'lol-shaders', 'overwatch-shaders', 'r6-shaders', 'rocket-league-shaders', 'valorant-shaders', 'nvidia-cache'].includes(u.id))),
     games: cleanerUtilities.filter(u => ['forza-shaders', 'apex-shaders', 'cod-shaders', 'cs2-shaders', 'fortnite-shaders', 'lol-shaders', 'overwatch-shaders', 'r6-shaders', 'rocket-league-shaders', 'valorant-shaders'].includes(u.id)),
     nvidia: cleanerUtilities.filter(u => ['nvidia-cache'].includes(u.id)),
-    preferences: [],
   };
 
   
@@ -102,7 +101,8 @@ const Cleaner: React.FC = () => {
       setActiveTweakModalId(id.replace('ct-tweak:', ''));
       setCleaningId(id);
       try {
-        await window.electron?.ipcRenderer.invoke(id);
+        const channel = cleanerMap[id] || id;
+        await window.electron?.ipcRenderer.invoke(channel);
       } catch (error) {
         addToast(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
       }
@@ -640,7 +640,7 @@ const Cleaner: React.FC = () => {
                   ))}
                 </div>
               ) : activeCategory === 'preferences' ? (
-                <div className="cleaner-grid cleaner-grid--small cleaner-grid--prefs">
+                <div className="ai-grid" style={{ gap: '12px', gridAutoRows: 'auto', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))' }}>
                   {preferenceItems.map((pref, index) => (
                     <motion.div
                       key={pref.id}
@@ -648,24 +648,27 @@ const Cleaner: React.FC = () => {
                       animate={{ y: 0, opacity: 1, scale: 1 }}
                       transition={{ delay: index * 0.05, type: 'spring', stiffness: 200, damping: 22 }}
                     >
-                      <div className={`ai-card${pref.loading ? ' ai-card--busy' : ''}`} style={{ padding: '12px 14px', height: '76px' }}>
-                        <div className="ai-card-icon" style={{ background: 'transparent' }}>
-                          {pref.loading ? <Loader2 size={16} className="ai-spin" /> : pref.icon}
+                      <div className={`ai-card${pref.loading ? ' ai-card--busy' : ''}`} style={{ padding: '12px 14px', height: '76px', cursor: 'default' }}>
+                        <div className="ai-card-icon" style={{ background: 'transparent', color: '#00F2FF' }}>
+                          {pref.loading ? <Loader2 size={16} className="ai-spin" /> : (
+                            <div style={{ opacity: 0.8 }}>{pref.icon && React.isValidElement(pref.icon) ? React.cloneElement(pref.icon as React.ReactElement, { size: 18 }) : pref.icon}</div>
+                          )}
                         </div>
                         <div className="ai-card-info" style={{ justifyContent: 'center' }}>
                           <span className="ai-card-name" style={{ fontSize: '13px', lineHeight: '1.2', color: '#F8FAFC', fontWeight: 600 }}>{pref.title}</span>
                           <span className="ai-card-cat" style={{ fontSize: '11.5px', marginTop: '3px', lineHeight: '1.4', color: '#94A3B8', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={pref.desc}>{pref.desc}</span>
                         </div>
-                        <button
-                          className={`futuristic-toggle gl-profile__preset-toggle ${pref.enabled ? 'gl-profile__preset-toggle--on' : ''}`}
-                          onClick={pref.onClick}
-                          disabled={pref.loading || prefsLoading}
-                          aria-pressed={pref.enabled ? 'true' : 'false'}
-                          style={{ marginLeft: 'auto' }}
-                        >
-                          <div className="gl-profile__preset-toggle-track"><div className="gl-profile__preset-toggle-thumb" /></div>
-                          <span className="gl-profile__preset-toggle-label">{pref.enabled ? 'ON' : 'OFF'}</span>
-                        </button>
+                        <div className="ai-card-actions" style={{ marginLeft: 'auto' }}>
+                          <button
+                            className={`futuristic-toggle gl-profile__preset-toggle ${pref.enabled ? 'gl-profile__preset-toggle--on' : ''}`}
+                            onClick={pref.onClick}
+                            disabled={pref.loading || prefsLoading}
+                            aria-pressed={pref.enabled ? 'true' : 'false'}
+                          >
+                            <div className="gl-profile__preset-toggle-track"><div className="gl-profile__preset-toggle-thumb" /></div>
+                            <span className="gl-profile__preset-toggle-label">{pref.enabled ? 'ON' : 'OFF'}</span>
+                          </button>
+                        </div>
                       </div>
                     </motion.div>
                   ))}

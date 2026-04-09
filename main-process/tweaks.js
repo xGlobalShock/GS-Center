@@ -4,7 +4,7 @@
  */
 
 const { ipcMain } = require('electron');
-const { execAsync, runPSScript } = require('./utils');
+const { execAsync, execFileAsync, runPSScript } = require('./utils');
 const repairOverlay = require('./repairOverlay');
 const authSession = require('./authSession');
 
@@ -336,9 +336,9 @@ function registerIPC() {
       const path = require('path');
       const fs = require('fs');
       const candidates = [
-        path.resolve(__dirname, '..', 'scripts', 'vivetool', 'vivetool.exe'),
-        path.resolve(process.resourcesPath || '', 'scripts', 'vivetool', 'vivetool.exe'),
-        path.resolve(process.cwd(), 'scripts', 'vivetool', 'vivetool.exe'),
+        path.resolve(__dirname, '..', 'scripts', 'vivetool', 'ViVeTool.exe'),
+        path.resolve(process.resourcesPath || '', 'scripts', 'vivetool', 'ViVeTool.exe'),
+        path.resolve(process.cwd(), 'scripts', 'vivetool', 'ViVeTool.exe'),
       ];
       let viveToolPath = null;
       for (const p of candidates) {
@@ -361,55 +361,29 @@ function registerIPC() {
     try {
       const path = require('path');
       const fs = require('fs');
-      const os = require('os');
-      const fileName = 'WPFTweaksRevertStartMenu.ps1';
-      
-      const scriptCandidates = [
-        path.resolve(__dirname, '..', 'scripts', fileName),
-        path.resolve(process.resourcesPath || '', 'scripts', fileName),
-        path.resolve(process.cwd(), 'scripts', fileName),
-      ];
+
       const vivetoolCandidates = [
-        path.resolve(__dirname, '..', 'scripts', 'vivetool', 'vivetool.exe'),
-        path.resolve(process.resourcesPath || '', 'scripts', 'vivetool', 'vivetool.exe'),
-        path.resolve(process.cwd(), 'scripts', 'vivetool', 'vivetool.exe'),
+        path.resolve(__dirname, '..', 'scripts', 'vivetool', 'ViVeTool.exe'),
+        path.resolve(process.resourcesPath || '', 'scripts', 'vivetool', 'ViVeTool.exe'),
+        path.resolve(process.cwd(), 'scripts', 'vivetool', 'ViVeTool.exe'),
       ];
 
-      let scriptPath = null;
-      for (const p of scriptCandidates) {
-        if (fs.existsSync(p)) { scriptPath = p; break; }
-      }
       let viveToolPath = null;
       for (const p of vivetoolCandidates) {
         if (fs.existsSync(p)) { viveToolPath = p; break; }
       }
 
-      if (!scriptPath || !viveToolPath) {
-        return { success: false, message: 'Script or ViVeTool not found in expected locations.' };
+      if (!viveToolPath) {
+        return { success: false, message: 'ViVeTool not found in expected locations.' };
       }
 
-      let tmpFileToCleanup = null;
-      let finalScriptPath = scriptPath;
-      try {
-        if (scriptPath.includes('.asar') && !scriptPath.includes('.asar.unpacked')) {
-          const tmpFile = path.join(os.tmpdir(), `gs_wpftweaks_${process.pid}_${Date.now()}.ps1`);
-          const content = fs.readFileSync(scriptPath, 'utf8');
-          fs.writeFileSync(tmpFile, content, 'utf8');
-          tmpFileToCleanup = tmpFile;
-          finalScriptPath = tmpFile;
-        }
-        
-        // If enable is undefined (called from cleaner menu), default to true (apply tweak).
-        const shouldApply = enable !== false;
-        const undoArg = shouldApply ? '' : ' -Undo';
-        
-        const cmd = `powershell -NoProfile -ExecutionPolicy Bypass -File "${finalScriptPath}"${undoArg} -ViVeToolPath "${viveToolPath}"`;
-        await execAsync(cmd, { shell: true, timeout: 0 });
-      } finally {
-        if (tmpFileToCleanup) {
-          try { fs.unlinkSync(tmpFileToCleanup); } catch (_) { }
-        }
-      }
+      // If enable is undefined (called from cleaner menu), default to true (apply tweak).
+      const shouldApply = enable !== false;
+
+      // The Electron app already runs elevated, so call ViVeTool directly — no window spawn needed.
+      const action = shouldApply ? '/disable' : '/enable';
+      await execFileAsync(viveToolPath, [action, '/id:47205210']);
+
       return { success: true, message: `Classic Start Menu ${shouldApply ? 'Enabled' : 'Disabled'}`, applied: shouldApply };
     } catch (error) {
       return { success: false, message: `Error: ${error.message}` };
@@ -628,7 +602,8 @@ $r | ConvertTo-Json -Compress
       `, 4000);
       if (!raw) return { applied: false, exists: false, value: null };
       const parsed = JSON.parse(raw);
-      const applied = parsed && parsed.MouseSpeed === 1 && parsed.MouseThreshold1 === 0 && parsed.MouseThreshold2 === 0;
+      // acceleration ON = Speed:1, Threshold1:6, Threshold2:10 (ChrisTitus DefaultState=true)
+      const applied = parsed && parsed.MouseSpeed === 1 && parsed.MouseThreshold1 === 6 && parsed.MouseThreshold2 === 10;
       return { applied, exists: !!parsed, value: parsed };
     } catch (e) {
       return { applied: false, exists: false, value: null, error: e.message || String(e) };
@@ -638,17 +613,18 @@ $r | ConvertTo-Json -Compress
   ipcMain.handle('pref:apply-mouse-acceleration', async (event, enable) => {
     const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
+      // enable=true = acceleration ON (Speed:1,T1:6,T2:10)  enable=false = acceleration OFF (Speed:0,T1:0,T2:0)
       const script = enable ? `
 if (-not (Test-Path 'HKCU:\\Control Panel\\Mouse')) { New-Item -Path 'HKCU:\\Control Panel\\Mouse' -Force | Out-Null }
 Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseSpeed' -Value 1 -Force
-Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseThreshold1' -Value 0 -Force
-Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseThreshold2' -Value 0 -Force
+Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseThreshold1' -Value 6 -Force
+Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseThreshold2' -Value 10 -Force
 Get-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseSpeed','MouseThreshold1','MouseThreshold2' | ConvertTo-Json -Compress
 ` : `
 if (-not (Test-Path 'HKCU:\\Control Panel\\Mouse')) { New-Item -Path 'HKCU:\\Control Panel\\Mouse' -Force | Out-Null }
 Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseSpeed' -Value 0 -Force
-Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseThreshold1' -Value 6 -Force
-Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseThreshold2' -Value 10 -Force
+Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseThreshold1' -Value 0 -Force
+Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseThreshold2' -Value 0 -Force
 Get-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseSpeed','MouseThreshold1','MouseThreshold2' | ConvertTo-Json -Compress
 `;
       const res = await runPSScript(script, 6000);
@@ -745,9 +721,11 @@ $r = @{}
 try { $r.BingSearchEnabled = (Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search' -Name 'BingSearchEnabled' -ErrorAction SilentlyContinue).BingSearchEnabled } catch {}
 $r | ConvertTo-Json -Compress
       `, 3000);
-      if (!raw) return { exists: false, value: null };
+      if (!raw) return { applied: false, exists: false, value: null };
       const parsed = JSON.parse(raw);
-      return { exists: parsed.BingSearchEnabled !== undefined, value: parsed.BingSearchEnabled };
+      // applied=true means bing is DISABLED (the tweak is applied); BingSearchEnabled=0
+      const applied = parsed.BingSearchEnabled === 0;
+      return { applied, exists: parsed.BingSearchEnabled !== undefined, value: parsed.BingSearchEnabled };
     } catch (e) {
       return { exists: false, value: null, error: e.message || String(e) };
     }
@@ -1120,43 +1098,55 @@ Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\The
 
   ipcMain.handle('pref:check-cross-device', async () => {
     try {
-      const { exec } = require('child_process');
-      const util = require('util');
-      const execAsync = util.promisify(exec);
-      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System' -Name 'EnableActivityFeed' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty EnableActivityFeed\"", { timeout: 3000 });
-      const val = res.stdout ? res.stdout.trim() : "";
-      return { applied: val === "1", value: val };
+      const raw = await runPSScript(`
+$r = @{}
+try { $r.IsResumeAllowed = (Get-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\CrossDeviceResume\\Configuration' -Name 'IsResumeAllowed' -ErrorAction SilentlyContinue).IsResumeAllowed } catch {}
+$r | ConvertTo-Json -Compress
+      `, 3000);
+      if (!raw) return { applied: false, value: null };
+      const parsed = JSON.parse(raw);
+      // applied=true = cross-device enabled (IsResumeAllowed=1, DefaultState=true in ChrisTitus)
+      return { applied: parsed.IsResumeAllowed === 1, value: parsed.IsResumeAllowed };
     } catch (e) { return { applied: false, error: String(e) }; }
   });
   ipcMain.handle('pref:apply-cross-device', async (event, enable) => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
-      const { exec } = require('child_process');
-      const util = require('util');
-      const execAsync = util.promisify(exec);
       const val = enable ? 1 : 0;
-      await execAsync(`powershell -Command "if (!(Test-Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System')) { New-Item -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System' -Name 'EnableActivityFeed' -Value ${val} -Type DWord; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System' -Name 'PublishUserActivities' -Value ${val} -Type DWord"`, { timeout: 8000 });
-      return { success: true, applied: !!enable, message: "Cross-Device Resume preference updated." };
+      const script = `
+If (-not (Test-Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\CrossDeviceResume\\Configuration')) { New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\CrossDeviceResume\\Configuration' -Force | Out-Null }
+Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\CrossDeviceResume\\Configuration' -Name 'IsResumeAllowed' -Value ${val} -Type DWord -Force
+`;
+      await runPSScript(script, 5000);
+      return { success: true, applied: !!enable, message: 'Cross-Device Resume preference updated.' };
     } catch (e) { return { success: false, message: String(e) }; }
   });
 
   ipcMain.handle('pref:check-detailed-bsod', async () => {
     try {
-      const { exec } = require('child_process');
-      const util = require('util');
-      const execAsync = util.promisify(exec);
-      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\CrashControl' -Name 'DisplayParameters' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty DisplayParameters\"", { timeout: 3000 });
-      const val = res.stdout ? res.stdout.trim() : "";
-      return { applied: val === "1", value: val };
+      const raw = await runPSScript(`
+$r = @{}
+try { $r.DisplayParameters = (Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CrashControl' -Name 'DisplayParameters' -ErrorAction SilentlyContinue).DisplayParameters } catch {}
+try { $r.DisableEmoticon = (Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CrashControl' -Name 'DisableEmoticon' -ErrorAction SilentlyContinue).DisableEmoticon } catch {}
+$r | ConvertTo-Json -Compress
+      `, 3000);
+      if (!raw) return { applied: false, value: null };
+      const parsed = JSON.parse(raw);
+      const applied = parsed.DisplayParameters === 1 && parsed.DisableEmoticon === 1;
+      return { applied, value: parsed };
     } catch (e) { return { applied: false, error: String(e) }; }
   });
   ipcMain.handle('pref:apply-detailed-bsod', async (event, enable) => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
-      const { exec } = require('child_process');
-      const util = require('util');
-      const execAsync = util.promisify(exec);
       const val = enable ? 1 : 0;
-      await execAsync(`powershell -Command "if (!(Test-Path 'HKLM:\\System\\CurrentControlSet\\Control\\CrashControl')) { New-Item -Path 'HKLM:\\System\\CurrentControlSet\\Control\\CrashControl' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\CrashControl' -Name 'DisplayParameters' -Value ${val} -Type DWord"`, { timeout: 8000 });
-      return { success: true, applied: !!enable, message: "Detailed BSoD preference updated." };
+      const script = `
+If (-not (Test-Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CrashControl')) { New-Item -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CrashControl' -Force | Out-Null }
+Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CrashControl' -Name 'DisplayParameters' -Value ${val} -Type DWord -Force
+Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CrashControl' -Name 'DisableEmoticon' -Value ${val} -Type DWord -Force
+`;
+      await runPSScript(script, 5000);
+      return { success: true, applied: !!enable, message: 'Detailed BSoD preference updated.' };
     } catch (e) { return { success: false, message: String(e) }; }
   });
 
@@ -1171,13 +1161,14 @@ Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\The
     } catch (e) { return { applied: false, error: String(e) }; }
   });
   ipcMain.handle('pref:apply-mpo', async (event, enable) => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
-      const { exec } = require('child_process');
-      const util = require('util');
-      const execAsync = util.promisify(exec);
-      const val = enable ? 5 : 0;
-      await execAsync(`powershell -Command "if (!(Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm')) { New-Item -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm' -Name 'OverlayTestMode' -Value ${val} -Type DWord"`, { timeout: 8000 });
-      return { success: true, applied: !!enable, message: "MPO preference updated." };
+      // enable=true = MPO disabled (OverlayTestMode=5); OriginalValue=<RemoveEntry> so undo removes the key
+      const script = enable
+        ? `If (-not (Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm')) { New-Item -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm' -Name 'OverlayTestMode' -Value 5 -Type DWord -Force`
+        : `Remove-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm' -Name 'OverlayTestMode' -Force -ErrorAction SilentlyContinue`;
+      await runPSScript(script, 5000);
+      return { success: true, applied: !!enable, message: 'MPO preference updated.' };
     } catch (e) { return { success: false, message: String(e) }; }
   });
 
@@ -1192,55 +1183,84 @@ Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\The
     } catch (e) { return { applied: false, error: String(e) }; }
   });
   ipcMain.handle('pref:apply-modern-standby', async (event, enable) => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
-      const { exec } = require('child_process');
-      const util = require('util');
-      const execAsync = util.promisify(exec);
-      const val = enable ? 0 : 1;
-      await execAsync(`powershell -Command "if (!(Test-Path 'HKLM:\\System\\CurrentControlSet\\Control\\Power')) { New-Item -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Power' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Power' -Name 'PlatformAoAcOverride' -Value ${val} -Type DWord"`, { timeout: 8000 });
-      return { success: true, applied: !!enable, message: "Modern Standby preference updated." };
+      // enable=true = S3 sleep forced (PlatformAoAcOverride=0); OriginalValue=<RemoveEntry> so undo removes the key
+      const script = enable
+        ? `If (-not (Test-Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Power')) { New-Item -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Power' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Power' -Name 'PlatformAoAcOverride' -Value 0 -Type DWord -Force`
+        : `Remove-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Power' -Name 'PlatformAoAcOverride' -Force -ErrorAction SilentlyContinue`;
+      await runPSScript(script, 5000);
+      return { success: true, applied: !!enable, message: 'Modern Standby preference updated.' };
     } catch (e) { return { success: false, message: String(e) }; }
   });
 
   ipcMain.handle('pref:check-new-outlook', async () => {
     try {
-      const { exec } = require('child_process');
-      const util = require('util');
-      const execAsync = util.promisify(exec);
-      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General' -Name 'HideNewOutlookToggle' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty HideNewOutlookToggle\"", { timeout: 3000 });
-      const val = res.stdout ? res.stdout.trim() : "";
-      return { applied: val === "1", value: val };
+      const raw = await runPSScript(`
+$r = @{}
+try { $r.UseNewOutlook = (Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Office\\16.0\\Outlook\\Preferences' -Name 'UseNewOutlook' -ErrorAction SilentlyContinue).UseNewOutlook } catch {}
+try { $r.HideNewOutlookToggle = (Get-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General' -Name 'HideNewOutlookToggle' -ErrorAction SilentlyContinue).HideNewOutlookToggle } catch {}
+$r | ConvertTo-Json -Compress
+      `, 3000);
+      if (!raw) return { applied: false, value: null };
+      const parsed = JSON.parse(raw);
+      // applied=true = new outlook is visible (UseNewOutlook=1 OR HideToggle=0)
+      const applied = parsed.UseNewOutlook === 1 || parsed.HideNewOutlookToggle === 0;
+      return { applied, value: parsed };
     } catch (e) { return { applied: false, error: String(e) }; }
   });
   ipcMain.handle('pref:apply-new-outlook', async (event, enable) => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
-      const { exec } = require('child_process');
-      const util = require('util');
-      const execAsync = util.promisify(exec);
-      const val = enable ? 1 : 0;
-      await execAsync(`powershell -Command "if (!(Test-Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General')) { New-Item -Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General' -Name 'HideNewOutlookToggle' -Value ${val} -Type DWord"`, { timeout: 8000 });
-      return { success: true, applied: !!enable, message: "New Outlook Toggle preference updated." };
+      // enable=true = show new outlook (UseNewOutlook=1, HideToggle=0)
+      // enable=false = hide new outlook (UseNewOutlook=0, HideToggle=1, disable auto-migration)
+      const script = enable ? `
+If (-not (Test-Path 'HKCU:\\SOFTWARE\\Microsoft\\Office\\16.0\\Outlook\\Preferences')) { New-Item -Path 'HKCU:\\SOFTWARE\\Microsoft\\Office\\16.0\\Outlook\\Preferences' -Force | Out-Null }
+Set-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Office\\16.0\\Outlook\\Preferences' -Name 'UseNewOutlook' -Value 1 -Type DWord -Force
+If (-not (Test-Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General')) { New-Item -Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General' -Force | Out-Null }
+Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General' -Name 'HideNewOutlookToggle' -Value 0 -Type DWord -Force
+` : `
+If (-not (Test-Path 'HKCU:\\SOFTWARE\\Microsoft\\Office\\16.0\\Outlook\\Preferences')) { New-Item -Path 'HKCU:\\SOFTWARE\\Microsoft\\Office\\16.0\\Outlook\\Preferences' -Force | Out-Null }
+Set-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Office\\16.0\\Outlook\\Preferences' -Name 'UseNewOutlook' -Value 0 -Type DWord -Force
+If (-not (Test-Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General')) { New-Item -Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General' -Force | Out-Null }
+Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General' -Name 'HideNewOutlookToggle' -Value 1 -Type DWord -Force
+If (-not (Test-Path 'HKCU:\\Software\\Policies\\Microsoft\\Office\\16.0\\Outlook\\Options\\General')) { New-Item -Path 'HKCU:\\Software\\Policies\\Microsoft\\Office\\16.0\\Outlook\\Options\\General' -Force | Out-Null }
+Set-ItemProperty -Path 'HKCU:\\Software\\Policies\\Microsoft\\Office\\16.0\\Outlook\\Options\\General' -Name 'DoNewOutlookAutoMigration' -Value 0 -Type DWord -Force
+If (-not (Test-Path 'HKCU:\\Software\\Policies\\Microsoft\\Office\\16.0\\Outlook\\Preferences')) { New-Item -Path 'HKCU:\\Software\\Policies\\Microsoft\\Office\\16.0\\Outlook\\Preferences' -Force | Out-Null }
+Remove-ItemProperty -Path 'HKCU:\\Software\\Policies\\Microsoft\\Office\\16.0\\Outlook\\Preferences' -Name 'NewOutlookMigrationUserSetting' -Force -ErrorAction SilentlyContinue
+`;
+      await runPSScript(script, 6000);
+      return { success: true, applied: !!enable, message: 'New Outlook preference updated.' };
     } catch (e) { return { success: false, message: String(e) }; }
   });
 
   ipcMain.handle('pref:check-numlock', async () => {
     try {
-      const { exec } = require('child_process');
-      const util = require('util');
-      const execAsync = util.promisify(exec);
-      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKCU:\\Control Panel\\Keyboard' -Name 'InitialKeyboardIndicators' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty InitialKeyboardIndicators\"", { timeout: 3000 });
-      const val = res.stdout ? res.stdout.trim() : "";
-      return { applied: val === "2", value: val };
+      const raw = await runPSScript(`
+$r = @{}
+try { $r.HKCU = (Get-ItemProperty -Path 'HKCU:\\Control Panel\\Keyboard' -Name 'InitialKeyboardIndicators' -ErrorAction SilentlyContinue).InitialKeyboardIndicators } catch {}
+try { $r.HKU = (Get-ItemProperty -Path 'HKU:\\.Default\\Control Panel\\Keyboard' -Name 'InitialKeyboardIndicators' -ErrorAction SilentlyContinue).InitialKeyboardIndicators } catch {}
+$r | ConvertTo-Json -Compress
+      `, 3000);
+      if (!raw) return { applied: false, value: null };
+      const parsed = JSON.parse(raw);
+      const applied = parsed.HKCU === '2' || parsed.HKU === '2';
+      return { applied, value: parsed };
     } catch (e) { return { applied: false, error: String(e) }; }
   });
   ipcMain.handle('pref:apply-numlock', async (event, enable) => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
-      const { exec } = require('child_process');
-      const util = require('util');
-      const execAsync = util.promisify(exec);
-      const val = enable ? "2" : "0";
-      await execAsync(`powershell -Command "if (!(Test-Path 'HKCU:\\Control Panel\\Keyboard')) { New-Item -Path 'HKCU:\\Control Panel\\Keyboard' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Keyboard' -Name 'InitialKeyboardIndicators' -Value '${val}' -Type String"`, { timeout: 8000 });
-      return { success: true, applied: !!enable, message: "Num Lock startup preference updated." };
+      const val = enable ? '2' : '0';
+      const script = `
+If (-not (Test-Path 'HKCU:\\Control Panel\\Keyboard')) { New-Item -Path 'HKCU:\\Control Panel\\Keyboard' -Force | Out-Null }
+Set-ItemProperty -Path 'HKCU:\\Control Panel\\Keyboard' -Name 'InitialKeyboardIndicators' -Value '${val}' -Type String -Force
+If (Test-Path 'HKU:\\.Default\\Control Panel\\Keyboard') {
+  Set-ItemProperty -Path 'HKU:\\.Default\\Control Panel\\Keyboard' -Name 'InitialKeyboardIndicators' -Value '${val}' -Type String -Force
+}
+`;
+      await runPSScript(script, 5000);
+      return { success: true, applied: !!enable, message: 'Num Lock startup preference updated.' };
     } catch (e) { return { success: false, message: String(e) }; }
   });
 
@@ -1301,9 +1321,10 @@ Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\The
       const { exec } = require('child_process');
       const util = require('util');
       const execAsync = util.promisify(exec);
-      const val = enable ? 1 : 2;
+      // enable=true = show hidden files (Hidden=1); disable = hide them (Hidden=0 per ChrisTitus OriginalValue)
+      const val = enable ? 1 : 0;
       await execAsync(`powershell -Command "if (!(Test-Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced')) { New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' -Name 'Hidden' -Value ${val} -Type DWord"`, { timeout: 8000 });
-      return { success: true, applied: !!enable, message: "Show Hidden Files updated." };
+      return { success: true, applied: !!enable, message: 'Show Hidden Files updated.' };
     } catch (e) { return { success: false, message: String(e) }; }
   });
 
@@ -1314,17 +1335,18 @@ Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\The
       const execAsync = util.promisify(exec);
       const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKCU:\\Control Panel\\Accessibility\\StickyKeys' -Name 'Flags' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Flags\"", { timeout: 3000 });
       const val = res.stdout ? res.stdout.trim() : "";
-      return { applied: val === "510", value: val };
+      // applied=true = sticky keys popup hotkey disabled (Flags=506, ChrisTitus default/applied state)
+      return { applied: val === "506", value: val };
     } catch (e) { return { applied: false, error: String(e) }; }
   });
   ipcMain.handle('pref:apply-sticky-keys', async (event, enable) => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
     try {
-      const { exec } = require('child_process');
-      const util = require('util');
-      const execAsync = util.promisify(exec);
-      const val = enable ? "510" : "506";
+      // enable=true = disable sticky keys hotkey popup (Flags=506 per ChrisTitus Value)
+      // enable=false = restore original (Flags=58 per ChrisTitus OriginalValue)
+      const val = enable ? "506" : "58";
       await execAsync(`powershell -Command "if (!(Test-Path 'HKCU:\\Control Panel\\Accessibility\\StickyKeys')) { New-Item -Path 'HKCU:\\Control Panel\\Accessibility\\StickyKeys' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Accessibility\\StickyKeys' -Name 'Flags' -Value '${val}' -Type String"`, { timeout: 8000 });
-      return { success: true, applied: !!enable, message: "Sticky Keys preference updated." };
+      return { success: true, applied: !!enable, message: 'Sticky Keys preference updated.' };
     } catch (e) { return { success: false, message: String(e) }; }
   });
 
