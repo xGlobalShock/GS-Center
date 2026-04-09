@@ -1,5 +1,17 @@
 // lucide-react icons (used for cache utility cards)
 import {
+  Search,
+  MousePointerClick,
+  MapPin,
+  LayoutGrid,
+  Shield,
+  Box,
+  Power,
+  Terminal,
+  EyeOff,
+  History,
+  ShieldAlert,
+  Database,
   Cpu,
   Trash2,
   FileText,
@@ -12,6 +24,7 @@ import {
   DownloadCloud,
   RotateCcw,
   Wrench,
+  Settings,
 } from 'lucide-react';
 
 // bring back game & nvidia asset logos
@@ -40,16 +53,16 @@ export interface CleanerUtility {
 }
 
 export const cleanerUtilities: CleanerUtility[] = [
-    {
-      id: 'forza-shaders',
-      title: 'Clear Forza Horizon 5 Shaders',
-      icon: ForzaLogo,
-      cacheType: 'Forza Shader Cache',
-      description: 'Deletes old Forza shader cache data so the game rebuilds fresh shaders, reducing stutters and load-time hitches.',
-      buttonText: 'Clear Cache',
-      color: '#0074D9',
-      buttonColor: '#27ae60',
-    },
+  {
+    id: 'forza-shaders',
+    title: 'Clear Forza Horizon 5 Shaders',
+    icon: ForzaLogo,
+    cacheType: 'Forza Shader Cache',
+    description: 'Deletes old Forza shader cache data so the game rebuilds fresh shaders, reducing stutters and load-time hitches.',
+    buttonText: 'Clear Cache',
+    color: '#0074D9',
+    buttonColor: '#27ae60',
+  },
   {
     id: 'nvidia-cache',
     title: 'Clear NVIDIA Cache',
@@ -250,14 +263,165 @@ export const cleanerUtilities: CleanerUtility[] = [
     color: '#0074D9',
     buttonColor: '#0094D4',
   },
+  // Essential Tweaks
   {
-    id: 'recent-files',
-    title: 'Clear Quick Access History',
-    icon: RotateCcw,
-    cacheType: 'Quick Access History',
-    description: 'Removes the Recent Files and Quick Access history from Windows Explorer, keeping your browsing activity private and the list clutter-free.',
-    buttonText: 'Clear History',
-    color: '#0074D9',
-    buttonColor: '#F39C12',
-  }
+    id: "ct-tweak:WPFTweaksRestorePoint",
+    title: "Create Restore Point",
+    icon: Shield,
+    cacheType: "System Tweak",
+    description: "Creates a restore point at runtime in case a revert is needed from WinUtil modifications.",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
+  {
+    id: "ct-tweak:WPFTweaksDiskCleanup",
+    title: "Run Disk Cleanup",
+    icon: Database,
+    cacheType: "System Tweak",
+    description: "Runs Disk Cleanup on Drive C: and removes old Windows Updates.",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
+  {
+    id: 'revert-startmenu',
+    title: 'Revert Old Start Menu',
+    icon: Settings,
+    cacheType: 'Start Menu Tweak',
+    description: 'Disables the newly styled Windows 11 Start Menu, reverting back to the classic layout style. This can slightly improve UI responsiveness.',
+    buttonText: 'Apply Tweak',
+    color: '#3b82f6',
+    buttonColor: '#2563eb',
+  },
+  {
+    id: "ct-tweak:WPFTweaksServices",
+    title: "Set Services to Manual",
+    icon: Wrench,
+    cacheType: "System Tweak",
+    description: "Turns a bunch of system services to manual that don't need to be running all the time. This is pretty harmless as if the service is needed, it will simply start on demand.",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
+  {
+    id: "ct-tweak:WPFTweaksEndTaskOnTaskbar",
+    title: "Enable End Task With Right Click",
+    icon: MousePointerClick,
+    cacheType: "System Tweak",
+    description: "Enables option to end task when right clicking a program in the taskbar.",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
+  {
+    id: "ct-tweak:WPFTweaksDisableStoreSearch",
+    title: "Disable Microsoft Store search results",
+    icon: Search,
+    cacheType: "System Tweak",
+    description: "Will not display recommended Microsoft Store apps when searching for apps in the Start menu.",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
+  {
+    id: "ct-tweak:WPFTweaksLocation",
+    title: "Disable Location Tracking",
+    icon: MapPin,
+    cacheType: "System Tweak",
+    description: "Disables Windows location tracking and clears stored location data to protect your privacy.",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
+  {
+    id: "ct-tweak:WPFTweaksWidget",
+    title: "Remove Widgets",
+    icon: LayoutGrid,
+    cacheType: "System Tweak",
+    description: "Removes the Windows 11 widgets feature, which can improve performance and reduce distractions for users who don't use it.",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
+  {
+    id: "ct-tweak:WPFTweaksConsumerFeatures",
+    title: "Disable ConsumerFeatures",
+    icon: Box,
+    cacheType: "System Tweak",
+    description: "Windows will not automatically install any games, third-party apps, or application links from the Windows Store for the signed-in user. Some default Apps will be inaccessible (eg. Phone Link).",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
+  {
+    id: "ct-tweak:WPFTweaksHiber",
+    title: "Disable Hibernation",
+    icon: Power,
+    cacheType: "System Tweak",
+    description: "Hibernation is really meant for laptops as it saves what's in memory before turning the PC off. It really should never be used.",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
+  {
+    id: "ct-tweak:WPFTweaksPowershell7Tele",
+    title: "Disable PowerShell 7 Telemetry",
+    icon: Terminal,
+    cacheType: "System Tweak",
+    description: "Disables PowerShell 7 Telemetry, which collects anonymous usage data and sends it to Microsoft. This tweak prevents the telemetry service from running and stops data collection.",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
+  {
+    id: "ct-tweak:WPFTweaksTelemetry",
+    title: "Disable Telemetry",
+    icon: EyeOff,
+    cacheType: "System Tweak",
+    description: "Disables Windows Telemetry, which collects diagnostic and usage data to send to Microsoft. This tweak turns off telemetry services and prevents data collection for improved privacy.",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
+  {
+    id: "ct-tweak:WPFTweaksDeleteTempFiles",
+    title: "Delete Temporary Files",
+    icon: Trash2,
+    cacheType: "System Tweak",
+    description: "Deletes all files in the Windows Temp folder (C:\\Windows\\Temp). This folder is used by the system and applications to store temporary files, but it can accumulate a lot of junk over time. This tweak will clear out that folder to free up disk space and potentially improve performance.",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
+  {
+    id: "ct-tweak:WPFTweaksActivity",
+    title: "Disable Activity History",
+    icon: History,
+    cacheType: "System Tweak",
+    description: "Deletes recent activity history, including recently opened documents, clipboard history, and run history. This can help protect your privacy by removing traces of your recent actions on the computer.",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
+  {
+    id: "ct-tweak:WPFTweaksWPBT",
+    title: "Disable Windows Platform Binary Table (WPBT)",
+    icon: ShieldAlert,
+    cacheType: "System Tweak",
+    description: "If enabled, WPBT allows your computer vendor to execute programs at boot time, such as anti-theft software, software drivers, as well as force install software without user consent. Poses potential security risk.",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
+  {
+    id: "ct-tweak:WPFTweaksDisableExplorerAutoDiscovery",
+    title: "Disable Explorer Automatic Folder Discovery",
+    icon: Search,
+    cacheType: "System Tweak",
+    description: "Windows Explorer automatically tries to guess the type of the folder based on its contents, slowing down the browsing experience. WARNING! Will disable File Explorer grouping.",
+    buttonText: "Apply Tweak",
+    color: "#3b82f6",
+    buttonColor: "#2563eb"
+  },
 ];

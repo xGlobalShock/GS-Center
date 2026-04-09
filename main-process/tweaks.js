@@ -399,9 +399,9 @@ function registerIPC() {
           finalScriptPath = tmpFile;
         }
         
-        // If enable = true, we apply the tweak (disable new start menu => don't pass Undo).
-        // If enable = false, we reset it (Undo => enable new start menu).
-        const undoArg = enable ? '' : ' -Undo';
+        // If enable is undefined (called from cleaner menu), default to true (apply tweak).
+        const shouldApply = enable !== false;
+        const undoArg = shouldApply ? '' : ' -Undo';
         
         const cmd = `powershell -NoProfile -ExecutionPolicy Bypass -File "${finalScriptPath}"${undoArg} -ViVeToolPath "${viveToolPath}"`;
         await execAsync(cmd, { shell: true, timeout: 0 });
@@ -410,7 +410,7 @@ function registerIPC() {
           try { fs.unlinkSync(tmpFileToCleanup); } catch (_) { }
         }
       }
-      return { success: true, message: `Classic Start Menu ${enable ? 'Enabled' : 'Disabled'}`, applied: !!enable };
+      return { success: true, message: `Classic Start Menu ${shouldApply ? 'Enabled' : 'Disabled'}`, applied: shouldApply };
     } catch (error) {
       return { success: false, message: `Error: ${error.message}` };
     }
@@ -1096,6 +1096,310 @@ Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\The
     });
   });
 
+
+  ipcMain.handle('pref:check-center-taskbar', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' -Name 'TaskbarAl' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty TaskbarAl\"", { timeout: 3000 });
+      const val = res.stdout ? res.stdout.trim() : "";
+      return { applied: val === "1", value: val };
+    } catch (e) { return { applied: false, error: String(e) }; }
+  });
+  ipcMain.handle('pref:apply-center-taskbar', async (event, enable) => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const val = enable ? 1 : 0;
+      await execAsync(`powershell -Command "if (!(Test-Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced')) { New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' -Name 'TaskbarAl' -Value ${val} -Type DWord"`, { timeout: 8000 });
+      return { success: true, applied: !!enable, message: "Center Taskbar preference updated." };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  ipcMain.handle('pref:check-cross-device', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System' -Name 'EnableActivityFeed' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty EnableActivityFeed\"", { timeout: 3000 });
+      const val = res.stdout ? res.stdout.trim() : "";
+      return { applied: val === "1", value: val };
+    } catch (e) { return { applied: false, error: String(e) }; }
+  });
+  ipcMain.handle('pref:apply-cross-device', async (event, enable) => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const val = enable ? 1 : 0;
+      await execAsync(`powershell -Command "if (!(Test-Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System')) { New-Item -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System' -Name 'EnableActivityFeed' -Value ${val} -Type DWord; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System' -Name 'PublishUserActivities' -Value ${val} -Type DWord"`, { timeout: 8000 });
+      return { success: true, applied: !!enable, message: "Cross-Device Resume preference updated." };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  ipcMain.handle('pref:check-detailed-bsod', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\CrashControl' -Name 'DisplayParameters' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty DisplayParameters\"", { timeout: 3000 });
+      const val = res.stdout ? res.stdout.trim() : "";
+      return { applied: val === "1", value: val };
+    } catch (e) { return { applied: false, error: String(e) }; }
+  });
+  ipcMain.handle('pref:apply-detailed-bsod', async (event, enable) => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const val = enable ? 1 : 0;
+      await execAsync(`powershell -Command "if (!(Test-Path 'HKLM:\\System\\CurrentControlSet\\Control\\CrashControl')) { New-Item -Path 'HKLM:\\System\\CurrentControlSet\\Control\\CrashControl' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\CrashControl' -Name 'DisplayParameters' -Value ${val} -Type DWord"`, { timeout: 8000 });
+      return { success: true, applied: !!enable, message: "Detailed BSoD preference updated." };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  ipcMain.handle('pref:check-mpo', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm' -Name 'OverlayTestMode' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OverlayTestMode\"", { timeout: 3000 });
+      const val = res.stdout ? res.stdout.trim() : "";
+      return { applied: val === "5", value: val };
+    } catch (e) { return { applied: false, error: String(e) }; }
+  });
+  ipcMain.handle('pref:apply-mpo', async (event, enable) => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const val = enable ? 5 : 0;
+      await execAsync(`powershell -Command "if (!(Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm')) { New-Item -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm' -Name 'OverlayTestMode' -Value ${val} -Type DWord"`, { timeout: 8000 });
+      return { success: true, applied: !!enable, message: "MPO preference updated." };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  ipcMain.handle('pref:check-modern-standby', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Power' -Name 'PlatformAoAcOverride' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty PlatformAoAcOverride\"", { timeout: 3000 });
+      const val = res.stdout ? res.stdout.trim() : "";
+      return { applied: val === "0", value: val };
+    } catch (e) { return { applied: false, error: String(e) }; }
+  });
+  ipcMain.handle('pref:apply-modern-standby', async (event, enable) => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const val = enable ? 0 : 1;
+      await execAsync(`powershell -Command "if (!(Test-Path 'HKLM:\\System\\CurrentControlSet\\Control\\Power')) { New-Item -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Power' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Power' -Name 'PlatformAoAcOverride' -Value ${val} -Type DWord"`, { timeout: 8000 });
+      return { success: true, applied: !!enable, message: "Modern Standby preference updated." };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  ipcMain.handle('pref:check-new-outlook', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General' -Name 'HideNewOutlookToggle' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty HideNewOutlookToggle\"", { timeout: 3000 });
+      const val = res.stdout ? res.stdout.trim() : "";
+      return { applied: val === "1", value: val };
+    } catch (e) { return { applied: false, error: String(e) }; }
+  });
+  ipcMain.handle('pref:apply-new-outlook', async (event, enable) => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const val = enable ? 1 : 0;
+      await execAsync(`powershell -Command "if (!(Test-Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General')) { New-Item -Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General' -Name 'HideNewOutlookToggle' -Value ${val} -Type DWord"`, { timeout: 8000 });
+      return { success: true, applied: !!enable, message: "New Outlook Toggle preference updated." };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  ipcMain.handle('pref:check-numlock', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKCU:\\Control Panel\\Keyboard' -Name 'InitialKeyboardIndicators' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty InitialKeyboardIndicators\"", { timeout: 3000 });
+      const val = res.stdout ? res.stdout.trim() : "";
+      return { applied: val === "2", value: val };
+    } catch (e) { return { applied: false, error: String(e) }; }
+  });
+  ipcMain.handle('pref:apply-numlock', async (event, enable) => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const val = enable ? "2" : "0";
+      await execAsync(`powershell -Command "if (!(Test-Path 'HKCU:\\Control Panel\\Keyboard')) { New-Item -Path 'HKCU:\\Control Panel\\Keyboard' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Keyboard' -Name 'InitialKeyboardIndicators' -Value '${val}' -Type String"`, { timeout: 8000 });
+      return { success: true, applied: !!enable, message: "Num Lock startup preference updated." };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  ipcMain.handle('pref:check-search-taskbar', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Search' -Name 'SearchboxTaskbarMode' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty SearchboxTaskbarMode\"", { timeout: 3000 });
+      const val = res.stdout ? res.stdout.trim() : "";
+      return { applied: val === "3", value: val };
+    } catch (e) { return { applied: false, error: String(e) }; }
+  });
+  ipcMain.handle('pref:apply-search-taskbar', async (event, enable) => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const val = enable ? 3 : 0;
+      await execAsync(`powershell -Command "if (!(Test-Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Search')) { New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Search' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Search' -Name 'SearchboxTaskbarMode' -Value ${val} -Type DWord"`, { timeout: 8000 });
+      return { success: true, applied: !!enable, message: "Search Taskbar preference updated." };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  ipcMain.handle('pref:check-show-extensions', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' -Name 'HideFileExt' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty HideFileExt\"", { timeout: 3000 });
+      const val = res.stdout ? res.stdout.trim() : "";
+      return { applied: val === "0", value: val };
+    } catch (e) { return { applied: false, error: String(e) }; }
+  });
+  ipcMain.handle('pref:apply-show-extensions', async (event, enable) => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const val = enable ? 0 : 1;
+      await execAsync(`powershell -Command "if (!(Test-Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced')) { New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' -Name 'HideFileExt' -Value ${val} -Type DWord"`, { timeout: 8000 });
+      return { success: true, applied: !!enable, message: "Show File Extensions updated." };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  ipcMain.handle('pref:check-show-hidden', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' -Name 'Hidden' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Hidden\"", { timeout: 3000 });
+      const val = res.stdout ? res.stdout.trim() : "";
+      return { applied: val === "1", value: val };
+    } catch (e) { return { applied: false, error: String(e) }; }
+  });
+  ipcMain.handle('pref:apply-show-hidden', async (event, enable) => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const val = enable ? 1 : 2;
+      await execAsync(`powershell -Command "if (!(Test-Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced')) { New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' -Name 'Hidden' -Value ${val} -Type DWord"`, { timeout: 8000 });
+      return { success: true, applied: !!enable, message: "Show Hidden Files updated." };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  ipcMain.handle('pref:check-sticky-keys', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKCU:\\Control Panel\\Accessibility\\StickyKeys' -Name 'Flags' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Flags\"", { timeout: 3000 });
+      const val = res.stdout ? res.stdout.trim() : "";
+      return { applied: val === "510", value: val };
+    } catch (e) { return { applied: false, error: String(e) }; }
+  });
+  ipcMain.handle('pref:apply-sticky-keys', async (event, enable) => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const val = enable ? "510" : "506";
+      await execAsync(`powershell -Command "if (!(Test-Path 'HKCU:\\Control Panel\\Accessibility\\StickyKeys')) { New-Item -Path 'HKCU:\\Control Panel\\Accessibility\\StickyKeys' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Accessibility\\StickyKeys' -Name 'Flags' -Value '${val}' -Type String"`, { timeout: 8000 });
+      return { success: true, applied: !!enable, message: "Sticky Keys preference updated." };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  ipcMain.handle('pref:check-task-view', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' -Name 'ShowTaskViewButton' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ShowTaskViewButton\"", { timeout: 3000 });
+      const val = res.stdout ? res.stdout.trim() : "";
+      return { applied: val === "1", value: val };
+    } catch (e) { return { applied: false, error: String(e) }; }
+  });
+  ipcMain.handle('pref:apply-task-view', async (event, enable) => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const val = enable ? 1 : 0;
+      await execAsync(`powershell -Command "if (!(Test-Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced')) { New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' -Force | Out-Null }; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced' -Name 'ShowTaskViewButton' -Value ${val} -Type DWord"`, { timeout: 8000 });
+      return { success: true, applied: !!enable, message: "Task View button updated." };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  ipcMain.handle('pref:check-verbose-logon', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const res = await execAsync("powershell -Command \"Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'VerboseStatus' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty VerboseStatus\"", { timeout: 3000 });
+      const val = res.stdout ? res.stdout.trim() : "";
+      return { applied: val === "1", value: val };
+    } catch (e) { return { applied: false, error: String(e) }; }
+  });
+  ipcMain.handle('pref:apply-verbose-logon', async (event, enable) => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const val = enable ? 1 : 0;
+      await execAsync(`powershell -Command "if (!(Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System')) { New-Item -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'VerboseStatus' -Value ${val} -Type DWord"`, { timeout: 8000 });
+      return { success: true, applied: !!enable, message: "Verbose Status updated." };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  ipcMain.handle('pref:add-ultimate-performance', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      await execAsync('powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61', { timeout: 10000 });
+      const res = await execAsync('powercfg /l', { timeout: 10000 });
+      const match = res.stdout.match(/([0-9a-f\-]{36})\s+\(Ultimate Performance\)/i);
+      if (match) {
+        await execAsync(`powercfg -setactive ${match[1]}`, { timeout: 10000 });
+        return { success: true, message: 'Ultimate Performance Profile Added & Activated' };
+      }
+      return { success: false, message: 'Could not find profile' };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  ipcMain.handle('pref:remove-ultimate-performance', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      await execAsync('powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e', { timeout: 5000 });
+      const res = await execAsync('powercfg /l', { timeout: 10000 });
+      const matches = [...res.stdout.matchAll(/([0-9a-f\-]{36})\s+\(Ultimate Performance\)/gi)];
+      for (const m of matches) {
+        await execAsync(`powercfg -delete ${m[1]}`, { timeout: 5000 });
+      }
+      return { success: true, message: 'Ultimate Performance Profiles Removed' };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
 
 } // end registerIPC
 

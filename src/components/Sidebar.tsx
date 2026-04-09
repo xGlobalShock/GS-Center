@@ -44,7 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
     { id: 'network',           label: 'Network',   icon: Wifi             },
     { id: 'apps',              label: 'Apps',      icon: Layers           },
     { id: 'softwareUpdates',   label: 'Updates',   icon: RefreshCw        },
-    { id: 'serviceOptimizer',  label: 'Services',  icon: Shield            },
+    // { id: 'serviceOptimizer',  label: 'Services',  icon: Shield            },
     { id: 'cleaner',           label: 'Utilities', icon: SlidersHorizontal},
     { id: 'space',             label: 'Disk',      icon: PieChart         },
   ], []);

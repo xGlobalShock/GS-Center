@@ -164,6 +164,7 @@ function registerIPC() {
 module.exports = {
   registerIPC,
   destroyOverlay,
+  createOverlayWindow,
   pushProgress,
   setActiveRepair,
   clearActiveRepair,
