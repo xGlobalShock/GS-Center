@@ -44,10 +44,22 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ featureName, onClose }) => 
       );
       if (orderError || !orderData?.approval_url) {
         let msg = orderError?.message || 'Failed to create payment order';
+        console.error('[PayPal] Raw error object:', JSON.stringify(orderError, Object.getOwnPropertyNames(orderError || {})));
+        console.error('[PayPal] Raw data:', JSON.stringify(orderData));
         try {
-          const body = await (orderError as any)?.context?.json?.();
-          if (body?.error) msg = body.error;
-        } catch {}
+          const ctx = (orderError as any)?.context;
+          if (ctx?.json) {
+            const body = await ctx.json();
+            if (body?.error) msg = body.error;
+          }
+        } catch (e) {
+          try {
+            const ctx = (orderError as any)?.context;
+            if (ctx?.text) { const t = await ctx.text(); if (t) msg = t; }
+          } catch {}
+        }
+        if (orderData?.error) msg = orderData.error;
+        console.error('[PayPal] Order creation failed:', msg);
         throw new Error(msg);
       }
       const result = await (window as any).electron.ipcRenderer.invoke('paypal:checkout', {

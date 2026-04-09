@@ -90,7 +90,24 @@ const ManageSubscription: React.FC = () => {
         { body: { user_id: profile.id } }
       );
       if (orderError || !orderData?.approval_url) {
-        throw new Error(orderError?.message || 'Failed to create payment order');
+        let msg = orderError?.message || 'Failed to create payment order';
+        console.error('[PayPal] Raw error object:', JSON.stringify(orderError, Object.getOwnPropertyNames(orderError || {})));
+        console.error('[PayPal] Raw data:', JSON.stringify(orderData));
+        try {
+          const ctx = (orderError as any)?.context;
+          if (ctx?.json) {
+            const body = await ctx.json();
+            if (body?.error) msg = body.error;
+          }
+        } catch (e) {
+          try {
+            const ctx = (orderError as any)?.context;
+            if (ctx?.text) { const t = await ctx.text(); if (t) msg = t; }
+          } catch {}
+        }
+        if (orderData?.error) msg = orderData.error;
+        console.error('[PayPal] Order creation failed:', msg);
+        throw new Error(msg);
       }
 
       // 2) Open checkout in system browser
