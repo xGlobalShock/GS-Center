@@ -7,6 +7,7 @@ const path = require('path');
 let _downloadCancellationToken = null;
 let _updateDownloadedAt = null;
 let _updateLogPath = null;
+let _latestUpdateVersion = null;
 
 /**
  * Write a small marker to userData so the NEXT launch (immediately after NSIS
@@ -61,6 +62,7 @@ function initAutoUpdater() {
   });
 
   autoUpdater.on('update-available', (info) => {
+    _latestUpdateVersion = info.version;
     sendUpdateStatus({
       event: 'available',
       version: info.version,
@@ -88,6 +90,7 @@ function initAutoUpdater() {
     });
     windowManager.sendSplashStatus('Downloading update...');
     windowManager.sendSplashProgress(percent);
+    _sendToSplash('splash:update-progress', { percent });
   });
 
   autoUpdater.on('update-downloaded', (info) => {
@@ -98,6 +101,7 @@ function initAutoUpdater() {
 
     windowManager.sendSplashStatus('Update downloaded. Installing...');
     windowManager.sendSplashProgress(100);
+    _sendToSplash('splash:update-progress', { percent: 100 });
 
     // Auto-install immediately — app will quit, NSIS runs silently, then relaunches.
     setTimeout(() => {
@@ -141,6 +145,7 @@ function initAutoUpdater() {
   autoUpdater.on('error', (err) => {
     console.error('[AutoUpdater] Error:', err?.message || err);
     sendUpdateStatus({ event: 'error', message: err?.message || 'Unknown update error' });
+    _sendToSplash('splash:update-error', { message: err?.message || 'Unknown update error' });
   });
 
   autoUpdater.checkForUpdates().catch(err => {
@@ -157,15 +162,26 @@ function registerIPC() {
     if (!app.isPackaged) {
       return { event: 'not-available', version: app.getVersion(), dev: true };
     }
+    const currentVersion = app.getVersion();
     try {
-      const result = await autoUpdater.checkForUpdates();
-      const latestVersion = result?.updateInfo?.version;
-      const currentVersion = app.getVersion();
-      const isNewer = latestVersion && latestVersion !== currentVersion;
-      return {
-        event: isNewer ? 'available' : 'not-available',
-        version: latestVersion || currentVersion,
-      };
+      // Run electron-updater and GitHub API check in parallel for maximum reliability.
+      // The GitHub check acts as a fallback if electron-updater's cache/CDN misses the release.
+      const [updaterResult, githubVersion] = await Promise.all([
+        autoUpdater.checkForUpdates().catch(() => null),
+        _checkGitHubRelease(),
+      ]);
+
+      const updaterVersion = updaterResult?.updateInfo?.version || null;
+
+      // Pick whichever source found a newer version
+      const candidates = [updaterVersion, githubVersion].filter(Boolean);
+      const latestVersion = candidates.find(v => _isVersionNewer(v, currentVersion)) || null;
+
+      if (latestVersion) {
+        _latestUpdateVersion = latestVersion;
+        return { event: 'available', version: latestVersion };
+      }
+      return { event: 'not-available', version: currentVersion };
     } catch (err) {
       return { event: 'error', message: err?.message || 'Check failed' };
     }
@@ -178,8 +194,20 @@ function registerIPC() {
         mainWindow.hide();
       }
 
-      if (!windowManager.getSplashWindow()) {
-        windowManager.createSplashWindow();
+      // Always create a fresh splash for the update flow
+      windowManager.createSplashWindow();
+
+      // Wait for the splash HTML to finish loading before sending any IPC
+      const splash = windowManager.getSplashWindow();
+      if (splash && !splash.isDestroyed()) {
+        await new Promise((resolve) => {
+          splash.webContents.once('did-finish-load', resolve);
+          setTimeout(resolve, 3000); // safety timeout
+        });
+        // Send version so it doesn't show "LOADING..."
+        splash.webContents.send('splash:version', app.getVersion());
+        // Activate the update overlay (instead of the generic boot UI)
+        _sendToSplash('splash:update-found', { version: _latestUpdateVersion || 'latest' });
       }
 
       windowManager.sendSplashStatus('Downloading update...');
@@ -195,6 +223,7 @@ function registerIPC() {
     } catch (err) {
       _downloadCancellationToken = null;
       windowManager.sendSplashStatus('Download failed. Please retry.');
+      _sendToSplash('splash:update-error', { message: err?.message || 'Download failed' });
       if (err?.message === 'cancelled') return { success: false, cancelled: true };
       return { success: false, message: err?.message || 'Download failed' };
     }
@@ -326,6 +355,67 @@ function _sendToSplash(channel, data) {
   if (splash && !splash.isDestroyed()) {
     splash.webContents.send(channel, data);
   }
+}
+
+/**
+ * Compare two semver strings. Returns true if `latest` is strictly newer than `current`.
+ */
+function _isVersionNewer(latest, current) {
+  const parse = (v) => String(v || '0').replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
+  const a = parse(latest);
+  const b = parse(current);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const diff = (a[i] || 0) - (b[i] || 0);
+    if (diff !== 0) return diff > 0;
+  }
+  return false;
+}
+
+/**
+ * Directly query the GitHub Releases API for the latest release tag.
+ * Resolves with a version string (e.g. "2.2.0") or null on any failure.
+ */
+function _checkGitHubRelease() {
+  const { net } = require('electron');
+  const currentVersion = app.getVersion();
+
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => resolve(null), 8000);
+
+    let request;
+    try {
+      request = net.request({
+        method: 'GET',
+        url: 'https://api.github.com/repos/xGlobalShock/GS-Center/releases/latest',
+        headers: {
+          'User-Agent': `GS-Center/${currentVersion}`,
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      });
+    } catch {
+      clearTimeout(timeout);
+      resolve(null);
+      return;
+    }
+
+    let body = '';
+    request.on('response', (response) => {
+      response.on('data', (chunk) => { body += chunk.toString(); });
+      response.on('end', () => {
+        clearTimeout(timeout);
+        try {
+          const data = JSON.parse(body);
+          const tagName = data.tag_name || '';
+          resolve(tagName.replace(/^v/, '') || null);
+        } catch {
+          resolve(null);
+        }
+      });
+      response.on('error', () => { clearTimeout(timeout); resolve(null); });
+    });
+    request.on('error', () => { clearTimeout(timeout); resolve(null); });
+    request.end();
+  });
 }
 
 module.exports = { initAutoUpdater, registerIPC, checkForUpdateEarly };
