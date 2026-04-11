@@ -407,10 +407,3 @@ GC Center/
 # License
 
 GS Center is released under the **MIT License**.
-
----
-
-# Credits
-
-Special thanks to the open-source ecosystem: React, Electron, Node.js, TypeScript, LibreHardwareMonitor, Supabase, Recharts, Framer Motion, Lucide, Tailwind CSS.
-# GS Center
