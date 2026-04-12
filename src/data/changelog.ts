@@ -10,6 +10,17 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '2.1.7',
+    date: '2026-04-13',
+    highlights: 'Hotfix for 2.1.6 - Fixed critical bugs and improved stability.',
+    changes: [
+      {
+        type: 'fixed',
+        text: 'Fixed a bug in the Win Tweaks page where none of the tweaks were applying due to a missing IPC handler.',
+      },
+    ],
+  },
+  {
     version: '2.1.6',
     date: '2026-04-12',
     highlights: 'Anti-Cheat database expansion, Enhanced Trace Route & Bug Fixes.',
