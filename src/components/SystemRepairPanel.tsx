@@ -272,7 +272,7 @@ const SystemRepairPanel: React.FC = () => {
                     }}
                   >
                     {isRunning ? <Loader2 size={13} className="repair-spin" /> : <Icon size={13} />}
-                    <span>{isRunning ? 'View Scan' : hasResult ? 'Run Again' : 'Run Scan'}</span>
+                    <span>{isRunning ? 'View' : hasResult ? 'Run Again' : 'Run'}</span>
                   </button>
                   {(isRunning || hasResult) && (
                     <button

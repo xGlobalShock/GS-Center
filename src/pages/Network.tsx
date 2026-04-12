@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wifi, Activity, Globe, Play, RefreshCcw, CloudLightning, Zap, Terminal, Route, MapPin, AlertTriangle, CheckCircle, Clock, ArrowRight } from 'lucide-react';
+import { Wifi, Activity, Globe, Play, RefreshCcw, CloudLightning, Zap, Terminal, Route, MapPin, AlertTriangle, CheckCircle, Clock, ArrowRight, Router, Building2, Network as NetworkIcon, Server, HelpCircle, X } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import '../styles/Network.css';
 
@@ -63,6 +63,20 @@ const hopLatencyDelta = (hops: TracerouteHop[], index: number): number | null =>
     if (hops[i]?.avg !== null) return current - hops[i].avg!;
   }
   return current;
+};
+
+const HOP_SEGMENTS = [
+  { id: 'router', label: 'Your Router', icon: Router, color: '#00ffaa', desc: 'Your local network gateway' },
+  { id: 'isp', label: 'ISP Network', icon: Building2, color: '#00d4ff', desc: "Your internet provider's network" },
+  { id: 'backbone', label: 'Internet Backbone', icon: NetworkIcon, color: '#a78bfa', desc: 'Major internet transit / peering' },
+  { id: 'destination', label: 'Destination', icon: Server, color: '#ffd000', desc: 'The target game/cloud server' },
+] as const;
+
+const classifyHop = (index: number, total: number) => {
+  if (index === 0) return HOP_SEGMENTS[0];
+  if (index === total - 1) return HOP_SEGMENTS[3];
+  if (total > 2 && index / (total - 1) <= 0.35) return HOP_SEGMENTS[1];
+  return HOP_SEGMENTS[2];
 };
 
 const TRACEROUTE_TARGETS: TracerouteTarget[] = [
@@ -265,6 +279,7 @@ const Network: React.FC = () => {
   const [trHops, setTrHops] = useState<TracerouteHop[]>([]);
   const [trRunning, setTrRunning] = useState(false);
   const [trDone, setTrDone] = useState(false);
+  const [trShowInfo, setTrShowInfo] = useState(false);
   const trListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -294,6 +309,13 @@ const Network: React.FC = () => {
       setTrDone(true);
     }
   }, [trTarget, trCustomHost, trRunning]);
+
+  const cancelTraceroute = useCallback(() => {
+    if (!window.electron?.ipcRenderer || !trRunning) return;
+    window.electron.ipcRenderer.invoke('network:traceroute-cancel');
+    setTrRunning(false);
+    setTrDone(true);
+  }, [trRunning]);
 
   /* ── Computed Stats ────────────────────────────────────────────────── */
   const allTimes = PING_TARGETS.map(t => results[t.id]?.time).filter((t): t is number => t != null);
@@ -529,11 +551,10 @@ const Network: React.FC = () => {
 
           <button
             className={`nv-fire-btn nv-tr-fire ${trRunning ? 'stop' : ''}`}
-            onClick={startTraceroute}
-            disabled={trRunning}
+            onClick={trRunning ? cancelTraceroute : startTraceroute}
           >
-            {trRunning ? <RefreshCcw size={16} className="nv-spin" /> : <Play size={16} fill="currentColor" />}
-            <span style={{ fontWeight: 700 }}>{trRunning ? 'Tracing Route...' : 'Start Trace'}</span>
+            {trRunning ? <AlertTriangle size={16} /> : <Play size={16} fill="currentColor" />}
+            <span style={{ fontWeight: 700 }}>{trRunning ? 'Cancel' : 'Start Trace'}</span>
           </button>
         </div>
 
@@ -543,7 +564,74 @@ const Network: React.FC = () => {
             <Activity size={14} className="nv-cyan-accent" />
             <span>ROUTE HOPS {trHops.length > 0 ? `(${trHops.length} hops)` : ''}</span>
             {trRunning && <span className="nv-tr-live-badge">● LIVE</span>}
+            <button className="nv-tr-info-btn" onClick={() => setTrShowInfo(p => !p)} title="What do these labels mean?">
+              {trShowInfo ? <X size={13} /> : <HelpCircle size={13} />}
+            </button>
           </div>
+
+          <AnimatePresence>
+            {trShowInfo && (
+              <motion.div
+                className="nv-tr-info-panel"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="nv-tr-info-inner">
+                  <p className="nv-tr-info-title">Understanding Your Trace Route</p>
+                  <p className="nv-tr-info-desc">A trace route maps every network device (hop) between you and the server. Here's what each label means:</p>
+                  <div className="nv-tr-info-grid">
+                    <div className="nv-tr-info-item">
+                      <span className="nv-tr-info-tag" style={{ color: '#00ffaa' }}><Router size={11} /> Your Router</span>
+                      <span>The first device — your home router/gateway that connects you to the internet.</span>
+                    </div>
+                    <div className="nv-tr-info-item">
+                      <span className="nv-tr-info-tag" style={{ color: '#00d4ff' }}><Building2 size={11} /> ISP Network</span>
+                      <span>Your Internet Service Provider's equipment. Data travels through their local network first.</span>
+                    </div>
+                    <div className="nv-tr-info-item">
+                      <span className="nv-tr-info-tag" style={{ color: '#a78bfa' }}><NetworkIcon size={11} /> Internet Backbone</span>
+                      <span>Major internet highways connecting cities and countries. Most of the journey happens here.</span>
+                    </div>
+                    <div className="nv-tr-info-item">
+                      <span className="nv-tr-info-tag" style={{ color: '#ffd000' }}><Server size={11} /> Destination</span>
+                      <span>The final server you're connecting to — this is where the game/service lives.</span>
+                    </div>
+                    <div className="nv-tr-info-item">
+                      <span className="nv-tr-info-tag nv-tr-info-tag-warn"><AlertTriangle size={11} /> Bottleneck</span>
+                      <span>This hop added the most latency to your route. If your ping is high, this node is likely the cause.</span>
+                    </div>
+                    <div className="nv-tr-info-item">
+                      <span className="nv-tr-info-tag nv-tr-info-tag-fw"><Clock size={11} /> Firewall / Hidden Node</span>
+                      <span>This device blocks trace requests (ICMP). It's completely normal and does NOT affect your connection or ping.</span>
+                    </div>
+                    <div className="nv-tr-info-item">
+                      <span className="nv-tr-info-tag nv-tr-info-tag-delta">+12ms</span>
+                      <span>The latency added at this specific hop. Low values are good — high values mean that hop is slowing your route.</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {trHops.length > 0 && !trShowInfo && (
+            <div className="nv-tr-route-legend">
+              {HOP_SEGMENTS.map((seg, i) => {
+                const SegIcon = seg.icon;
+                return (
+                  <React.Fragment key={seg.id}>
+                    {i > 0 && <ArrowRight size={10} className="nv-tr-legend-arrow" />}
+                    <span className="nv-tr-legend-pill" style={{ color: seg.color, borderColor: `${seg.color}33` }} title={seg.desc}>
+                      <SegIcon size={10} />
+                      {seg.label}
+                    </span>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
 
           <div className="nv-tr-hop-list" ref={trListRef}>
             {trHops.length === 0 && !trRunning && (
@@ -565,6 +653,8 @@ const Network: React.FC = () => {
               const color = hopColor(hop.avg, hop.timedOut);
               const delta = hopLatencyDelta(trHops, idx);
               const isWorst = trWorstHop && hop.hop === trWorstHop.hop && !hop.timedOut && (delta ?? 0) > 20;
+              const segment = classifyHop(idx, trHops.length);
+              const SegIcon = segment.icon;
 
               return (
                 <motion.div
@@ -586,10 +676,17 @@ const Network: React.FC = () => {
                       {hop.timedOut ? (
                         <span className="nv-tr-timeout">
                           <Clock size={12} /> Request timed out
+                          <span className="nv-tr-firewall-hint" title="This node's firewall blocks trace requests (ICMP). This is normal and doesn't affect your connection.">
+                            Firewall / Hidden node
+                          </span>
                         </span>
                       ) : (
                         <span className="font-mono">{hop.ip || 'Unknown'}</span>
                       )}
+                      <span className="nv-tr-hop-tag" style={{ color: segment.color, borderColor: `${segment.color}33`, background: `${segment.color}0f` }} title={segment.desc}>
+                        <SegIcon size={10} />
+                        {segment.label}
+                      </span>
                     </div>
                     {!hop.timedOut && (
                       <div className="nv-tr-hop-rtts">

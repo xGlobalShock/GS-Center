@@ -125,6 +125,15 @@ function registerIPC() {
   });
 
   /* ── Traceroute (streaming) ──────────────────────────────────────────── */
+  let activeTraceroute = null;
+
+  ipcMain.handle('network:traceroute-cancel', () => {
+    if (activeTraceroute) {
+      try { activeTraceroute.kill(); } catch {}
+      activeTraceroute = null;
+    }
+  });
+
   ipcMain.handle('network:traceroute', async (event, host) => {
     if (typeof host !== 'string' || !host.trim()) {
       return { success: false, error: 'invalid host' };
@@ -145,6 +154,7 @@ function registerIPC() {
       let rawBuffer = '';
 
       const proc = spawn(cmd, args, { windowsHide: true, timeout: 90000 });
+      activeTraceroute = proc;
 
       proc.stdout.on('data', (data) => {
         rawBuffer += data.toString();
@@ -163,6 +173,7 @@ function registerIPC() {
       proc.stderr.on('data', () => {});
 
       proc.on('close', () => {
+        activeTraceroute = null;
         // Parse any remaining buffered line
         if (rawBuffer.trim()) {
           const hop = parseTracertLine(rawBuffer);
@@ -176,6 +187,7 @@ function registerIPC() {
       });
 
       proc.on('error', (err) => {
+        activeTraceroute = null;
         try { sender.send('network:traceroute-done', { hops, error: err.message }); } catch {}
         resolve({ success: false, hops, error: err.message });
       });

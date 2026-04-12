@@ -265,16 +265,6 @@ export const cleanerUtilities: CleanerUtility[] = [
   },
   // Essential Tweaks
   {
-    id: "ct-tweak:WPFTweaksRestorePoint",
-    title: "Create Restore Point",
-    icon: Shield,
-    cacheType: "System Tweak",
-    description: "Creates a restore point at runtime in case a revert is needed from WinUtil modifications.",
-    buttonText: "Apply Tweak",
-    color: "#3b82f6",
-    buttonColor: "#2563eb"
-  },
-  {
     id: "ct-tweak:WPFTweaksDiskCleanup",
     title: "Run Disk Cleanup",
     icon: Database,

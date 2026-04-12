@@ -25,7 +25,7 @@ function _escapeHtml(str) {
 
 function _statusClass(status) {
   if (status === 'good' || status === 'exceeds' || status === 'meets-recommended') return 'good';
-  if (status === 'warning' || status === 'meets-minimum') return 'warn';
+  if (status === 'warning' || status === 'meets-minimum' || status === 'unknown') return 'warn';
   return 'bad';
 }
 
@@ -98,11 +98,12 @@ function _buildReportHtml(data) {
   const factorsHtml = factors.map(f => {
     const s = Math.round(f.score);
     const cls = _statusClass(f.status);
+    const rawVal = f.value && f.value !== 'N/A' ? f.value : '';
     return `
     <div class="hf">
       <div class="hf-head">
-        <span class="hf-lbl">${_escapeHtml(f.label)}</span>
-        <span class="hf-num hf-num--${cls}">${s}</span>
+        <span class="hf-lbl">${_escapeHtml(f.label)}${rawVal ? `<span class="hf-raw">${_escapeHtml(rawVal)}</span>` : ''}</span>
+        <span class="hf-num hf-num--${cls}">${s}<span class="hf-denom">/100</span></span>
       </div>
       <div class="hf-bar"><div class="hf-fill hf-fill--${cls}" style="width:${Math.min(s,100)}%"></div></div>
     </div>`;
@@ -188,7 +189,9 @@ body{width:700px;font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;backgr
 .hf{margin-bottom:8px}.hf:last-child{margin-bottom:0}
 .hf-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
 .hf-lbl{font-size:10px;font-weight:500;color:rgba(200,202,208,.45)}
+.hf-raw{margin-left:6px;font-size:9px;font-weight:400;color:rgba(200,202,208,.70);opacity:.8}
 .hf-num{font-size:10px;font-weight:800;font-variant-numeric:tabular-nums}
+.hf-denom{font-size:8px;font-weight:500;opacity:.4}
 .hf-num--good{color:#00ffaa}.hf-num--warn{color:#ffd000}.hf-num--bad{color:#ff4466}
 .hf-bar{height:6px;border-radius:4px;background:rgba(255,255,255,.04);overflow:hidden}
 .hf-fill{height:100%;border-radius:4px}
