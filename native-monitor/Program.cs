@@ -3,7 +3,9 @@
 // No .NET runtime needed on target machine (self-contained single-file publish).
 
 using System.Diagnostics;
+using System.Net;
 using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.ServiceProcess;
@@ -101,13 +103,24 @@ public static class Program
     private static int _statusLogCounter = 0;
     private static bool _firstTempLogged = false;
 
+    // TCP-based latency probe. ICMP to 1.1.1.1 / 8.8.8.8 is unreliable: ISPs peer
+    // directly with those providers at local IXPs, so ping times come back as
+    // 1-5 ms even on a slow connection. TCP 443 to steamcommunity.com hits a real
+    // geographic datacenter via the actual data plane, giving a truer reading.
+    private const string PingHost = "steamcommunity.com";
+    private const int PingPort = 443;
+    private const int PingTimeoutMs = 800;
+    private static IPAddress? _pingHostIp;
+    private static long _pingHostResolvedAt;
+    private const long PingDnsCacheMs = 5 * 60 * 1000;   // re-resolve every 5 min
+
     // Ping state (written by background thread, read by main loop)
     private static double _latencyMs;
     private static double _latencyMin = double.MaxValue;
     private static double _latencyMax;
     private static double _latencyAvg;
     private static double _latencyJitter;        // EWMA of |RTT - avgRTT|
-    private static double _internetLoss = -1;    // loss % to 8.8.8.8
+    private static double _internetLoss = -1;    // loss % to internet target (steamcommunity.com:443)
     private static readonly object _pingLock = new();
     // MikroTik-style cumulative counters (reset each epoch)
     private static long _epochSent;
@@ -750,11 +763,11 @@ public static class Program
             pRecv = _pingRecv;
         }
 
-        // Headline packetLoss = worst-case of internet + gateway targets
+        // Headline packetLoss: prefer internet target; use gateway only as fallback.
+        // Avoid Math.Max — a gateway that blocks ICMP (very common) would otherwise
+        // override a healthy internet measurement with a false 100%.
         double combinedLoss;
-        if (inetLoss >= 0 && gwLoss >= 0)
-            combinedLoss = Math.Max(inetLoss, gwLoss);
-        else if (inetLoss >= 0)
+        if (inetLoss >= 0)
             combinedLoss = inetLoss;
         else
             combinedLoss = gwLoss;
@@ -1002,9 +1015,32 @@ public static class Program
 
     #region Ping
 
+    private static IPAddress? ResolvePingHost()
+    {
+        long now = Environment.TickCount64;
+        if (_pingHostIp != null && now - _pingHostResolvedAt < PingDnsCacheMs)
+            return _pingHostIp;
+
+        try
+        {
+            var addrs = Dns.GetHostAddresses(PingHost);
+            foreach (var a in addrs)
+            {
+                if (a.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    _pingHostIp = a;
+                    _pingHostResolvedAt = now;
+                    return a;
+                }
+            }
+        }
+        catch { /* DNS failure — fall through to stale cache */ }
+
+        return _pingHostIp;
+    }
+
     private static void PingLoop()
     {
-        using var pinger = new Ping();
         const double alpha = 0.15;          // EWMA smoothing factor for latency
         double ewmaRtt = -1;
         double ewmaJitter = 0;
@@ -1017,13 +1053,25 @@ public static class Program
             bool success = false;
             long rtt = 0;
 
-            try
+            // Resolve once, cache for 5 minutes. Connecting by IP keeps the timed
+            // region free of DNS cost so rtt reflects only network round-trip.
+            var ip = ResolvePingHost();
+            if (ip != null)
             {
-                var reply = pinger.Send("8.8.8.8", 2000);
-                success = reply.Status == IPStatus.Success;
-                if (success) rtt = reply.RoundtripTime;
+                var probe = new TcpClient();
+                try
+                {
+                    var probeSw = Stopwatch.StartNew();
+                    if (probe.ConnectAsync(ip, PingPort).Wait(PingTimeoutMs))
+                    {
+                        probeSw.Stop();
+                        rtt = probeSw.ElapsedMilliseconds;
+                        success = true;
+                    }
+                }
+                catch { /* timeout or network error */ }
+                finally { probe.Dispose(); }
             }
-            catch { /* timeout or network error */ }
 
             lock (_pingLock)
             {
@@ -1036,9 +1084,12 @@ public static class Program
 
                 // Packet loss: simple ratio, no windowing
                 // MikroTik floors: 3 lost / 63 sent = 4.76% → displays 4%
+                // Guard: if zero replies ever came back, the host is likely
+                // unreachable (DNS failure, TCP 443 blocked) — report unknown (-1)
+                // rather than a false 100%.
                 if (_epochSent >= MinReportSamples)
                 {
-                    _internetLoss = (int)(
+                    _internetLoss = _epochRecv == 0 ? -1 : (int)(
                         (_epochSent - _epochRecv) * 100.0 / _epochSent);
                 }
 
@@ -1127,7 +1178,7 @@ public static class Program
     /// <summary>
     /// Background thread: ICMP ping to the default gateway at 1/sec.
     /// Catches local network issues (WiFi drops, router problems, cable faults)
-    /// that pinging 8.8.8.8 alone would miss.
+    /// that the internet-target probe alone would miss.
     /// </summary>
     private static void GatewayPingLoop()
     {
@@ -1163,7 +1214,9 @@ public static class Program
 
                 if (_gwEpochSent >= MinReportSamples)
                 {
-                    _gatewayLoss = (int)(
+                    // Same ICMP-blocked guard: a gateway that drops every ping
+                    // (rate-limiting or firewall) should not override internet loss.
+                    _gatewayLoss = _gwEpochRecv == 0 ? -1 : (int)(
                         (_gwEpochSent - _gwEpochRecv) * 100.0 / _gwEpochSent);
                 }
 
