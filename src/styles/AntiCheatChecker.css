@@ -2,7 +2,7 @@
 
 .ac-card {
   background: rgba(6, 8, 16, 0.72);
-  border: 1px solid rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(0, 242, 255, 0.18);
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 12px;
@@ -21,7 +21,7 @@
   bottom: 14px;
   width: 2px;
   border-radius: 0 2px 2px 0;
-  background: linear-gradient(180deg, rgba(239, 68, 68, 0.9) 0%, rgba(239, 68, 68, 0.25) 100%);
+  background: linear-gradient(180deg, rgba(0, 242, 255, 0.9) 0%, rgba(0, 242, 255, 0.25) 100%);
   pointer-events: none;
 }
 
@@ -30,7 +30,7 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2), 0 6px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 1px rgba(0, 242, 255, 0.2), 0 6px 24px rgba(0, 0, 0, 0.4);
   opacity: 0;
   transition: opacity 0.25s ease;
   pointer-events: none;
@@ -44,16 +44,31 @@
   opacity: 1;
 }
 
-/* ── All-clear accent swap ─────────────────────────────────── */
-.ac-card--clear {
-  border-color: rgba(0, 204, 106, 0.18);
+/* ── Status accent swaps ────────────────────────────────────── */
+/* --clear keeps cyan card chrome; only the summary text goes green */
+.ac-card--clear .ac-summary { color: rgba(0, 204, 106, 0.85); }
+
+.ac-card--warning {
+  border-color: rgba(245, 158, 11, 0.18);
 }
-.ac-card--clear::before {
-  background: linear-gradient(180deg, rgba(0, 204, 106, 0.9) 0%, rgba(0, 204, 106, 0.25) 100%);
+.ac-card--warning::before {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.9) 0%, rgba(245, 158, 11, 0.25) 100%);
 }
-.ac-card--clear::after {
-  box-shadow: 0 0 0 1px rgba(0, 204, 106, 0.2), 0 6px 24px rgba(0, 0, 0, 0.4);
+.ac-card--warning::after {
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2), 0 6px 24px rgba(0, 0, 0, 0.4);
 }
+.ac-card--warning .ac-summary { color: rgba(245, 158, 11, 0.85); }
+
+.ac-card--critical {
+  border-color: rgba(239, 68, 68, 0.18);
+}
+.ac-card--critical::before {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.9) 0%, rgba(239, 68, 68, 0.25) 100%);
+}
+.ac-card--critical::after {
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2), 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+.ac-card--critical .ac-summary { color: rgba(239, 68, 68, 0.85); }
 
 /* ── Header ────────────────────────────────────────────────── */
 .ac-header {
@@ -70,14 +85,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(0, 242, 255, 0.1);
   flex-shrink: 0;
 }
-.ac-card--clear .ac-icon-wrap {
-  background: rgba(0, 204, 106, 0.1);
+.ac-card--warning .ac-icon-wrap {
+  background: rgba(245, 158, 11, 0.1);
 }
-.ac-icon-good { color: #00CC6A; }
-.ac-icon-warn { color: #ef4444; }
+.ac-card--critical .ac-icon-wrap {
+  background: rgba(239, 68, 68, 0.1);
+}
+.ac-icon-good  { color: rgba(228, 228, 231, 0.9); }
+.ac-icon-warn  { color: rgba(228, 228, 231, 0.9); }
+.ac-card--warning  .ac-icon-warn { color: rgba(228, 228, 231, 0.9); }
+.ac-card--critical .ac-icon-warn { color: rgba(228, 228, 231, 0.9); }
 .ac-title-area { flex: 1; min-width: 0; }
 .ac-title {
   font-size: 13px;
@@ -253,13 +273,17 @@
   justify-content: center;
   position: relative;
   box-sizing: border-box;
-  border: 1px solid rgba(239, 68, 68, 0.28);
+  border: 1px solid rgba(0, 242, 255, 0.28);
   background: rgba(7, 9, 20, 0.92);
-  box-shadow: 0 0 16px rgba(239, 68, 68, 0.07), inset 0 1px 0 rgba(239, 68, 68, 0.09);
+  box-shadow: 0 0 16px rgba(0, 242, 255, 0.07), inset 0 1px 0 rgba(0, 242, 255, 0.09);
 }
-.ac-card--compact.ac-card--clear {
-  border-color: rgba(0, 204, 106, 0.28);
-  box-shadow: 0 0 16px rgba(0, 204, 106, 0.07), inset 0 1px 0 rgba(0, 204, 106, 0.09);
+.ac-card--compact.ac-card--warning {
+  border-color: rgba(245, 158, 11, 0.28);
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.07), inset 0 1px 0 rgba(245, 158, 11, 0.09);
+}
+.ac-card--compact.ac-card--critical {
+  border-color: rgba(239, 68, 68, 0.28);
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.07), inset 0 1px 0 rgba(239, 68, 68, 0.09);
 }
 
 .ac-card--compact::before {
@@ -267,12 +291,16 @@
   bottom: 0;
   width: 46px;
   border-radius: 999px 0 0 999px;
-  background: rgba(239, 68, 68, 0.13);
-  border-right: 1px solid rgba(239, 68, 68, 0.2);
+  background: rgba(0, 242, 255, 0.13);
+  border-right: 1px solid rgba(0, 242, 255, 0.2);
 }
-.ac-card--compact.ac-card--clear::before {
-  background: rgba(0, 204, 106, 0.13);
-  border-right-color: rgba(0, 204, 106, 0.2);
+.ac-card--compact.ac-card--warning::before {
+  background: rgba(245, 158, 11, 0.13);
+  border-right-color: rgba(245, 158, 11, 0.2);
+}
+.ac-card--compact.ac-card--critical::before {
+  background: rgba(239, 68, 68, 0.13);
+  border-right-color: rgba(239, 68, 68, 0.2);
 }
 
 .ac-card--compact .ac-header {
@@ -290,8 +318,8 @@
   z-index: 1;
 }
 .ac-card--compact .ac-icon-wrap svg {
-  width: 16px;
-  height: 16px;
+  width: 26px;
+  height: 26px;
 }
 .ac-card--compact .ac-title-area {
   padding-left: 9px;

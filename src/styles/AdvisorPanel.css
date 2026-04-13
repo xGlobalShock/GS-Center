@@ -70,8 +70,8 @@
   background: rgba(0, 242, 255, 0.1);
   flex-shrink: 0;
 }
-.advisor-brain-good { color: #00F2FF; }
-.advisor-brain-active { color: #00F2FF; }
+.advisor-brain-good   { color: rgba(228, 228, 231, 0.9); }
+.advisor-brain-active { color: rgba(228, 228, 231, 0.9); }
 .advisor-title-area { flex: 1; min-width: 0; }
 .advisor-title {
   font-size: 13px;
@@ -83,6 +83,10 @@
   color: rgba(228, 228, 231, 0.5);
   margin-top: 1px;
 }
+.advisor-summary--good     { color: rgba(0, 204, 106, 0.85); }
+.advisor-summary--warning  { color: rgba(245, 158, 11, 0.85); }
+.advisor-summary--critical { color: rgba(239, 68, 68, 0.85); }
+
 .advisor-toggle { color: rgba(228, 228, 231, 0.4); flex-shrink: 0; }
 
 /* ── Body ──────────────────────────────────────────────────── */
@@ -251,8 +255,8 @@
   z-index: 1; /* paints above the ::before colored panel */
 }
 .advisor-card--compact .advisor-icon-wrap svg {
-  width: 16px;
-  height: 16px;
+  width: 26px;
+  height: 26px;
 }
 .advisor-card--compact .advisor-title-area {
   padding-left: 9px;

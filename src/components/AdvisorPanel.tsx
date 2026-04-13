@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Cpu, Thermometer, HardDrive, Wifi, MemoryStick, MonitorCheck, ChevronDown, ChevronUp, Lightbulb, ArrowUpCircle, Zap, BatteryCharging, Activity, Eye, X, Monitor } from 'lucide-react';
+import { ScanLine, Cpu, Thermometer, HardDrive, Wifi, MemoryStick, MonitorCheck, ChevronDown, ChevronUp, Lightbulb, ArrowUpCircle, Zap, BatteryCharging, Activity, Eye, X, Monitor } from 'lucide-react';
 import '../styles/AdvisorPanel.css';
 
 interface Insight {
@@ -128,11 +128,16 @@ const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ systemStats, extendedStats,
     <div className={`advisor-card${compact ? ' advisor-card--compact' : ''}`}>
       <div className="advisor-header" onClick={handleToggle}>
         <div className="advisor-icon-wrap">
-          <Brain size={18} className={isAllGood ? 'advisor-brain-good' : 'advisor-brain-active'} />
+          <ScanLine size={18} className={isAllGood ? 'advisor-brain-good' : 'advisor-brain-active'} />
         </div>
         <div className="advisor-title-area">
           <div className="advisor-title">System Advisor</div>
-          <div className="advisor-summary">
+          <div className={`advisor-summary${
+              !data ? '' :
+              isAllGood ? ' advisor-summary--good' :
+              criticalCount > 0 ? ' advisor-summary--critical' :
+              ' advisor-summary--warning'
+            }`}>
             {!data ? 'Analyzing...' :
               isAllGood ? 'System running optimally' :
               `${criticalCount > 0 ? `${criticalCount} critical` : ''}${criticalCount > 0 && warningCount > 0 ? ', ' : ''}${warningCount > 0 ? `${warningCount} warning${warningCount > 1 ? 's' : ''}` : ''}`
@@ -206,7 +211,7 @@ const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ systemStats, extendedStats,
 
                 <div className="advisor-overlay-header">
                   <div className="advisor-overlay-icon advisor-severity-warning">
-                    <Brain size={22} />
+                    <ScanLine size={22} />
                   </div>
                   <div className="advisor-overlay-title-area">
                     <h3 className="advisor-overlay-title">System Analysis</h3>
@@ -217,7 +222,7 @@ const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ systemStats, extendedStats,
                   {data.insights.filter(i => i.id !== 'all-good').map((insight) => (
                     <div key={insight.id} className={`advisor-overlay-insight ${severityClass[insight.severity] || ''}`}>
                       <div className="advisor-overlay-insight-header">
-                        <span className="advisor-overlay-insight-icon">{ICON_MAP[insight.icon] || <Brain size={15} />}</span>
+                        <span className="advisor-overlay-insight-icon">{ICON_MAP[insight.icon] || <ScanLine size={15} />}</span>
                         <span className={`advisor-overlay-severity-badge advisor-badge-${insight.severity}`}>
                           {insight.severity}
                         </span>

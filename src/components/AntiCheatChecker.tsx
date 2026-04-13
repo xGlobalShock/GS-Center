@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldAlert, ShieldCheck, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, Wrench } from 'lucide-react';
+import { AlertOctagon, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, Wrench } from 'lucide-react';
 import {
   antiCheatSystems,
   riskyApps,
@@ -98,10 +98,15 @@ const AntiCheatChecker: React.FC<AntiCheatCheckerProps> = ({ compact, isExpanded
     [installedACIds]
   );
 
+  const statusModifier = allClear ? 'ac-card--clear'
+    : riskyCount > 0 ? 'ac-card--critical'
+    : cautionCount > 0 ? 'ac-card--warning'
+    : '';
+
   const cardClass = [
     'ac-card',
     compact ? 'ac-card--compact' : '',
-    allClear ? 'ac-card--clear' : '',
+    statusModifier,
   ].filter(Boolean).join(' ');
 
   return (
@@ -109,8 +114,8 @@ const AntiCheatChecker: React.FC<AntiCheatCheckerProps> = ({ compact, isExpanded
       <div className="ac-header" onClick={handleToggle}>
         <div className="ac-icon-wrap">
           {allClear
-            ? <ShieldCheck size={18} className="ac-icon-good" />
-            : <ShieldAlert size={18} className="ac-icon-warn" />
+            ? <AlertOctagon size={18} className="ac-icon-good" />
+            : <AlertOctagon size={18} className="ac-icon-warn" />
           }
         </div>
         <div className="ac-title-area">
