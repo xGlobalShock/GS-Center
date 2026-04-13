@@ -85,7 +85,7 @@ const HealthScore: React.FC<HealthScoreProps> = ({ systemStats, extendedStats, h
   const score = healthData?.score ?? 0;
   const color = scoreColor(score);
   const textColor = color === 'rgb(var(--accent))' ? '#FFFFFF' : color;
-  const labelColor = score >= 90 ? 'rgb(var(--accent))' : textColor;
+  const labelColor = score >= 75 ? '#00CC6A' : textColor;
   const circumference = 2 * Math.PI * 42;
   const offset = circumference - (score / 100) * circumference;
 
