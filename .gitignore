@@ -24,6 +24,8 @@ V-Config\apex-legends/
 .env.local
 .env.*
 .env.*.local
+.claude/
+.claude/projects/
 
 # ── IDE ──
 .vscode/
