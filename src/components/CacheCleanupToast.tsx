@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
-import { Loader2, Play, Pause, RotateCcw, Sliders, Download, X, Power, ScanLine, AlertTriangle } from 'lucide-react';
+import { Loader2, Play, Pause, RotateCcw, Sliders, X, Power, AlertTriangle } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/CacheCleanupToast.css';
 
@@ -187,7 +187,6 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
   const [adminError, setAdminError] = useState<string | null>(null);
   const [summary, setSummary] = useState<{ type: 'success' | 'info' | 'error'; message: string } | null>(null);
   const [scopeOpen, setScopeOpen] = useState(false);
-  const [exportNote, setExportNote] = useState<string | null>(null);
   const ledgerRef = useRef<HTMLDivElement | null>(null);
   const pausedRef = useRef(false);
   const resumeResolverRef = useRef<(() => void) | null>(null);
@@ -251,30 +250,6 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
     } else {
       pausedRef.current = true;
       setPaused(true);
-    }
-  };
-
-  const exportReport = async () => {
-    const lines: string[] = [];
-    lines.push(`SYS://CACHE.FLUSH — REPORT`);
-    lines.push(`Generated: ${new Date().toISOString()}`);
-    lines.push(`Elapsed: ${formatElapsed(elapsedMs)}`);
-    lines.push('');
-    tasks.forEach((t, i) => {
-      const n = (i + 1).toString().padStart(2, '0');
-      const label = (TASK_LABELS[t.id] || t.id).padEnd(22, ' ');
-      const state = t.state.toUpperCase().padEnd(8, ' ');
-      const detail = t.spaceSaved ? `· ${t.spaceSaved}` : t.message ? `· ${t.message}` : '';
-      lines.push(`[${n}] ${label} ${state} ${detail}`);
-    });
-    const text = lines.join('\n');
-    try {
-      await navigator.clipboard.writeText(text);
-      setExportNote('Report copied to clipboard');
-      setTimeout(() => setExportNote(null), 2200);
-    } catch {
-      setExportNote('Copy failed');
-      setTimeout(() => setExportNote(null), 2200);
     }
   };
 
@@ -368,24 +343,15 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
     if (abortRef.current) return;
     const total = queue.length;
     const freed = formatMB(totalMBRef.current);
-    if (succeeded === total) setSummary({ type: 'success', message: `Purged ${total} vectors · Reclaimed ${freed}` });
-    else if (succeeded > 0) setSummary({ type: 'info', message: `${succeeded}/${total} vectors purged · Reclaimed ${freed}` });
-    else setSummary({ type: 'error', message: 'Purge protocol aborted — all vectors failed' });
+    if (succeeded === total) setSummary({ type: 'success', message: `Cleaned ${total} tasks · Recovered ${freed}` });
+    else if (succeeded > 0) setSummary({ type: 'info', message: `${succeeded}/${total} tasks cleaned · Recovered ${freed}` });
+    else setSummary({ type: 'error', message: 'Cleanup aborted — all tasks failed' });
     void permissionSeen;
   };
 
   const totalMB = tasks.reduce((sum, t) => sum + (t.spaceSavedMB || 0), 0);
   const purgedCount = tasks.filter(t => t.state === 'purged').length;
-  const failedCount = tasks.filter(t => t.state === 'failed').length;
   const queueLen = activeIds.length;
-  const overallProgress = queueLen > 0
-    ? tasks.filter(t => activeIds.includes(t.id)).reduce((sum, t) => sum + (t.state === 'purged' || t.state === 'failed' ? 1 : t.state === 'active' ? t.progress : 0), 0) / queueLen
-    : 0;
-
-  const rateMBs = elapsedMs > 500 ? (totalMB / (elapsedMs / 1000)) : 0;
-  const etaSec = rateMBs > 0 && queueLen > 0
-    ? Math.max(0, Math.round(((1 - overallProgress) * queueLen * (totalMB / Math.max(1, purgedCount))) / Math.max(0.1, rateMBs)))
-    : 0;
 
   const throughputSamples = useMemo(() => {
     return tasks.filter(t => t.state === 'purged' || t.state === 'failed').map(t => t.spaceSavedMB || 0);
@@ -393,7 +359,7 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
 
   const maxSample = Math.max(1, ...throughputSamples);
 
-  const phaseLabel = running ? (paused ? 'HELD' : 'PURGING') : started ? (summary?.type === 'error' ? 'ABORTED' : 'COMPLETE') : 'STANDBY';
+  const phaseLabel = running ? (paused ? 'PAUSED' : 'CLEANING') : started ? (summary?.type === 'error' ? 'ABORTED' : 'COMPLETE') : 'READY';
 
   return ReactDOM.createPortal(
     <div className="xfl-overlay">
@@ -408,11 +374,11 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
 
         <div className="xfl-commandbar">
           <span className="xfl-cb-dot" />
-          <span className="xfl-cb-title">SYS://CACHE.FLUSH</span>
+          <span className="xfl-cb-title">CACHE CLEANUP</span>
           <span className="xfl-cb-sep" />
-          <span className="xfl-cb-meta">NODE-0x7F</span>
+          <span className="xfl-cb-meta">LOCAL</span>
           <span className="xfl-cb-sep" />
-          <span className="xfl-cb-meta">v2.2.2</span>
+          <span className="xfl-cb-meta">v2.2.3</span>
           <span className="xfl-cb-sep" />
           <span className="xfl-cb-meta xfl-cb-clock">{clock}</span>
           <span className="xfl-cb-sep" />
@@ -474,11 +440,11 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
               <span className="xfl-hex-caption-dot" />
               <span className="xfl-hex-caption-text">
                 {running && currentIdx !== null
-                  ? `PROC :: ${TASK_LABELS[tasks[currentIdx]?.id] || ''}`
-                  : phaseLabel === 'STANDBY' ? `LATTICE IDLE · ${queueLen} VECTORS ARMED`
-                  : phaseLabel === 'COMPLETE' ? `LATTICE STABLE · ${purgedCount}/${queueLen} PURGED`
-                  : phaseLabel === 'HELD' ? 'FLOW SUSPENDED'
-                  : 'LATTICE DEGRADED'}
+                  ? `CLEANING :: ${TASK_LABELS[tasks[currentIdx]?.id] || ''}`
+                  : phaseLabel === 'READY' ? `READY · ${queueLen} TASKS QUEUED`
+                  : phaseLabel === 'COMPLETE' ? `DONE · ${purgedCount}/${queueLen} CLEANED`
+                  : phaseLabel === 'PAUSED' ? 'PAUSED BY USER'
+                  : 'FINISHED WITH ERRORS'}
               </span>
             </div>
           </div>
@@ -495,24 +461,16 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
             <div className="xfl-micro-grid">
               <div className="xfl-micro">
                 <div className="xfl-micro-val">{purgedCount.toString().padStart(2, '0')}/{queueLen.toString().padStart(2, '0')}</div>
-                <div className="xfl-micro-lbl">PURGED</div>
+                <div className="xfl-micro-lbl">CLEANED</div>
               </div>
               <div className="xfl-micro">
                 <div className="xfl-micro-val">{formatElapsed(elapsedMs)}</div>
                 <div className="xfl-micro-lbl">ELAPSED</div>
               </div>
-              <div className="xfl-micro">
-                <div className="xfl-micro-val">{rateMBs > 0 ? rateMBs.toFixed(1) : '0.0'}<span className="xfl-micro-unit">MB/s</span></div>
-                <div className="xfl-micro-lbl">RATE</div>
-              </div>
-              <div className="xfl-micro">
-                <div className="xfl-micro-val">{running && etaSec > 0 ? formatElapsed(etaSec * 1000) : '--:--'}</div>
-                <div className="xfl-micro-lbl">ETA</div>
-              </div>
             </div>
 
             <div className="xfl-waveform">
-              <div className="xfl-wave-label">FLOW · per-vector reclaim</div>
+              <div className="xfl-wave-label">USAGE · per-task breakdown</div>
               <div className="xfl-wave-bars">
                 {tasks.map((t, i) => {
                   const h = t.spaceSavedMB ? Math.max(6, (t.spaceSavedMB / maxSample) * 100) : 0;
@@ -541,13 +499,13 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
         )}
 
         <div className="xfl-ledger-head">
-          <span className="xfl-ledger-tag">EXEC.LEDGER</span>
+          <span className="xfl-ledger-tag">CLEANUP LOG</span>
           <span className="xfl-ledger-sep" />
-          <span className="xfl-ledger-count">{queueLen} VECTORS</span>
+          <span className="xfl-ledger-count">{queueLen} TASKS</span>
           {disabledIds.size > 0 && (
             <>
               <span className="xfl-ledger-sep" />
-              <span className="xfl-ledger-muted">{disabledIds.size} MASKED</span>
+              <span className="xfl-ledger-muted">{disabledIds.size} SKIPPED</span>
             </>
           )}
         </div>
@@ -563,11 +521,14 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
               return '░';
             }).join('');
             const glyph = t.state === 'purged' ? '✓' : t.state === 'failed' ? '✗' : t.state === 'active' ? '▸' : t.state === 'skipped' ? '⊘' : '·';
+            const stateLabel = t.state === 'purged' ? 'CLEANED'
+              : t.state === 'dormant' ? 'PENDING'
+              : t.state.toUpperCase();
             const detail = t.state === 'purged' ? (t.spaceSaved || 'OK')
-              : t.state === 'failed' ? (isPermissionError(t.message) ? 'ADMIN REQ' : 'BLOCKED')
+              : t.state === 'failed' ? (isPermissionError(t.message) ? 'ADMIN REQUIRED' : 'BLOCKED')
               : t.state === 'active' ? `${Math.floor(t.progress * 100)}%`
-              : t.state === 'skipped' ? 'MASKED'
-              : t.state === 'queued' ? 'QUEUED' : 'DORMANT';
+              : t.state === 'skipped' ? 'SKIPPED'
+              : t.state === 'queued' ? 'QUEUED' : 'PENDING';
 
             return (
               <div key={t.id} className={`xfl-ledger-row xfl-ledger-${t.state}`}>
@@ -576,7 +537,7 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
                 <span className="xfl-ld-glyph">{glyph}</span>
                 <span className="xfl-ld-name">{label.padEnd(22, '\u00A0')}</span>
                 <span className="xfl-ld-bar">{bar}</span>
-                <span className="xfl-ld-state">{t.state.toUpperCase()}</span>
+                <span className="xfl-ld-state">{stateLabel}</span>
                 <span className="xfl-ld-detail">· {detail}</span>
               </div>
             );
@@ -589,8 +550,6 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
             <span>{summary.message}</span>
           </div>
         )}
-        {exportNote && <div className="xfl-summary xfl-summary-info"><span className="xfl-summary-glyph">◉</span><span>{exportNote}</span></div>}
-
         <div className="xfl-deck-divider" />
 
         <div className="xfl-deck">
@@ -598,33 +557,25 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
             <>
               <button className="xfl-btn xfl-btn-primary" onClick={runAll} disabled={running || queueLen === 0}>
                 <Power size={13} />
-                <span>{started ? 'RE-INITIATE' : 'INITIATE'}</span>
-              </button>
-              <button className="xfl-btn" disabled title="Dry-run scan — coming in next release">
-                <ScanLine size={13} /><span>DRY-RUN</span>
+                <span>{started ? 'RESTART' : 'START'}</span>
               </button>
               <button className={`xfl-btn ${scopeOpen ? 'xfl-btn-on' : ''}`} onClick={() => setScopeOpen(v => !v)} disabled={running}>
-                <Sliders size={13} /><span>SCOPE</span>
+                <Sliders size={13} /><span>SELECT</span>
                 {disabledIds.size > 0 && <span className="xfl-btn-badge">{disabledIds.size}</span>}
               </button>
-              {started && (
-                <button className="xfl-btn" onClick={exportReport}>
-                  <Download size={13} /><span>EXPORT</span>
-                </button>
-              )}
             </>
           ) : (
             <>
               <button className={`xfl-btn xfl-btn-primary ${running && !paused ? 'xfl-btn-live' : ''}`} onClick={togglePause} disabled={!running}>
                 {paused ? <Play size={13} /> : <Pause size={13} />}
-                <span>{paused ? 'RESUME' : 'HOLD'}</span>
+                <span>{paused ? 'RESUME' : 'PAUSE'}</span>
               </button>
               <button className="xfl-btn" onClick={() => { abortRef.current = true; if (resumeResolverRef.current) resumeResolverRef.current(); }} disabled={!running}>
-                <RotateCcw size={13} /><span>ABORT</span>
+                <RotateCcw size={13} /><span>CANCEL</span>
               </button>
               <div className="xfl-deck-status">
                 {running && <Loader2 size={12} className="xfl-spin" />}
-                <span>{running ? (paused ? 'SUSPENDED · await operator' : `EXECUTING · vector ${(currentIdx ?? 0) + 1}/${queueLen}`) : 'IDLE'}</span>
+                <span>{running ? (paused ? 'PAUSED · awaiting input' : `RUNNING · task ${(currentIdx ?? 0) + 1}/${queueLen}`) : 'IDLE'}</span>
               </div>
             </>
           )}
@@ -633,7 +584,7 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
         {scopeOpen && !running && (
           <div className="xfl-scope">
             <div className="xfl-scope-head">
-              <span>VECTOR.SCOPE — toggle to include in next purge</span>
+              <span>SELECT — toggle to include in next cleanup</span>
               <button className="xfl-scope-close" onClick={() => setScopeOpen(false)}><X size={12} /></button>
             </div>
             <div className="xfl-scope-grid">
@@ -643,7 +594,7 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
                   <button key={id} className={`xfl-scope-item ${on ? 'on' : 'off'}`} onClick={() => toggleScope(id)}>
                     <span className="xfl-scope-idx">{(i + 1).toString().padStart(2, '0')}</span>
                     <span className="xfl-scope-name">{TASK_LABELS[id] || id}</span>
-                    <span className={`xfl-scope-pill ${on ? 'on' : 'off'}`}>{on ? 'ARMED' : 'MASKED'}</span>
+                    <span className={`xfl-scope-pill ${on ? 'on' : 'off'}`}>{on ? 'ENABLED' : 'SKIPPED'}</span>
                   </button>
                 );
               })}
