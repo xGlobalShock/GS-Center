@@ -26,6 +26,7 @@ V-Config\apex-legends/
 .env.*.local
 .claude/
 .claude/projects/
+.serena/
 
 # ── IDE ──
 .vscode/
