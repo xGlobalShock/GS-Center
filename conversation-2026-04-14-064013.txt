@@ -1,0 +1,11 @@
+╭─── Claude Code v2.1.105 ─────────────────────────────────────────────────────╮
+│                                              │ Tips for getting started      │
+│             Welcome back Sleiman!            │ Run /init to create a CLAUDE… │
+│                                              │ ───────────────────────────── │
+│                    ▐▛███▜▌                   │ Recent activity               │
+│                   ▝▜█████▛▘                  │ No recent activity            │
+│                     ▘▘ ▝▝                    │                               │
+│                                              │                               │
+│   Sonnet 4.6 · Claude Pro · Sleiman Assaad   │                               │
+│               E:\Dev\GC Center               │                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
