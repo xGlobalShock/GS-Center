@@ -157,7 +157,7 @@ function createWindow() {
         contextIsolation: true,
         enableRemoteModule: false,
         webviewTag: true,
-        devTools: false, // DISABLED DEVTOOLS IN PRODUCTION
+        devTools: false, // DISABLED IN PRODUCTION
         backgroundThrottling: false,
       },
     });
