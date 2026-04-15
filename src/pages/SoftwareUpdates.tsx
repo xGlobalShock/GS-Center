@@ -26,7 +26,18 @@ interface UpdateProgress {
   phase: 'preparing' | 'downloading' | 'verifying' | 'installing' | 'done' | 'error';
   status: string;
   percent: number;
+  bytesDownloaded?: number;
+  bytesTotal?: number;
+  bytesPerSec?: number;
 }
+
+const fmtBytes = (n?: number): string => {
+  if (!n || n <= 0) return '';
+  if (n >= 1073741824) return `${(n / 1073741824).toFixed(2)} GB`;
+  if (n >= 1048576)    return `${(n / 1048576).toFixed(1)} MB`;
+  if (n >= 1024)       return `${(n / 1024).toFixed(0)} KB`;
+  return `${Math.round(n)} B`;
+};
 
 interface SoftwareUpdatesProps {
   isActive?: boolean;
@@ -292,8 +303,22 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
                             style={{ width: pkgProgress.percent >= 0 ? `${Math.max(pkgProgress.percent, 2)}%` : '100%' }} />
                         </div>
                         <div className="su-progress-info">
-                          <span className={`su-progress-status su-progress-status--${pkgProgress.phase}`}>{pkgProgress.status}</span>
+                          <span className={`su-progress-status su-progress-status--${pkgProgress.phase}`}>
+                            {pkgProgress.phase === 'downloading' && pkgProgress.bytesTotal
+                              ? `${fmtBytes(pkgProgress.bytesDownloaded)} / ${fmtBytes(pkgProgress.bytesTotal)}`
+                              : pkgProgress.status || (
+                                pkgProgress.phase === 'preparing'   ? 'Preparing…' :
+                                pkgProgress.phase === 'downloading' ? 'Downloading…' :
+                                pkgProgress.phase === 'verifying'   ? 'Verifying…' :
+                                pkgProgress.phase === 'installing'  ? 'Installing…' :
+                                pkgProgress.phase === 'done'        ? 'Complete' :
+                                pkgProgress.phase === 'error'       ? 'Error' : ''
+                              )}
+                          </span>
                           <span className="su-progress-details">
+                            {pkgProgress.phase === 'downloading' && pkgProgress.bytesPerSec ? (
+                              <span className="su-progress-speed">{fmtBytes(pkgProgress.bytesPerSec)}/s</span>
+                            ) : null}
                             {pkgProgress.phase === 'verifying' && <span className="su-progress-installing">Hash verified</span>}
                             {pkgProgress.phase === 'installing' && <span className="su-progress-installing">Please wait…</span>}
                             {pkgProgress.phase === 'done' && <span className="su-progress-speed" style={{color: '#FFFFFF'}}>Complete</span>}

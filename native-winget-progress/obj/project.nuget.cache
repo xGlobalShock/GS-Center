@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "dgSpecHash": "X8O8XQQwJnI=",
+  "success": true,
+  "projectFilePath": "E:\\Dev\\GC Center\\native-winget-progress\\GsWingetProgress.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\xSGCo\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.26\\microsoft.net.illink.tasks.8.0.26.nupkg.sha512",
+    "C:\\Users\\xSGCo\\.nuget\\packages\\microsoft.windowspackagemanager.cominterop\\1.10.340\\microsoft.windowspackagemanager.cominterop.1.10.340.nupkg.sha512",
+    "C:\\Users\\xSGCo\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\8.0.26\\microsoft.netcore.app.runtime.win-x64.8.0.26.nupkg.sha512",
+    "C:\\Users\\xSGCo\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\8.0.26\\microsoft.windowsdesktop.app.runtime.win-x64.8.0.26.nupkg.sha512",
+    "C:\\Users\\xSGCo\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\8.0.26\\microsoft.aspnetcore.app.runtime.win-x64.8.0.26.nupkg.sha512",
+    "C:\\Users\\xSGCo\\.nuget\\packages\\microsoft.netcore.app.crossgen2.win-x64\\8.0.26\\microsoft.netcore.app.crossgen2.win-x64.8.0.26.nupkg.sha512",
+    "C:\\Users\\xSGCo\\.nuget\\packages\\microsoft.windows.sdk.net.ref\\10.0.22000.56\\microsoft.windows.sdk.net.ref.10.0.22000.56.nupkg.sha512"
+  ],
+  "logs": []
+}

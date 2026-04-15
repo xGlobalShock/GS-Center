@@ -20,6 +20,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProGuard } from './components/PaywallModal';
 import { ToastContainer } from './components/ToastContainer';
 import AutoCleanupRunner from './components/AutoCleanupRunner';
+import FloatingUpdateProgress from './components/FloatingUpdateProgress';
+import './styles/FloatingUpdateProgress.css';
 import { useRealtimeHardware } from './hooks/useRealtimeHardware';
 import { loadSettings } from './utils/settings';
 
@@ -328,6 +330,7 @@ function AppInner() {
               </div>
             </div>
             <ToastContainer />
+            <FloatingUpdateProgress />
             <AutoCleanupRunner ready={hardwareReady} />
           </div>
         </>

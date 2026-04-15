@@ -99,10 +99,6 @@ function createWindow() {
     mainWindow = null;
   }
 
-  // Register window-control IPC handlers exactly once, regardless of how
-  // many times createWindow() is called. ipcMain.handle() throws on a second
-  // registration for the same channel, and ipcMain.on() stacks handlers —
-  // either error breaks window controls on any re-create (e.g. app.activate).
   if (!_windowIpcRegistered) {
     _windowIpcRegistered = true;
 
@@ -157,7 +153,7 @@ function createWindow() {
         contextIsolation: true,
         enableRemoteModule: false,
         webviewTag: true,
-        devTools: false, // DISABLED IN PRODUCTION
+        devTools: true, // DISABLED IN PRODUCTION
         backgroundThrottling: false,
       },
     });
@@ -169,18 +165,18 @@ function createWindow() {
     mainWindow.on('unmaximize', () => mainWindow?.webContents.send('window-maximized-changed', false));
 
     // DISABLED/ENABLED DEVTOOLS IN PRODUCTION 
-    mainWindow.webContents.on('before-input-event', (event, input) => {
-      if (
-        input.control &&
-        input.shift &&
-        (input.key.toLowerCase() === 'i' || input.key.toLowerCase() === 'c' || input.key.toLowerCase() === 'j')
-      ) {
-        event.preventDefault();
-      }
-      if (input.key === 'F12') {
-        event.preventDefault();
-      }
-    });
+    // mainWindow.webContents.on('before-input-event', (event, input) => {
+    //   if (
+    //     input.control &&
+    //     input.shift &&
+    //     (input.key.toLowerCase() === 'i' || input.key.toLowerCase() === 'c' || input.key.toLowerCase() === 'j')
+    //   ) {
+    //     event.preventDefault();
+    //   }
+    //   if (input.key === 'F12') {
+    //     event.preventDefault();
+    //   }
+    // });
 
 
     // Track page-load completion BEFORE loadURL — avoids race where
