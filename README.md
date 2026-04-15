@@ -1,4 +1,4 @@
-# GS Center
+<img width="1508" height="888" alt="image" src="https://github.com/user-attachments/assets/23277c50-f483-4b72-87f6-cb95f6920af0" /># GS Center
 
 **Set up your gaming or streaming PC in minutes — not hours.**
 
@@ -23,7 +23,7 @@ Download the latest installer from the newest release:
 
 ➡️ **[Download Latest Release](https://github.com/xGlobalShock/GS-Control-Center/releases/latest)**
 
-<img width="1919" height="1030" alt="image" src="https://github.com/user-attachments/assets/1423b0ca-e9b3-4f85-a5ad-fda11f27a305" />
+<img width="1508" height="888" alt="image" src="https://github.com/user-attachments/assets/ee5fa395-9c40-450d-9f0f-0b6e80c43c9d" />
 
 ---
 
