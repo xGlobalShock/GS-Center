@@ -23,7 +23,7 @@ Download the latest installer from the newest release:
 
 ➡️ **[Download Latest Release](https://github.com/xGlobalShock/GS-Control-Center/releases/latest)**
 
-<img width="1508" height="888" alt="image" src="https://github.com/user-attachments/assets/ee5fa395-9c40-450d-9f0f-0b6e80c43c9d" />
+<img width="1578" height="951" alt="image" src="https://github.com/user-attachments/assets/bbe5bd93-24cf-4942-8718-f19e751ab52e" />
 
 ---
 
