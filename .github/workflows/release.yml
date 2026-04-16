@@ -90,7 +90,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
@@ -98,7 +97,7 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build native hardware monitor
         run: npm run build:monitor
