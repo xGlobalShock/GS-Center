@@ -1,0 +1,66 @@
+name: Sync Public Repo
+
+# ──────────────────────────────────────────────────────────────
+# Syncs the public-repo/ directory from the PRIVATE repo
+# to the PUBLIC repo (GS-Center-Releases).
+#
+# Triggered when files in public-repo/ change on the main branch.
+#
+# Prerequisites:
+#   - SECRET: PUBLIC_REPO_TOKEN (PAT with 'repo' scope)
+# ──────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'public-repo/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout private repo
+        uses: actions/checkout@v4
+        with:
+          path: private
+
+      - name: Checkout public repo
+        uses: actions/checkout@v4
+        with:
+          repository: xGlobalShock/GS-Center-Releases
+          token: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          path: public
+
+      - name: Sync files to public repo
+        run: |
+          # Copy all files from public-repo/ to the public repo root
+          # Using rsync for clean, reliable syncing
+          rsync -av --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            private/public-repo/ public/
+
+          echo "Synced files:"
+          ls -la public/
+
+      - name: Commit and push changes
+        run: |
+          cd public
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check if there are changes
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes to sync"
+            exit 0
+          fi
+
+          git add -A
+          git commit -m "sync: update from private repo [skip ci]"
+          git push
+          echo "Successfully synced to public repo"

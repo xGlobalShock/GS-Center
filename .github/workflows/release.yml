@@ -1,18 +1,38 @@
 name: Build & Release
 
+# ──────────────────────────────────────────────────────────────
+# Builds the Electron app on the PRIVATE repo and publishes
+# release artifacts to the PUBLIC repo (GS-Center-Releases).
+#
+# Prerequisites:
+#   1. Create repo: xGlobalShock/GS-Center-Releases (public)
+#   2. Create a GitHub PAT with 'repo' scope
+#   3. Add it as a secret named PUBLIC_REPO_TOKEN on this repo
+# ──────────────────────────────────────────────────────────────
 
 on:
   workflow_dispatch:
+    inputs:
+      prerelease:
+        description: 'Mark as pre-release?'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  # ── Step 1: Extract version & generate release notes ──
+  prepare:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag_name: ${{ steps.version.outputs.tag_name }}
+      release_notes: ${{ steps.release_notes.outputs.notes }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,52 +46,42 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag_name=v$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Check if tag exists
-        id: check_tag
+      - name: Create tag on private repo (if missing)
         run: |
-          if git rev-parse "refs/tags/${{ steps.version.outputs.tag_name }}" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
+          TAG="${{ steps.version.outputs.tag_name }}"
+          if ! git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "Created tag $TAG"
           else
-            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Tag $TAG already exists"
           fi
-
-
-      # Tag creation is now manual. Please create and push a tag yourself before running this workflow.
 
       - name: Generate release notes
         id: release_notes
         run: |
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 ${{ steps.version.outputs.tag_name }}^ 2>/dev/null || echo "")
+          TAG="${{ steps.version.outputs.tag_name }}"
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo "")
           if [ -z "$PREVIOUS_TAG" ]; then
-            COMMIT_LOG=$(git log --oneline ${{ steps.version.outputs.tag_name }} | head -20 | sed 's/^/- /')
+            COMMIT_LOG=$(git log --oneline "$TAG" | head -20 | sed 's/^/- /')
           else
-            COMMIT_LOG=$(git log --oneline $PREVIOUS_TAG..${{ steps.version.outputs.tag_name }} | sed 's/^/- /')
+            COMMIT_LOG=$(git log --oneline "$PREVIOUS_TAG".."$TAG" | sed 's/^/- /')
           fi
           EOF=$(dd if=/dev/urandom bs=15 count=1 2>/dev/null | base64)
           echo "notes<<$EOF" >> $GITHUB_OUTPUT
-          echo "## Changes" >> $GITHUB_OUTPUT
+          echo "## GS Center ${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### Changes" >> $GITHUB_OUTPUT
           echo "$COMMIT_LOG" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "---" >> $GITHUB_OUTPUT
+          echo "📥 **Download:** \`GS-Center-Setup-${{ steps.version.outputs.version }}.exe\`" >> $GITHUB_OUTPUT
           echo "$EOF" >> $GITHUB_OUTPUT
 
-
-      - name: Create GitHub Release
-        if: steps.check_tag.outputs.exists == 'false'
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.version.outputs.tag_name }}
-          name: Release ${{ steps.version.outputs.version }}
-          body: ${{ steps.release_notes.outputs.notes }}
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
+  # ── Step 2: Build on Windows ──
   build:
-    needs: release
-    if: always() && needs.release.result == 'success'
+    needs: prepare
     runs-on: windows-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -82,8 +92,16 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Build native hardware monitor
+        run: npm run build:monitor
 
       - name: Build React app
         env:
@@ -93,7 +111,7 @@ jobs:
 
       - name: Build Electron installer
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npx electron-builder --win --x64 --publish never
 
@@ -101,20 +119,38 @@ jobs:
         run: Get-ChildItem -Recurse dist/ | Select-Object FullName
         shell: pwsh
 
-      - name: Upload installer to release
-        uses: softprops/action-gh-release@v1
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ needs.release.outputs.tag_name }}
-          files: |
-            dist/GS-Control-Center-Setup-*.exe
+          name: release-artifacts
+          path: |
+            dist/GS-Center-Setup-*.exe
             dist/latest.yml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            dist/*.blockmap
+          retention-days: 1
 
-      - name: Upload all dist files to release
-        uses: softprops/action-gh-release@v1
+  # ── Step 3: Publish to PUBLIC repo ──
+  publish:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
         with:
-          tag_name: ${{ needs.release.outputs.tag_name }}
-          files: dist/**
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: release-artifacts
+          path: dist/
+
+      - name: List artifacts
+        run: ls -la dist/
+
+      - name: Create release on public repo
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: xGlobalShock/GS-Center-Releases
+          token: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          tag_name: ${{ needs.prepare.outputs.tag_name }}
+          name: GS Center ${{ needs.prepare.outputs.version }}
+          body: ${{ needs.prepare.outputs.release_notes }}
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          files: dist/*
