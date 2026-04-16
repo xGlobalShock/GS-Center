@@ -1,16 +1,23 @@
 /**
  * Software Updates Module
  * winget integration for checking/applying software updates.
+ *
+ * Uses winget CLI for scanning available updates, then downloads
+ * installers directly via Node.js HTTP for full real-time progress
+ * (MB/total, speed, %) and runs them silently.
  */
 
-const { ipcMain, BrowserWindow } = require('electron');
+const { ipcMain, BrowserWindow, app } = require('electron');
 const { spawn, execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
 const { execAsync } = require('./utils');
 const windowManager = require('./windowManager');
+const path = require('path');
+const fs = require('fs');
+const os = require('os');
 
-let _isElevated = false;
+class CancelError extends Error {
+  constructor() { super('Cancelled'); this.name = 'CancelError'; }
+}
 
 // Software updates cache (pre-warmed during splash)
 let _softwareUpdatesCache = null;
@@ -18,14 +25,15 @@ let _softwareUpdatesCacheTime = 0;
 const SOFTWARE_UPDATES_CACHE_TTL = 120000; // 2 min
 
 // Active update state
-let activeUpdateProc = null;
-let cancelledUpdatePids = new Set();
-let updateAllCancelled = false;
+let activeUpdateProc = null;   // { kill() }
 
-// Display name lookup, populated by check-updates (keyed by lowercased id)
+// Display name lookup (keyed by lowercased id)
 const _packageNames = new Map();
 
-// Reference to appInstaller's cache invalidation (set via init)
+// Elevation state — needed to de-elevate per-user installers in packaged build
+let _isElevated = false;
+
+// Reference to appInstaller's cache invalidation
 let _invalidateInstallerCaches = null;
 
 function init({ isElevated, invalidateInstallerCaches }) {
@@ -33,7 +41,8 @@ function init({ isElevated, invalidateInstallerCaches }) {
   _invalidateInstallerCaches = invalidateInstallerCaches;
 }
 
-// Check for outdated apps via winget
+/* ═══════════════════ Scan (winget CLI) ═══════════════════ */
+
 async function _checkSoftwareUpdatesImpl() {
   let stdout = '';
   try {
@@ -51,11 +60,8 @@ async function _checkSoftwareUpdatesImpl() {
     );
     stdout = result.stdout || '';
   } catch (execErr) {
-    if (execErr.stdout) {
-      stdout = execErr.stdout;
-    } else {
-      throw execErr;
-    }
+    if (execErr.stdout) stdout = execErr.stdout;
+    else throw execErr;
   }
 
   const lines = stdout.split('\n').map(l => {
@@ -87,16 +93,12 @@ async function _checkSoftwareUpdatesImpl() {
     const name = line.substring(nameStart, idStart).trim();
     const id = line.substring(idStart, versionStart).trim();
     const rawVersion = versionStart >= 0 && availableStart >= 0
-      ? line.substring(versionStart, availableStart).trim()
-      : '';
+      ? line.substring(versionStart, availableStart).trim() : '';
     const version = rawVersion.replace(/^<\s*/, '');
     const available = availableStart >= 0 && sourceStart >= 0
       ? line.substring(availableStart, sourceStart).trim()
-      : availableStart >= 0
-        ? line.substring(availableStart).trim()
-        : '';
+      : availableStart >= 0 ? line.substring(availableStart).trim() : '';
     const source = sourceStart >= 0 ? line.substring(sourceStart).trim() : 'winget';
-
     const isUnknownVersion = rawVersion.startsWith('<');
 
     if (name && id && id.includes('.') && !isUnknownVersion) {
@@ -108,10 +110,9 @@ async function _checkSoftwareUpdatesImpl() {
   return { success: true, packages, count: packages.length };
 }
 
-// Combined check: winget only
 async function _checkAllUpdatesImpl() {
-  const wingetResult = await _checkSoftwareUpdatesImpl();
-  return { success: true, packages: wingetResult.packages, count: wingetResult.packages.length };
+  const r = await _checkSoftwareUpdatesImpl();
+  return { success: true, packages: r.packages, count: r.packages.length };
 }
 
 function getSoftwareUpdatesCache() {
@@ -123,7 +124,8 @@ function setSoftwareUpdatesCache(result) {
   _softwareUpdatesCacheTime = Date.now();
 }
 
-// Helper: follow redirects and get Content-Length via HEAD request
+/* ═══════════════════ Helpers ═══════════════════ */
+
 function headContentLength(url, redirects = 0) {
   if (redirects > 5) return Promise.resolve(0);
   const mod = url.startsWith('https') ? require('https') : require('http');
@@ -145,15 +147,292 @@ function headContentLength(url, redirects = 0) {
 
 function formatBytes(bytes) {
   if (!bytes || bytes <= 0) return '';
-  if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
-  if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  if (bytes >= 1024) return (bytes / 1024).toFixed(0) + ' KB';
+  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' GB';
+  if (bytes >= 1048576)    return (bytes / 1048576).toFixed(1) + ' MB';
+  if (bytes >= 1024)       return (bytes / 1024).toFixed(0) + ' KB';
   return bytes + ' B';
 }
 
 function _invalidateCaches() {
   if (_invalidateInstallerCaches) _invalidateInstallerCaches();
 }
+
+/* ═══════════════════ Staged installer apps ═══════════════════ */
+
+const _stagedInstallerApps = new Set([
+  'anthropic.claude', 'discord.discord', 'slacktechnologies.slack',
+  'notion.notion', 'figma.figma', 'spotify.spotify',
+]);
+
+const _processNameMap = {
+  'anthropic.claude':            ['Claude.exe', 'claude.exe'],
+  'spotify.spotify':             ['Spotify.exe'],
+  'discord.discord':             ['Discord.exe', 'DiscordPTB.exe', 'DiscordCanary.exe'],
+  'mikrotik.winbox':             ['winbox.exe', 'winbox64.exe'],
+  'mikrotik.winbox.4':           ['winbox.exe', 'winbox64.exe'],
+  'telegram.telegramdesktop':    ['Telegram.exe'],
+  'microsoft.visualstudiocode':  ['Code.exe'],
+  'obsproject.obsstudio':        ['obs64.exe', 'obs32.exe'],
+  'zoom.zoom':                   ['Zoom.exe'],
+  'notion.notion':               ['Notion.exe'],
+  'figma.figma':                 ['Figma.exe'],
+  'slacktechnologies.slack':     ['slack.exe'],
+  'google.chrome':               ['chrome.exe'],
+  'mozilla.firefox':             ['firefox.exe'],
+  'brave.brave':                 ['brave.exe'],
+  'microsoft.edge':              ['msedge.exe'],
+};
+
+/* ═══════════════════ Direct download + silent install ═══════════════════ */
+
+/**
+ * Queries winget for installer metadata (URL, type, silent switches).
+ */
+async function getInstallerInfo(cleanId) {
+  const { stdout } = await execAsync(
+    `chcp 65001 >nul && winget show --id ${cleanId} --accept-source-agreements 2>nul`,
+    { timeout: 15000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe' }
+  );
+
+  const urlMatch = stdout.match(/Installer\s+Url:\s*(https?:\/\/\S+)/i);
+  if (!urlMatch) throw new Error('Installer URL not found in winget manifest');
+
+  const typeMatch = stdout.match(/Installer\s+Type:\s*(\S+)/i);
+  const type = (typeMatch ? typeMatch[1] : 'exe').toLowerCase();
+
+  const silentMatch = stdout.match(/\bSilent(?:WithProgress)?:\s*(.+)/i);
+  const silentSwitch = silentMatch ? silentMatch[1].trim() : '';
+
+  const scopeMatch = stdout.match(/Installer\s+Scope:\s*(\S+)/i);
+  const scope = (scopeMatch ? scopeMatch[1] : '').toLowerCase();
+
+  return { url: urlMatch[1].trim(), type, silentSwitch, scope };
+}
+
+/**
+ * Downloads a file via HTTP(S) with redirect following and progress reporting.
+ */
+function downloadFile(url, destPath, onProgress, signal, redirects = 0) {
+  if (redirects > 10) return Promise.reject(new Error('Too many redirects'));
+  if (signal.cancelled) return Promise.reject(new CancelError());
+
+  const mod = url.startsWith('https') ? require('https') : require('http');
+
+  return new Promise((resolve, reject) => {
+    const req = mod.get(url, { timeout: 30000 }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        res.resume();
+        downloadFile(res.headers.location, destPath, onProgress, signal, redirects + 1)
+          .then(resolve, reject);
+        return;
+      }
+
+      if (res.statusCode !== 200) {
+        res.resume();
+        reject(new Error(`HTTP ${res.statusCode}`));
+        return;
+      }
+
+      const bytesTotal = parseInt(res.headers['content-length'] || '0', 10);
+      let bytesDownloaded = 0;
+      let lastBytes = 0;
+      let lastTime = Date.now();
+      let emaSpeed = 0;
+
+      const file = fs.createWriteStream(destPath);
+
+      signal.abort = () => {
+        req.destroy();
+        file.destroy();
+        try { fs.unlinkSync(destPath); } catch {}
+      };
+
+      res.on('data', (chunk) => {
+        if (signal.cancelled) { req.destroy(); file.destroy(); return; }
+
+        bytesDownloaded += chunk.length;
+
+        const now = Date.now();
+        const dt = (now - lastTime) / 1000;
+        if (dt >= 0.5) {
+          const instantSpeed = (bytesDownloaded - lastBytes) / dt;
+          emaSpeed = emaSpeed === 0 ? instantSpeed : emaSpeed * 0.7 + instantSpeed * 0.3;
+          lastBytes = bytesDownloaded;
+          lastTime = now;
+        }
+
+        const percent = bytesTotal > 0 ? Math.round((bytesDownloaded / bytesTotal) * 100) : -1;
+        onProgress({ bytesDownloaded, bytesTotal, bytesPerSec: Math.round(emaSpeed), percent });
+      });
+
+      res.pipe(file);
+
+      file.on('finish', () => file.close(() => resolve()));
+      file.on('error', (err) => { try { fs.unlinkSync(destPath); } catch {} reject(err); });
+      res.on('error', (err) => { file.destroy(); try { fs.unlinkSync(destPath); } catch {} reject(err); });
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Download timed out')); });
+  });
+}
+
+/**
+ * Determines if the installer needs to run as the standard (non-elevated) user.
+ * Per-user installers (Squirrel, Spotify, Discord, etc.) fail when run as admin
+ * because they write to the logged-in user's AppData, not the admin's.
+ */
+function needsDeElevation(cleanId, scope) {
+  if (scope === 'user') return true;
+  if (_stagedInstallerApps.has(cleanId.toLowerCase())) return true;
+  return false;
+}
+
+/**
+ * Builds the command + args for a silent installer.
+ */
+function buildInstallerCommand(filePath, installerType, silentSwitch) {
+  const type = installerType.toLowerCase();
+
+  if (type === 'msi' || type === 'wix') {
+    return { cmd: 'msiexec', args: ['/i', filePath, '/quiet', '/norestart'] };
+  }
+  if (type === 'msix' || type === 'appx') {
+    return { cmd: 'powershell', args: ['-NoProfile', '-Command', `Add-AppxPackage -Path "${filePath}"`] };
+  }
+
+  let args;
+  if (silentSwitch) {
+    args = silentSwitch.split(/\s+/);
+  } else {
+    args = {
+      'inno':     ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-'],
+      'nullsoft': ['/S'],
+      'burn':     ['/quiet', '/norestart'],
+    }[type] || ['/silent', '/norestart'];
+  }
+  return { cmd: filePath, args };
+}
+
+/**
+ * Runs an installer silently. When we're elevated and the installer is per-user,
+ * de-elevates via Shell.Application so it runs under the logged-in user's context.
+ */
+function runSilentInstaller(filePath, installerType, silentSwitch, signal, cleanId, scope) {
+  const deElevate = _isElevated && needsDeElevation(cleanId, scope);
+  const { cmd, args } = buildInstallerCommand(filePath, installerType, silentSwitch);
+
+  console.log(`[Software Update] runSilentInstaller: elevated=${_isElevated}, deElevate=${deElevate}, cleanId=${cleanId}, scope=${scope}, type=${installerType}, cmd=${cmd}, args=${args.join(' ')}`);
+
+  if (deElevate) {
+    return runInstallerDeElevated(cmd, args, signal);
+  }
+  return runInstallerDirect(cmd, args, signal);
+}
+
+/**
+ * Spawns installer directly (normal context).
+ */
+function runInstallerDirect(cmd, args, signal) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(cmd, args, { windowsHide: true, stdio: 'ignore' });
+
+    signal.abort = () => {
+      try { proc.kill('SIGTERM'); } catch {}
+      try { spawn('taskkill', ['/F', '/T', '/PID', String(proc.pid)], { windowsHide: true }); } catch {}
+    };
+
+    const timeout = setTimeout(() => {
+      signal.abort();
+      reject(new Error('Installer timed out (10 min)'));
+    }, 600000);
+
+    proc.on('close', (code) => {
+      clearTimeout(timeout);
+      resolve({ exitCode: code });
+    });
+
+    proc.on('error', (err) => {
+      clearTimeout(timeout);
+      reject(err);
+    });
+  });
+}
+
+/**
+ * Launches installer de-elevated via Shell.Application COM.
+ * This runs the installer under the logged-in user (not admin), which is
+ * required for per-user installers (Squirrel/NSIS apps that write to AppData).
+ */
+function runInstallerDeElevated(cmd, args, signal) {
+  return new Promise((resolve, reject) => {
+    const argsStr = args.map(a => a.replace(/'/g, "''")).join(' ');
+    const cmdEscaped = cmd.replace(/'/g, "''");
+
+    console.log(`[Software Update] De-elevating installer: cmd=${cmd}, args=${argsStr}`);
+
+    // Shell.Application.ShellExecute launches through Explorer as the standard user
+    const psCmd = `$s = New-Object -ComObject Shell.Application; $s.ShellExecute('${cmdEscaped}', '${argsStr}', '', 'open', 0)`;
+
+    const ps = spawn('powershell', ['-NoProfile', '-Command', psCmd], {
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let psStderr = '';
+    ps.stderr.on('data', (c) => { psStderr += c.toString(); });
+    ps.stdout.on('data', () => {});
+
+    // Shell.Application returns immediately (fire-and-forget), so we poll
+    // for the installer process to finish by checking if cmd is still running.
+    // For EXE installers, poll for the process. For msiexec, poll for msiexec.
+    const exeName = path.basename(cmd);
+
+    ps.on('close', (code) => {
+      if (code !== 0 && psStderr.trim()) {
+        reject(new Error(`De-elevated launch failed: ${psStderr.trim().substring(0, 200)}`));
+        return;
+      }
+
+      // Wait for the installer to start, then poll until it finishes
+      setTimeout(() => pollInstallerExit(exeName, signal, resolve, reject), 2000);
+    });
+
+    signal.abort = () => {
+      try { ps.kill(); } catch {}
+      try { spawn('taskkill', ['/F', '/IM', path.basename(cmd)], { windowsHide: true }); } catch {}
+    };
+  });
+}
+
+/**
+ * Polls for an installer process to exit (used after de-elevated launch).
+ */
+function pollInstallerExit(exeName, signal, resolve, reject) {
+  const startTime = Date.now();
+  const maxWait = 600000; // 10 min
+
+  const check = () => {
+    if (signal.cancelled) { resolve({ exitCode: -1 }); return; }
+    if (Date.now() - startTime > maxWait) { reject(new Error('Installer timed out (10 min)')); return; }
+
+    try {
+      // tasklist returns exit code 0 if process found, 1 if not
+      execSync(`tasklist /FI "IMAGENAME eq ${exeName}" /NH 2>nul | findstr /I "${exeName}" >nul 2>nul`, {
+        windowsHide: true, stdio: 'ignore', shell: 'cmd.exe',
+      });
+      // Process still running — check again in 2s
+      setTimeout(check, 2000);
+    } catch {
+      // Process not found — installer finished
+      resolve({ exitCode: 0 });
+    }
+  };
+
+  check();
+}
+
+/* ═══════════════════ IPC Registration ═══════════════════ */
 
 function registerIPC() {
 
@@ -180,7 +459,6 @@ function registerIPC() {
       );
       const urlMatch = stdout.match(/Installer\s+Url:\s*(https?:\/\/\S+)/i);
       if (!urlMatch) return { id: cleanId, size: '', bytes: 0 };
-
       const bytes = await headContentLength(urlMatch[1].trim());
       return { id: cleanId, size: formatBytes(bytes), bytes };
     } catch (e) {
@@ -189,19 +467,15 @@ function registerIPC() {
   });
 
   ipcMain.handle('software:cancel-update', async () => {
-    updateAllCancelled = true;
-
     const win = windowManager.getMainWindow() || BrowserWindow.getAllWindows()[0];
-
-    if (activeUpdateProc && !activeUpdateProc.killed) {
-      const pid = activeUpdateProc.pid;
-      cancelledUpdatePids.add(pid);
+    if (activeUpdateProc) {
+      activeUpdateProc.kill();
       activeUpdateProc = null;
-      try {
-        spawn('taskkill', ['/F', '/T', '/PID', String(pid)], { windowsHide: true });
-      } catch (e) { }
       if (win && !win.isDestroyed()) {
-        win.webContents.send('software:update-progress', { packageId: '__cancelled__', packageName: '', phase: 'error', status: 'Update cancelled', percent: 0 });
+        win.webContents.send('software:update-progress', {
+          packageId: '__cancelled__', packageName: '', phase: 'error',
+          status: 'Update cancelled', percent: 0,
+        });
       }
       return { success: true };
     }
@@ -219,277 +493,94 @@ function registerIPC() {
       }
     };
 
-    /* Known running-process names per winget id. Squirrel/NSIS/Electron installers
-       fail to replace files while the app is running, so we taskkill before upgrading. */
-    const _getProcessNames = (id) => {
-      const map = {
-        'anthropic.claude':            ['Claude.exe', 'claude.exe'],
-        'spotify.spotify':             ['Spotify.exe'],
-        'discord.discord':             ['Discord.exe', 'DiscordPTB.exe', 'DiscordCanary.exe'],
-        'mikrotik.winbox':             ['winbox.exe', 'winbox64.exe'],
-        'mikrotik.winbox.4':           ['winbox.exe', 'winbox64.exe'],
-        'telegram.telegramdesktop':    ['Telegram.exe'],
-        'microsoft.visualstudiocode':  ['Code.exe'],
-        'obsproject.obsstudio':        ['obs64.exe', 'obs32.exe'],
-        'zoom.zoom':                   ['Zoom.exe'],
-        'notion.notion':               ['Notion.exe'],
-        'figma.figma':                 ['Figma.exe'],
-        'slacktechnologies.slack':     ['slack.exe'],
-      };
-      return map[id.toLowerCase()] || null;
+    const signal = { cancelled: false, abort: null };
+    activeUpdateProc = {
+      kill: () => {
+        signal.cancelled = true;
+        if (signal.abort) signal.abort();
+      },
     };
 
-    const _closeKnownProcesses = async (reason = 'Closing app before update...') => {
-      const names = _getProcessNames(cleanId);
-      if (!names || !names.length) return false;
-      sendProgress({ phase: 'preparing', status: reason, percent: -1 });
-      for (const name of names) {
-        try { execSync(`taskkill /F /IM "${name}" /T`, { stdio: 'ignore', windowsHide: true }); } catch {}
-      }
-      await new Promise(r => setTimeout(r, 1500));
-      return true;
-    };
+    const ext = cleanId.replace(/[^a-zA-Z0-9]/g, '_');
+    let tempPath = null;
 
-    /* Microsoft.Management.Deployment COM API via the bundled GsWingetProgress.exe helper.
-       Emits real byte/speed/percent events. This is the only update path — no CLI fallback. */
-    const resolveHelperPath = () => {
-      const candidates = [
-        path.resolve(__dirname, '..', 'native-winget-progress', 'bin', 'Release', 'net8.0-windows10.0.22000.0', 'win-x64', 'publish', 'GsWingetProgress.exe'),
-        path.resolve(process.resourcesPath || '', 'bin', 'winget-progress', 'GsWingetProgress.exe'),
-        path.resolve(process.cwd(), 'bin', 'winget-progress', 'GsWingetProgress.exe'),
-      ];
-      for (const p of candidates) {
-        try { if (fs.existsSync(p)) return p; } catch { }
-      }
-      return null;
-    };
-
-    const runWingetHelper = () => new Promise((resolve) => {
-      const helperPath = resolveHelperPath();
-      if (!helperPath) {
-        const msg = 'GsWingetProgress.exe not found — run: npm run build:winget';
-        console.error(`[Software Update] ${msg}`);
-        resolve({ success: false, message: msg });
-        return;
-      }
-
-      console.log(`[Software Update] Spawning COM helper: ${helperPath} --id ${cleanId} --upgrade --mode silent`);
-      sendProgress({ phase: 'preparing', status: 'Preparing update...', percent: 0 });
-
-      const proc = spawn(helperPath, ['--id', cleanId, '--upgrade', '--mode', 'silent'], { windowsHide: true });
-      activeUpdateProc = proc;
-
-      let phase = 'preparing';
-      let lastPct = -2;
-      let lastBytes = 0;
-      let lastBytesAt = 0;
-      let bytesPerSec = 0;
-      let lastEmitAt = 0;
-      let finalResult = null;
-      let finalError = null;
-      let finalErrorCode = null;
-      let stdoutBuf = '';
-      let fullOutput = '';
-      let stderrOutput = '';
-
-      const stateToPhase = (s) => {
-        const v = (s || '').toLowerCase();
-        if (v === 'queued' || v === 'preparing') return 'preparing';
-        if (v === 'downloading')                 return 'downloading';
-        if (v === 'installing')                  return 'installing';
-        if (v === 'postinstall')                 return 'installing';
-        if (v === 'finished')                    return 'done';
-        return phase;
-      };
-
-      const handleProgress = (data) => {
-        const newPhase = stateToPhase(data.state);
-        if (newPhase !== phase) {
-          phase = newPhase;
-          lastBytes = 0; lastBytesAt = 0; bytesPerSec = 0;
-          lastPct = -2;
+    try {
+      // 1. Kill running processes
+      const names = _processNameMap[cleanId.toLowerCase()];
+      if (names && names.length) {
+        sendProgress({ phase: 'preparing', status: 'Closing app before update...', percent: -1 });
+        for (const name of names) {
+          try { execSync(`taskkill /F /IM "${name}" /T`, { stdio: 'ignore', windowsHide: true }); } catch {}
         }
+        await new Promise(r => setTimeout(r, 1500));
+      }
+      if (signal.cancelled) throw new CancelError();
 
-        const bytesDownloaded = Number(data.bytesDownloaded) || 0;
-        const bytesTotal      = Number(data.bytesRequired)   || 0;
+      // 2. Get installer info from winget
+      sendProgress({ phase: 'preparing', status: 'Getting installer info...', percent: 0 });
+      const info = await getInstallerInfo(cleanId);
+      console.log(`[Software Update] ${cleanId}: type=${info.type}, url=${info.url.substring(0, 100)}`);
+      if (signal.cancelled) throw new CancelError();
 
-        if (phase === 'downloading' && bytesDownloaded > 0) {
-          const now = Date.now();
-          if (lastBytesAt > 0) {
-            const dt = (now - lastBytesAt) / 1000;
-            const db = bytesDownloaded - lastBytes;
-            if (dt >= 0.1 && db >= 0) {
-              const instant = db / dt;
-              bytesPerSec = bytesPerSec > 0 ? bytesPerSec * 0.6 + instant * 0.4 : instant;
-            }
-          }
-          lastBytes = bytesDownloaded;
-          lastBytesAt = now;
-        }
+      // 3. Download installer with full progress
+      const fileExt = (info.type === 'msi' || info.type === 'wix') ? '.msi'
+        : (info.type === 'msix' || info.type === 'appx') ? '.msix'
+        : '.exe';
+      tempPath = path.join(os.tmpdir(), `gs_update_${ext}_${Date.now()}${fileExt}`);
 
-        // Preserve negative values — the UI renders percent < 0 as an indeterminate stripe.
-        const rawPct = Number(data.percent);
-        const pct = !Number.isFinite(rawPct) || rawPct < 0
-          ? -1
-          : Math.min(100, Math.max(0, Math.round(rawPct)));
-        const now = Date.now();
-        if (pct === lastPct && (now - lastEmitAt) < 150) return;
-        lastPct = pct;
-        lastEmitAt = now;
-
-        const statusLine =
-          phase === 'downloading' ? 'Downloading' :
-          phase === 'installing'  ? 'Installing'  :
-          phase === 'preparing'   ? 'Preparing'   :
-          phase === 'done'        ? 'Complete'    : '';
-
+      sendProgress({ phase: 'downloading', status: 'Downloading', percent: 0 });
+      await downloadFile(info.url, tempPath, (p) => {
         sendProgress({
-          phase,
-          status: statusLine,
-          percent: pct,
-          bytesDownloaded: bytesDownloaded > 0 ? bytesDownloaded : undefined,
-          bytesTotal:      bytesTotal > 0      ? bytesTotal      : undefined,
-          bytesPerSec:     bytesPerSec > 0     ? Math.round(bytesPerSec) : undefined,
+          phase: 'downloading',
+          status: 'Downloading',
+          percent: p.percent,
+          bytesDownloaded: p.bytesDownloaded,
+          bytesTotal: p.bytesTotal,
+          bytesPerSec: p.bytesPerSec,
         });
-      };
+      }, signal);
+      if (signal.cancelled) throw new CancelError();
 
-      const handleRecord = (obj) => {
-        if (!obj || !obj.type) return;
-        if (obj.type === 'error') {
-          finalError = obj.message || obj.code || 'error';
-          finalErrorCode = obj.code || null;
-          return;
-        }
-        if (obj.type === 'result')   { finalResult = obj.data; return; }
-        if (obj.type === 'progress') { handleProgress(obj.data || {}); return; }
-      };
+      // 4. Run silent installer (de-elevates per-user installers when elevated)
+      sendProgress({ phase: 'installing', status: 'Installing...', percent: -1 });
+      const result = await runSilentInstaller(tempPath, info.type, info.silentSwitch, signal, cleanId, info.scope);
+      if (signal.cancelled) throw new CancelError();
 
-      proc.stdout.on('data', (chunk) => {
-        const s = chunk.toString();
-        fullOutput += s;
-        stdoutBuf += s;
-        let idx;
-        while ((idx = stdoutBuf.indexOf('\n')) !== -1) {
-          const line = stdoutBuf.slice(0, idx).trim();
-          stdoutBuf = stdoutBuf.slice(idx + 1);
-          if (!line) continue;
-          if (line[0] !== '{') {
-            console.log(`[Software Update][helper stdout] ${line}`);
-            continue;
-          }
-          try { handleRecord(JSON.parse(line)); }
-          catch (e) { console.log(`[Software Update][helper stdout non-JSON] ${line}`); }
-        }
-      });
-      proc.stderr.on('data', (chunk) => {
-        const s = chunk.toString();
-        fullOutput += s;
-        stderrOutput += s;
-        s.split(/\r?\n/).filter(Boolean).forEach(line =>
-          console.log(`[Software Update][helper stderr] ${line}`)
-        );
-      });
+      // 5. Handle result
+      if (result.exitCode !== 0 && result.exitCode !== 3010) {
+        throw new Error(`Installer exited with code ${result.exitCode}`);
+      }
 
-      const timeout = setTimeout(() => {
-        console.error('[Software Update] COM helper timed out (10 min) — killing');
-        try { proc.kill('SIGTERM'); } catch { }
-        try { execSync(`taskkill /F /T /PID ${proc.pid}`, { stdio: 'ignore', windowsHide: true }); } catch { }
-      }, 600000);
+      _invalidateCaches();
+      const isStagedInstaller = _stagedInstallerApps.has(cleanId.toLowerCase());
 
-      proc.on('close', (code) => {
-        clearTimeout(timeout);
-        if (activeUpdateProc === proc) activeUpdateProc = null;
-
-        if (proc.killed || cancelledUpdatePids.delete(proc.pid)) {
-          sendProgress({ phase: 'error', status: 'Update cancelled', percent: 0 });
-          resolve({ success: false, cancelled: true, message: 'Update cancelled' });
-          return;
-        }
-
-        if (finalResult && finalResult.status === 'Ok') {
-          _invalidateCaches();
-          sendProgress({ phase: 'done', status: 'Update complete!', percent: 100 });
-          resolve({ success: true, message: `${packageId} updated successfully` });
-          return;
-        }
-
-        // Helper failed — log full output so the real cause is visible.
-        console.error(
-          `[Software Update] COM helper failed for ${cleanId}\n` +
-          `  exit code:   ${code}\n` +
-          `  error code:  ${finalErrorCode || '(none)'}\n` +
-          `  error msg:   ${finalError || '(none)'}\n` +
-          `  COM result:  ${finalResult ? JSON.stringify(finalResult) : '(none)'}\n` +
-          `  stderr:\n${stderrOutput || '  (empty)'}\n` +
-          `  stdout tail:\n${(fullOutput || '').slice(-1500)}`
-        );
-
-        const friendlyByCode = {
-          NO_UPGRADE:      'No upgrade available for this package',
-          NOT_FOUND:       'Package not found in the winget catalog',
-          COM_UNAVAILABLE: 'Windows Package Manager COM service is unavailable',
-          CATALOG_ERROR:   'Failed to connect to the winget catalog',
-          BAD_ARGS:        'Helper received invalid arguments (internal bug)',
+      if (isStagedInstaller || result.exitCode === 3010) {
+        sendProgress({ phase: 'done', status: 'Updated — relaunch to finish', percent: 100 });
+        return {
+          success: true,
+          message: `${packageName} updated — relaunch ${packageName} to finish installing`,
+          needsRestart: true,
         };
+      }
 
-        let msg;
-        if (finalResult && finalResult.status === 'InstallError') {
-          const rawCode = finalResult.installerErrorCode >>> 0;
-          const hex = `0x${rawCode.toString(16).toUpperCase().padStart(8, '0')}`;
-          // 0x80073D28 = ERROR_REMOVE_FAILED — Squirrel/NSIS couldn't replace files
-          // because the target app was still running and holding file locks.
-          if (rawCode === 0x80073D28 || rawCode === 0x80073CF0 || rawCode === 26) {
-            msg = `Installer couldn't replace files — close the app and try again (${hex})`;
-          } else {
-            msg = `Installer failed (${hex}) — close the app (and any auto-launch helpers) and retry`;
-          }
-        } else {
-          msg =
-            friendlyByCode[finalErrorCode] ||
-            finalError ||
-            (finalResult ? `Update failed: ${finalResult.status}` : `Helper exited with code ${code}`);
-        }
+      sendProgress({ phase: 'done', status: 'Update complete!', percent: 100 });
+      return { success: true, message: `${cleanId} updated successfully` };
 
-        resolve({
-          success: false,
-          message: msg,
-          errorCode: finalErrorCode,
-          exitCode: code,
-          comStatus: finalResult ? finalResult.status : null,
-          installerErrorCode: finalResult ? (finalResult.installerErrorCode >>> 0) : null,
-        });
-      });
+    } catch (err) {
+      if (signal.cancelled || err instanceof CancelError) {
+        sendProgress({ phase: 'error', status: 'Update cancelled', percent: 0 });
+        return { success: false, cancelled: true, message: 'Update cancelled' };
+      }
 
-      proc.on('error', (err) => {
-        clearTimeout(timeout);
-        console.error(`[Software Update] Failed to spawn COM helper: ${err.message}`);
-        resolve({ success: false, message: `Helper spawn failed: ${err.message}` });
-      });
-    });
+      const msg = (err.message || 'Update failed').substring(0, 200);
+      console.error(`[Software Update] ${cleanId} failed: ${msg}`);
+      sendProgress({ phase: 'error', status: msg, percent: 0 });
+      return { success: false, message: msg };
 
-    // COM helper is the sole update path. No CLI fallback.
-    // Step 1: Close known running processes (avoids file-lock errors during install).
-    await _closeKnownProcesses();
-
-    // Step 2: Run the COM helper.
-    let comResult = await runWingetHelper();
-    if (comResult.success || comResult.cancelled) return comResult;
-
-    // Step 3: If install failed (typical cause: app relaunched itself or another
-    // helper process was holding files), close processes again and retry once.
-    const isFileLockError =
-      comResult.comStatus === 'InstallError' &&
-      [0x80073D28, 0x80073CF0, 26].includes(comResult.installerErrorCode);
-
-    if (isFileLockError && _getProcessNames(cleanId)) {
-      await _closeKnownProcesses('Retrying after closing app...');
-      comResult = await runWingetHelper();
-      if (comResult.success || comResult.cancelled) return comResult;
+    } finally {
+      activeUpdateProc = null;
+      if (tempPath) { try { fs.unlinkSync(tempPath); } catch {} }
     }
-
-    const finalMsg = (comResult.message || 'Update failed').substring(0, 200);
-    sendProgress({ phase: 'error', status: finalMsg, percent: 0 });
-    return { success: false, message: finalMsg };
   });
 
 } // end registerIPC

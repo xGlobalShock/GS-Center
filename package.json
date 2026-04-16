@@ -17,7 +17,6 @@
     "start": "npm run electron-dev",
     "build": "npm run electron-build",
     "build:monitor": "dotnet publish native-monitor/GCMonitor.csproj -c Release -r win-x64 --self-contained",
-    "build:winget": "dotnet publish native-winget-progress/GsWingetProgress.csproj -c Release -r win-x64 --self-contained",
     "dev": "npm run electron-dev",
     "client": "node electron/dev-launcher.js"
   },
@@ -91,13 +90,6 @@
         "to": "bin",
         "filter": [
           "GCMonitor.exe"
-        ]
-      },
-      {
-        "from": "native-winget-progress/bin/Release/net8.0-windows10.0.22000.0/win-x64/publish",
-        "to": "bin/winget-progress",
-        "filter": [
-          "**/*"
         ]
       },
       {

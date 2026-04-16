@@ -78,3 +78,4 @@ Useful Commands.md
 # ── .NET sidecar build artifacts ──
 native-monitor/bin/
 native-monitor/obj/
+native-winget-progress/

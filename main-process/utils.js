@@ -28,9 +28,10 @@ async function runPSScript(script, timeoutMs = 8000) {
     return r.stdout.trim();
   }).catch(err => {
     try { fs.unlinkSync(tmpFile); } catch { }
-    const stderr = (err.stderr || '').trim();
-    const killed = err.killed ? ' (TIMEOUT)' : '';
-    console.warn(`[runPSScript] PS error${killed}:`, err.message?.substring(0, 150), stderr ? `| stderr: ${stderr.substring(0, 200)}` : '');
+    if (!err.killed) {
+      const stderr = (err.stderr || '').trim();
+      console.warn(`[runPSScript] PS error:`, err.message?.substring(0, 150), stderr ? `| stderr: ${stderr.substring(0, 200)}` : '');
+    }
     if (err.stdout) return err.stdout.trim();
     return '';
   });

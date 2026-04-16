@@ -64,6 +64,14 @@ function _restoreFanSetting() {
   }
 }
 
+function _resetPacketLoss() {
+  if (_sidecarProcess && _sidecarProcess.stdin && !_sidecarProcess.stdin.destroyed) {
+    try {
+      _sidecarProcess.stdin.write(JSON.stringify({ type: 'reset-loss' }) + '\n');
+    } catch { }
+  }
+}
+
 // ── WiFi / adapter state (JS-side periodic poll) ──
 let _rtLastSsid = '';
 let _rtLastWifiSignal = -1;
@@ -296,6 +304,7 @@ function _startWifiPoll() {
       const defaultNet = ifaceArr.find(i => i.iface === defaultIface);
 
       if (defaultNet) {
+        const prevAdapter = _rtLastAdapterName;
         _rtLastAdapterName = defaultNet.iface || '';
         _rtLastAdapterLinkSpeed = defaultNet.speed ? `${defaultNet.speed} Mbps` : '';
         _rtLastLocalIP = defaultNet.ip4 || '';
@@ -309,15 +318,25 @@ function _startWifiPoll() {
         if (isWifiDefault) {
           const conns = await si.wifiConnections();
           if (conns && conns.length > 0) {
+            const prevSsid = _rtLastSsid;
             _rtLastSsid = conns[0].ssid || '';
             _rtLastWifiSignal = conns[0].quality ?? -1;
+            // Network changed — reset packet loss counters so stale data doesn't bleed in
+            if (_rtLastSsid !== prevSsid || _rtLastAdapterName !== prevAdapter) {
+              _resetPacketLoss();
+            }
           } else {
             _rtLastSsid = '';
             _rtLastWifiSignal = -1;
           }
         } else {
+          const prevSsid = _rtLastSsid;
           _rtLastSsid = '';
           _rtLastWifiSignal = -1;
+          // Adapter switched (e.g. Wi-Fi → Ethernet or vice versa) — reset loss
+          if (_rtLastAdapterName !== prevAdapter || prevSsid !== '') {
+            _resetPacketLoss();
+          }
         }
       } else {
         _rtLastAdapterName = '';

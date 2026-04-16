@@ -1094,6 +1094,18 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
                   <span className={blurred['mac'] ? 'dh-net-info-val dh-blurred' : 'dh-net-info-val dh-blur-field'} onDoubleClick={() => toggleBlur('mac')} title="Double-click to blur">{ext?.activeMac || hw?.macAddress}</span>
                 </div>
               )}
+              {isWifi && ext?.ssid && (
+                <div className="dh-net-info-row">
+                  <span className="dh-net-info-key">SSID</span>
+                  <span className="dh-net-info-val">{ext.ssid}</span>
+                </div>
+              )}
+              {isWifi && (ext?.wifiSignal ?? 0) > 0 && (
+                <div className="dh-net-info-row">
+                  <span className="dh-net-info-key">Signal</span>
+                  <span className="dh-net-info-val" style={{ color: ext!.wifiSignal > 70 ? 'rgb(var(--accent))' : ext!.wifiSignal > 40 ? '#FFD600' : '#FF2D55' }}>{ext!.wifiSignal}%</span>
+                </div>
+              )}
             </div>
           }
         >
@@ -1146,24 +1158,6 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
                     <div>
                       <span className="dh-net-q-label">LINK</span>
                       <span className="dh-net-q-val" style={{ color: '#FFFFFF' }}>{fmtLinkSpeed(link)}</span>
-                    </div>
-                  </div>
-                )}
-                {isWifi && ext?.ssid && (
-                  <div className="dh-net-q-tile">
-                    <span className="dh-net-q-dot" style={{ background: 'rgb(var(--accent))', boxShadow: '0 0 6px rgba(var(--accent), 0.6)' }} />
-                    <div>
-                      <span className="dh-net-q-label">SSID</span>
-                      <span className="dh-net-q-val">{ext.ssid}</span>
-                    </div>
-                  </div>
-                )}
-                {isWifi && (ext?.wifiSignal ?? 0) > 0 && (
-                  <div className="dh-net-q-tile">
-                    <span className="dh-net-q-dot" style={{ background: 'rgb(var(--accent))', boxShadow: '0 0 6px rgba(var(--accent), 0.8)' }} />
-                    <div>
-                      <span className="dh-net-q-label">SIGNAL</span>
-                      <span className="dh-net-q-val" style={{ color: ext!.wifiSignal > 70 ? '#FFFFFF' : ext!.wifiSignal > 40 ? '#FFD600' : '#FF2D55' }}>{ext!.wifiSignal}<small>%</small></span>
                     </div>
                   </div>
                 )}

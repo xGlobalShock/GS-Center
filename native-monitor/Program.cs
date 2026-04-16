@@ -187,6 +187,19 @@ public static class Program
                                 lock (_fanLock) { _pendingFanSpeed = speed; }
                                 Log($"FAN_CMD_RECV:{speed}");
                             }
+                            else if (cmdType == "reset-loss")
+                            {
+                                // Network changed — flush epoch counters so loss is
+                                // recalculated fresh from the new connection.
+                                lock (_pingLock)
+                                {
+                                    _epochSent = 0;
+                                    _epochRecv = 0;
+                                    _internetLoss = -1;
+                                    _pingHostIp = null; // force DNS re-resolve for new network
+                                }
+                                Log("LOSS_RESET");
+                            }
                         }
                     }
                     catch { /* malformed JSON — ignore */ }

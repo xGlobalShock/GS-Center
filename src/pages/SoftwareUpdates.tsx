@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   RefreshCw, Download, CheckCircle, Package, Loader2, X,
+  ArrowRight, Clock, HardDrive, Zap, AlertTriangle, Activity,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/SoftwareUpdates.css';
 import { useAuth } from '../contexts/AuthContext';
-import ProPreviewBanner from '../components/ProPreviewBanner';
 import ProLockedWrapper from '../components/ProLockedWrapper';
 import ProLineBadge from '../components/ProLineBadge';
 
@@ -31,6 +31,10 @@ interface UpdateProgress {
   bytesPerSec?: number;
 }
 
+type CardState = 'idle' | 'queued' | 'updating' | 'done' | 'error';
+
+/* ═══════════════════ Helpers ═══════════════════ */
+
 const fmtBytes = (n?: number): string => {
   if (!n || n <= 0) return '';
   if (n >= 1073741824) return `${(n / 1073741824).toFixed(2)} GB`;
@@ -38,6 +42,33 @@ const fmtBytes = (n?: number): string => {
   if (n >= 1024)       return `${(n / 1024).toFixed(0)} KB`;
   return `${Math.round(n)} B`;
 };
+
+const getInitials = (name: string): string => {
+  const words = name.replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+};
+
+const sizeToBytes = (s: string): number => {
+  if (!s) return 0;
+  const m = s.match(/([\d.]+)\s*(GB|MB|KB|B)/i);
+  if (!m) return 0;
+  const n = parseFloat(m[1]);
+  const u = m[2].toUpperCase();
+  return u === 'GB' ? n * 1073741824 : u === 'MB' ? n * 1048576 : u === 'KB' ? n * 1024 : n;
+};
+
+const phaseLabel = (phase: UpdateProgress['phase']): string => ({
+  preparing:   'Preparing',
+  downloading: 'Downloading',
+  verifying:   'Verifying',
+  installing:  'Installing',
+  done:        'Complete',
+  error:       'Failed',
+}[phase] || '');
+
+/* ═══════════════════ Component ═══════════════════ */
 
 interface SoftwareUpdatesProps {
   isActive?: boolean;
@@ -136,17 +167,10 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
     try {
       const result = await window.electron.ipcRenderer.invoke('software:update-app', pkg.id);
       if (result.success) {
-        addToast(`${pkg.name} updated successfully`, 'success');
         setUpdatedIds(prev => new Set(prev).add(pkg.id));
-        setTimeout(() => setPackages(prev => prev.filter(p => p.id !== pkg.id)), 2000);
-        setTimeout(() => { hasScanned.current = false; checkUpdates(); }, 4000);
-      } else if (result.cancelled) {
-        addToast(`Update of ${pkg.name} cancelled`, 'info');
-      } else {
-        addToast(result.message || `Failed to update ${pkg.name}`, 'error');
+        setTimeout(() => setPackages(prev => prev.filter(p => p.id !== pkg.id)), 2400);
       }
-    } catch (err) {
-      addToast(`Error updating ${pkg.name}`, 'error');
+    } catch {
     } finally {
       setTimeout(() => setProgress(null), 3000);
       setUpdatingId(null);
@@ -194,18 +218,24 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
     } else {
       addToast('Failed to update packages', 'error');
     }
-    setTimeout(() => { hasScanned.current = false; checkUpdates(); }, 2000);
   };
 
   const pendingPackages = packages.filter(p => !updatedIds.has(p.id));
 
+  const totalSize = useMemo(() => {
+    const sum = pendingPackages.reduce((acc, p) => acc + sizeToBytes(packageSizes[p.id] || ''), 0);
+    return sum > 0 ? fmtBytes(sum) : null;
+  }, [pendingPackages, packageSizes]);
+
+  const deckStatus: { label: string; tone: 'idle' | 'active' | 'success' | 'warn' } =
+    loading                ? { label: 'Scanning',   tone: 'active'  } :
+    updatingAll            ? { label: 'Updating',   tone: 'active'  } :
+    updatingId             ? { label: 'Updating',   tone: 'active'  } :
+    packages.length === 0  ? { label: 'Up to date', tone: 'success' } :
+                             { label: 'Ready',       tone: 'warn'    };
+
   return (
-    <motion.div
-      className="su"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.15 }}
-    >
+    <motion.div className="su" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
       <PageHeader
         icon={<Package size={16} />}
         title="Software Updates"
@@ -215,11 +245,11 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
             {updatingAll ? (
               <button className="su-btn su-btn--cancel" onClick={handleCancelUpdate} disabled={cancelRequested}>
                 <X size={14} />
-                {cancelRequested ? 'Cancelling…' : 'Cancel'}
+                {cancelRequested ? 'Cancelling…' : 'Cancel All'}
               </button>
             ) : pendingPackages.length > 1 ? (
               <button className="su-btn su-btn--update-all" onClick={handleUpdateAll} disabled={updatingId !== null}>
-                <Download size={14} />
+                <Zap size={14} />
                 {`Update All (${pendingPackages.length})`}
               </button>
             ) : null}
@@ -232,96 +262,171 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
       />
 
       <ProLockedWrapper featureName="Software Updates" message="PRO Feature">
-      {loading && (
-        <div className="su-loading">
-          <Loader2 size={32} className="su-spin" />
-          <p>Checking for updates…</p>
+
+        {/* Summary deck */}
+        <div className="su-deck">
+          <div className="su-deck__stat">
+            <span className="su-deck__label">Pending</span>
+            <span className="su-deck__value">
+              {pendingPackages.length}
+              <span className="su-deck__unit">{pendingPackages.length === 1 ? 'update' : 'updates'}</span>
+            </span>
+          </div>
+          <div className="su-deck__divider" />
+          <div className="su-deck__stat">
+            <span className="su-deck__label">Total Size</span>
+            <span className="su-deck__value">{totalSize || '—'}</span>
+          </div>
+          <div className="su-deck__divider" />
+          <div className="su-deck__stat">
+            <span className="su-deck__label">Last Scanned</span>
+            <span className="su-deck__value su-deck__value--sm">{lastChecked || 'Never'}</span>
+          </div>
+          <div className="su-deck__divider" />
+          <div className="su-deck__stat">
+            <span className="su-deck__label">Status</span>
+            <span className={`su-deck__value su-deck__value--sm su-deck__status su-deck__status--${deckStatus.tone}`}>
+              <span className="su-deck__dot" />
+              {deckStatus.label}
+            </span>
+          </div>
         </div>
-      )}
 
-      {!loading && packages.length === 0 && (
-        <motion.div className="su-empty" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <CheckCircle size={48} />
-          <h3>All Up to Date</h3>
-          <p>No pending software updates found.</p>
-        </motion.div>
-      )}
+        {/* Loading */}
+        {loading && (
+          <div className="su-loading">
+            <Loader2 size={28} className="su-spin" />
+            <p>Scanning for updates…</p>
+          </div>
+        )}
 
-      {!loading && packages.length > 0 && (
-        <motion.div className="su-table-wrap" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-          <div className="su-table">
-            <div className="su-row su-row--header">
-              <div className="su-cell su-cell--name">Package Name</div>
-              <div className="su-cell su-cell--id">Package ID</div>
-              <div className="su-cell su-cell--version">Current</div>
-              <div className="su-cell su-cell--available">Available</div>
-              <div className="su-cell su-cell--size">Size</div>
-              <div className="su-cell su-cell--source">Source</div>
-              <div className="su-cell su-cell--action">Action</div>
-            </div>
+        {/* Empty */}
+        {!loading && packages.length === 0 && (
+          <motion.div className="su-empty" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <CheckCircle size={44} />
+            <h3>All Up to Date</h3>
+            <p>Your installed software is on the latest version.</p>
+          </motion.div>
+        )}
+
+        {/* Cards */}
+        {!loading && packages.length > 0 && (
+          <div className="su-cards">
             <AnimatePresence>
               {packages.map((pkg, i) => {
-                const isUpdated = updatedIds.has(pkg.id);
+                const isUpdated  = updatedIds.has(pkg.id);
                 const isUpdating = updatingId === pkg.id;
-                const isBatchUpdating = updatingAll && isUpdating;
+                const isQueued   = updatingAll && !isUpdating && !isUpdated;
                 const pkgProgress = progress && progress.packageId === pkg.id ? progress : null;
+
+                let state: CardState = 'idle';
+                if (isUpdated) state = 'done';
+                else if (isUpdating) state = pkgProgress?.phase === 'error' ? 'error' : 'updating';
+                else if (isQueued) state = 'queued';
+
                 const showProgress = isUpdating || (pkgProgress && (pkgProgress.phase === 'done' || pkgProgress.phase === 'error'));
+                const rawPct = pkgProgress?.percent ?? 0;
+                const indeterminate = rawPct < 0;
+                const displayPct = indeterminate ? 0 : Math.max(0, Math.min(100, Math.round(rawPct)));
+
                 return (
-                  <motion.div key={pkg.id} className={`su-row ${isUpdated ? 'su-row--updated' : ''} ${showProgress ? 'su-row--has-progress' : ''}`}
-                    initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}>
-                    <div className="su-cell su-cell--name"><span className="su-pkg-name">{pkg.name}</span></div>
-                    <div className="su-cell su-cell--id"><span className="su-pkg-id">{pkg.id}</span></div>
-                    <div className="su-cell su-cell--version">{pkg.version}</div>
-                    <div className="su-cell su-cell--available"><span className="su-new-version">{pkg.available}</span></div>
-                    <div className="su-cell su-cell--size">
-                      {packageSizes[pkg.id] === undefined ? (
-                        <span className="su-pkg-size su-pkg-size--loading">Loading…</span>
-                      ) : packageSizes[pkg.id] ? (
-                        <span className="su-pkg-size">{packageSizes[pkg.id]}</span>
-                      ) : (
-                        <span className="su-pkg-size">—</span>
-                      )}
+                  <motion.div
+                    key={pkg.id}
+                    layout
+                    className={`su-card su-card--${state}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.2 } }}
+                    transition={{ delay: i * 0.04, duration: 0.25 }}
+                  >
+                    <span className="su-card__rail" />
+
+                    <div className="su-card__avatar">
+                      <span>{getInitials(pkg.name)}</span>
                     </div>
-                    <div className="su-cell su-cell--source">{pkg.source}</div>
-                    <div className="su-cell su-cell--action">
-                      {isUpdated && !pkgProgress ? (
-                        <span className="su-updated-badge"><CheckCircle size={14} /> Updated</span>
-                      ) : isUpdating && !updatingAll ? (
+
+                    <div className="su-card__info">
+                      <div className="su-card__name-row">
+                        <span className="su-card__name">{pkg.name}</span>
+                        <span className="su-card__id">{pkg.id}</span>
+                      </div>
+                      <div className="su-card__versions">
+                        <span className="su-card__ver su-card__ver--old">v{pkg.version}</span>
+                        <ArrowRight size={11} className="su-card__ver-arrow" />
+                        <span className="su-card__ver su-card__ver--new">v{pkg.available}</span>
+                      </div>
+                    </div>
+
+                    <div className="su-card__meta">
+                      <span className="su-card__chip su-card__chip--size">
+                        <HardDrive size={10} />
+                        {packageSizes[pkg.id] === undefined
+                          ? <span className="su-card__chip-loading">…</span>
+                          : packageSizes[pkg.id] || '—'}
+                      </span>
+                      <span className="su-card__chip su-card__chip--source">{pkg.source}</span>
+                    </div>
+
+                    <div className="su-card__action">
+                      {state === 'done' ? (
+                        <span className="su-card__badge su-card__badge--done">
+                          <CheckCircle size={14} /> Updated
+                        </span>
+                      ) : state === 'queued' ? (
+                        <span className="su-card__badge su-card__badge--queued">
+                          <Clock size={12} /> Queued
+                        </span>
+                      ) : state === 'updating' && !updatingAll ? (
                         <button className="su-btn su-btn--cancel" onClick={handleCancelUpdate} disabled={cancelRequested}>
                           <X size={14} /> {cancelRequested ? 'Cancelling…' : 'Cancel'}
                         </button>
+                      ) : state === 'updating' && updatingAll ? (
+                        <span className="su-card__badge su-card__badge--active">
+                          <Activity size={12} /> Active
+                        </span>
                       ) : (
-                        <button className="su-btn su-btn--row-update" onClick={() => handleUpdate(pkg)} disabled={isUpdating || updatingAll || !isPro}>
-                          {isUpdating ? (<><Loader2 size={14} className="su-spin" /> Updating…</>) : (<><Download size={14} /> Update</>)}
+                        <button
+                          className="su-btn su-btn--row-update"
+                          onClick={() => handleUpdate(pkg)}
+                          disabled={isUpdating || updatingAll || !isPro}
+                        >
+                          <Download size={13} /> Update
                         </button>
                       )}
                     </div>
+
                     {showProgress && pkgProgress && (
-                      <div className="su-progress-row">
-                        <div className="su-progress-bar-wrap">
-                          <div className={`su-progress-bar su-progress-bar--${pkgProgress.phase} ${pkgProgress.percent < 0 ? 'su-progress-bar--indeterminate' : ''}`}
-                            style={{ width: pkgProgress.percent >= 0 ? `${Math.max(pkgProgress.percent, 2)}%` : '100%' }} />
+                      <div className="su-card__progress">
+                        <div className="su-card__pbar-wrap">
+                          <div
+                            className={`su-card__pbar su-card__pbar--${pkgProgress.phase}${indeterminate ? ' su-card__pbar--indeterminate' : ''}`}
+                            style={{ width: indeterminate ? '100%' : `${Math.max(displayPct, 2)}%` }}
+                          />
                         </div>
-                        <div className="su-progress-info">
-                          <span className={`su-progress-status su-progress-status--${pkgProgress.phase}`}>
-                            {pkgProgress.phase === 'downloading' && pkgProgress.bytesTotal
-                              ? `${fmtBytes(pkgProgress.bytesDownloaded)} / ${fmtBytes(pkgProgress.bytesTotal)}`
-                              : pkgProgress.status || (
-                                pkgProgress.phase === 'preparing'   ? 'Preparing…' :
-                                pkgProgress.phase === 'downloading' ? 'Downloading…' :
-                                pkgProgress.phase === 'verifying'   ? 'Verifying…' :
-                                pkgProgress.phase === 'installing'  ? 'Installing…' :
-                                pkgProgress.phase === 'done'        ? 'Complete' :
-                                pkgProgress.phase === 'error'       ? 'Error' : ''
-                              )}
+                        <div className="su-card__pinfo">
+                          <span className={`su-card__pphase su-card__pphase--${pkgProgress.phase}`}>
+                            {pkgProgress.phase === 'error' && <AlertTriangle size={11} />}
+                            {phaseLabel(pkgProgress.phase)}
                           </span>
-                          <span className="su-progress-details">
-                            {pkgProgress.phase === 'downloading' && pkgProgress.bytesPerSec ? (
-                              <span className="su-progress-speed">{fmtBytes(pkgProgress.bytesPerSec)}/s</span>
-                            ) : null}
-                            {pkgProgress.phase === 'verifying' && <span className="su-progress-installing">Hash verified</span>}
-                            {pkgProgress.phase === 'installing' && <span className="su-progress-installing">Please wait…</span>}
-                            {pkgProgress.phase === 'done' && <span className="su-progress-speed" style={{color: '#FFFFFF'}}>Complete</span>}
+                          <span className="su-card__pstats">
+                            {pkgProgress.phase === 'downloading' && pkgProgress.bytesTotal ? (
+                              <>
+                                {fmtBytes(pkgProgress.bytesDownloaded)}
+                                <span className="su-card__psep"> / </span>
+                                {fmtBytes(pkgProgress.bytesTotal)}
+                                {pkgProgress.bytesPerSec ? (
+                                  <>
+                                    <span className="su-card__psep"> · </span>
+                                    <span className="su-card__pspeed">{fmtBytes(pkgProgress.bytesPerSec)}/s</span>
+                                  </>
+                                ) : null}
+                              </>
+                            ) : (
+                              pkgProgress.status
+                            )}
+                          </span>
+                          <span className="su-card__ppct">
+                            {indeterminate ? '…' : `${displayPct}%`}
                           </span>
                         </div>
                       </div>
@@ -331,12 +436,10 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
               })}
             </AnimatePresence>
           </div>
-        </motion.div>
-      )}
+        )}
       </ProLockedWrapper>
     </motion.div>
   );
 };
 
 export default React.memo(SoftwareUpdates);
-
