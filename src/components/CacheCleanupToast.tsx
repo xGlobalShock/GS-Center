@@ -195,6 +195,7 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
   const abortRef = useRef(false);
   const startTimeRef = useRef<number>(0);
   const totalMBRef = useRef<number>(0);
+  const toastIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setTasks(defaultIds.map(id => ({ id, state: 'dormant', progress: 0 })));
@@ -216,8 +217,17 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
         return React.isValidElement(t.message) && (t.message as any).props?.toastKey === toastKey;
       } catch { return false; }
     });
-    if (matched) setToastId(matched.id);
+    if (matched) { setToastId(matched.id); toastIdRef.current = matched.id; }
   }, [toasts, toastKey]);
+
+  useEffect(() => {
+    if (!summary || running) return;
+    const timer = setTimeout(() => {
+      const id = toastIdRef.current;
+      if (id) removeToast(id);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [summary, running, removeToast]);
 
   useEffect(() => {
     if (ledgerRef.current && currentIdx !== null) {

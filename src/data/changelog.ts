@@ -10,6 +10,17 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '2.2.9',
+    date: '2026-04-16',
+    highlights: 'Full Cache Cleanup Auto-Close on Completion',
+    changes: [
+      {
+        type: 'improved',
+        text: 'Full Cache Cleanup modal now automatically closes after completion instead of showing a Restart button.',
+      },
+    ],
+  },
+  {
     version: '2.2.8',
     date: '2026-04-16',
     highlights: 'Software Updates Redesign & New What\'s New Modal',
